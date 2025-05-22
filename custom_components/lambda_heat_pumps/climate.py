@@ -65,9 +65,14 @@ async def async_setup_entry(
 
     # Funktion zur Überprüfung der Sensor-Firmware-Kompatibilität
     def is_sensor_compatible(sensor_id: str) -> bool:
+        # Prefix entfernen, falls vorhanden
+        if sensor_id.startswith(prefix):
+            sensor_id_noprefix = sensor_id[len(prefix):]
+        else:
+            sensor_id_noprefix = sensor_id
         # Prüfe dynamische Boiler-Sensoren
-        if sensor_id.startswith("boil"):
-            parts = sensor_id.split("_", 1)
+        if sensor_id_noprefix.startswith("boil"):
+            parts = sensor_id_noprefix.split("_", 1)
             if len(parts) == 2 and parts[1] in BOIL_SENSOR_TEMPLATES:
                 template = BOIL_SENSOR_TEMPLATES[parts[1]]
                 sensor_fw = template.get("firmware_version", 1)
@@ -75,7 +80,7 @@ async def async_setup_entry(
                 _LOGGER.debug(
                     "Climate Boiler Sensor Check - "
                     "Sensor: %s, FW: %s, Current: %s, Compatible: %s",
-                    sensor_id,
+                    sensor_id_noprefix,
                     sensor_fw,
                     fw_version,
                     is_compatible,
@@ -83,12 +88,12 @@ async def async_setup_entry(
                 return is_compatible
             _LOGGER.warning(
                 "Boiler sensor template for '%s' not found.",
-                sensor_id,
+                sensor_id_noprefix,
             )
             return False
         # Prüfe dynamische HC-Sensoren
-        if sensor_id.startswith("hc"):
-            parts = sensor_id.split("_", 1)
+        if sensor_id_noprefix.startswith("hc"):
+            parts = sensor_id_noprefix.split("_", 1)
             if len(parts) == 2 and parts[1] in HC_SENSOR_TEMPLATES:
                 template = HC_SENSOR_TEMPLATES[parts[1]]
                 sensor_fw = template.get("firmware_version", 1)
@@ -96,7 +101,7 @@ async def async_setup_entry(
                 _LOGGER.debug(
                     "Climate HC Sensor Check - "
                     "Sensor: %s, FW: %s, Current: %s, Compatible: %s",
-                    sensor_id,
+                    sensor_id_noprefix,
                     sensor_fw,
                     fw_version,
                     is_compatible,
@@ -104,15 +109,15 @@ async def async_setup_entry(
                 return is_compatible
             _LOGGER.warning(
                 "HC sensor template for '%s' not found.",
-                sensor_id,
+                sensor_id_noprefix,
             )
             return False
         # Prüfe statische Sensoren
-        sensor_config = SENSOR_TYPES.get(sensor_id)
+        sensor_config = SENSOR_TYPES.get(sensor_id_noprefix)
         if not sensor_config:
             _LOGGER.warning(
                 "Sensor '%s' not found in SENSOR_TYPES.",
-                sensor_id,
+                sensor_id_noprefix,
             )
             return False
         sensor_fw = sensor_config.get("firmware_version", 1)
@@ -120,7 +125,7 @@ async def async_setup_entry(
         _LOGGER.debug(
             "Climate Sensor Check - "
             "Sensor: %s, FW: %s, Current: %s, Compatible: %s",
-            sensor_id,
+            sensor_id_noprefix,
             sensor_fw,
             fw_version,
             is_compatible,
@@ -132,12 +137,14 @@ async def async_setup_entry(
     # Dynamische Hot Water Entities für alle Boiler
     # Diese werden immer erstellt, unabhängig von room_thermostat_control
     num_boil = entry.data.get("num_boil", 1)
+    name_prefix = entry.data.get("name", "lambda_wp").lower().replace(" ", "")
+    prefix = f"{name_prefix}_"
     for boil_idx in range(1, num_boil + 1):
         hw_current_temp_sensor = (
-            f"boil{boil_idx}_actual_high_temperature"
+            f"{prefix}boil{boil_idx}_actual_high_temperature"
         )
         hw_target_temp_sensor = (
-            f"boil{boil_idx}_target_high_temperature"
+            f"{prefix}boil{boil_idx}_target_high_temperature"
         )
         
         # Prüfe ob die relevanten Register deaktiviert sind
@@ -189,10 +196,10 @@ async def async_setup_entry(
         num_hc = entry.data.get("num_hc", 1)
         for hc_idx in range(1, num_hc + 1):
             hc_current_temp_sensor = (
-                f"hc{hc_idx}_room_device_temperature"
+                f"{prefix}hc{hc_idx}_room_device_temperature"
             )
             hc_target_temp_sensor = (
-                f"hc{hc_idx}_target_room_temperature"
+                f"{prefix}hc{hc_idx}_target_room_temperature"
             )
             
             # Prüfe ob die relevanten Register deaktiviert sind
@@ -281,19 +288,20 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
         # unique_id und entity_id mit Prefix
         name_prefix = entry.data.get("name", "lambda_wp").lower().replace(" ", "")
         prefix = f"{name_prefix}_"
+        self._prefix = prefix
         if climate_type.startswith("hot_water"):
             idx = climate_type.split("_")[-1]
-            self._attr_unique_id = f"{prefix}hot_water_{idx}_climate"
-            self.entity_id = f"climate.{prefix}hot_water_{idx}_climate"
+            self._attr_unique_id = f"{prefix}hot_water_{idx}"
+            self.entity_id = f"climate.{prefix}hot_water_{idx}"
             self._operating_state_sensor = f"boil{idx}_operating_state"
         elif climate_type.startswith("heating_circuit"):
             idx = climate_type.split("_")[-1]
-            self._attr_unique_id = f"{prefix}heating_circuit_{idx}_climate"
-            self.entity_id = f"climate.{prefix}heating_circuit_{idx}_climate"
+            self._attr_unique_id = f"{prefix}heating_circuit_{idx}"
+            self.entity_id = f"climate.{prefix}heating_circuit_{idx}"
             self._operating_state_sensor = f"hc{idx}_operating_state"
         else:
-            self._attr_unique_id = f"{prefix}{climate_type}_climate"
-            self.entity_id = f"climate.{prefix}{climate_type}_climate"
+            self._attr_unique_id = f"{prefix}{climate_type}"
+            self.entity_id = f"climate.{prefix}{climate_type}"
             self._operating_state_sensor = None
         self._attr_min_temp = min_temp
         self._attr_max_temp = max_temp
@@ -355,13 +363,6 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
     @property
     def device_info(self):
         """Return device information."""
-        if self._climate_type.startswith("hot_water"):
-            idx = self._climate_type.split("_")[-1]
-            return build_device_info(self._entry, "hot_water_climate", idx)
-        if self._climate_type.startswith("heating_circuit"):
-            idx = self._climate_type.split("_")[-1]
-            return build_device_info(self._entry, "heating_circuit_climate", idx)
-        # Fallback: main device
         return build_device_info(self._entry, "main")
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
@@ -372,31 +373,35 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
         try:
             # Hole die Sensor-Information
             sensor_info = None
-            if self._target_temp_sensor.startswith("boil"):
-                parts = self._target_temp_sensor.split("_", 1)
+            # Prefix entfernen, falls vorhanden
+            target_temp_sensor_noprefix = self._target_temp_sensor
+            if self._target_temp_sensor.startswith(self._prefix):
+                target_temp_sensor_noprefix = self._target_temp_sensor[len(self._prefix):]
+            if target_temp_sensor_noprefix.startswith("boil"):
+                parts = target_temp_sensor_noprefix.split("_", 1)
                 if len(parts) == 2 and parts[1] in BOIL_SENSOR_TEMPLATES:
                     sensor_info = BOIL_SENSOR_TEMPLATES[parts[1]].copy()
-                    idx = int(self._target_temp_sensor[4])
+                    idx = int(target_temp_sensor_noprefix[4])
                     sensor_info["address"] = (
                         BOIL_BASE_ADDRESS[idx]
                         + sensor_info["relative_address"]
                     )
-            elif self._target_temp_sensor.startswith("hc"):
-                parts = self._target_temp_sensor.split("_", 1)
+            elif target_temp_sensor_noprefix.startswith("hc"):
+                parts = target_temp_sensor_noprefix.split("_", 1)
                 if len(parts) == 2 and parts[1] in HC_SENSOR_TEMPLATES:
                     sensor_info = HC_SENSOR_TEMPLATES[parts[1]].copy()
-                    idx = int(self._target_temp_sensor[2])
+                    idx = int(target_temp_sensor_noprefix[2])
                     sensor_info["address"] = (
                         HC_BASE_ADDRESS[idx]
                         + sensor_info["relative_address"]
                     )
             else:
-                sensor_info = SENSOR_TYPES.get(self._target_temp_sensor)
+                sensor_info = SENSOR_TYPES.get(target_temp_sensor_noprefix)
 
             if not sensor_info:
                 _LOGGER.error(
                     "No sensor definition found for %s",
-                    self._target_temp_sensor,
+                    target_temp_sensor_noprefix,
                 )
                 return
 
@@ -404,7 +409,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
             if not sensor_info.get("writeable", False):
                 _LOGGER.error(
                     "Sensor %s is not writeable",
-                    self._target_temp_sensor,
+                    target_temp_sensor_noprefix,
                 )
                 return
 

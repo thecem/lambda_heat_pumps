@@ -485,18 +485,4 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self):
-        device_type = self._config.get("device_type")
-        idx = None
-        # Dynamische Sensoren: Index aus sensor_id extrahieren
-        if device_type in ("Hp", "boil", "buff", "sol", "heating_circuit"):
-            import re
-            # Suche nach z.B. hp1_, boil2_, buff3_, sol1_, hc2_ am Anfang
-            match = re.match(r"(hp|boil|buff|sol|hc)(\d+)_", self._sensor_id)
-            if match:
-                idx = match.group(2)
-            elif device_type == "heating_circuit":
-                # Fallback für HC, falls Namensschema abweicht
-                match = re.match(r"hc(\d+)_", self._sensor_id)
-                if match:
-                    idx = match.group(1)
-        return build_device_info(self._entry, device_type, idx)
+        return build_device_info(self._entry, "main")

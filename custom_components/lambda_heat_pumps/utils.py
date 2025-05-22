@@ -25,84 +25,25 @@ def get_compatible_sensors(sensor_templates: dict, fw_version: int) -> dict:
 def build_device_info(entry, device_type, idx=None, sensor_id=None):
     """
     Build device_info dict for Home Assistant device registry.
-    device_type: 'main', 'Hp', 'boil', 'heating_circuit', 'buff', 'sol',
-                 oder für Climate-Entities: 'hot_water_climate', 'heating_circuit_climate' (werden intern gemappt)
-    idx: Nummer des Subgeräts (z. B. 1, 2, ...)
+    device_type: wird ignoriert, alle Entities gehören zum Main-Device
     """
     DOMAIN = entry.domain if hasattr(entry, 'domain') else 'lambda_heat_pumps'
     entry_id = entry.entry_id
     fw_version = entry.data.get("firmware_version", "unknown")
-    # Climate-Entity-Typen auf Subgeräte mappen
-    if device_type == "hot_water_climate":
-        device_type = "boil"
-    if device_type == "heating_circuit_climate":
-        device_type = "heating_circuit"
-    if device_type == "main":
-        host = entry.data.get("host")
-        return {
-            "identifiers": {(DOMAIN, entry_id)},
-            "name": entry.data.get("name", "Lambda WP"),
-            "manufacturer": "Lambda",
-            "model": fw_version,
-            "configuration_url": f"http://{host}",
-            "sw_version": fw_version,
-            "entry_type": None,
-            "suggested_area": None,
-            "via_device": None,
-            "hw_version": None,
-            "serial_number": None,
-        }
-    if device_type == "Hp":
-        device_id = f"{entry_id}_hp{idx}"
-        return {
-            "identifiers": {(DOMAIN, device_id)},
-            "name": f"Heat Pump {idx}",
-            "manufacturer": "Lambda",
-            "model": fw_version,
-            "via_device": (DOMAIN, entry_id),
-            "entry_type": "service",
-        }
-    if device_type == "boil":
-        device_id = f"{entry_id}_boil{idx}"
-        return {
-            "identifiers": {(DOMAIN, device_id)},
-            "name": f"Boiler {idx}",
-            "manufacturer": "Lambda",
-            "model": fw_version,
-            "via_device": (DOMAIN, entry_id),
-            "entry_type": "service",
-        }
-    if device_type == "heating_circuit":
-        device_id = f"{entry_id}_hc{idx}"
-        return {
-            "identifiers": {(DOMAIN, device_id)},
-            "name": f"Heating Circuit {idx}",
-            "manufacturer": "Lambda",
-            "model": fw_version,
-            "via_device": (DOMAIN, entry_id),
-            "entry_type": "service",
-        }
-    if device_type == "buff":
-        device_id = f"{entry_id}_buffer{idx}"
-        return {
-            "identifiers": {(DOMAIN, device_id)},
-            "name": f"Buffer {idx}",
-            "manufacturer": "Lambda",
-            "model": fw_version,
-            "via_device": (DOMAIN, entry_id),
-            "entry_type": "service",
-        }
-    if device_type == "sol":
-        device_id = f"{entry_id}_solar{idx}"
-        return {
-            "identifiers": {(DOMAIN, device_id)},
-            "name": f"Solar {idx}",
-            "manufacturer": "Lambda",
-            "model": fw_version,
-            "via_device": (DOMAIN, entry_id),
-            "entry_type": "service",
-        }
-    return None
+    host = entry.data.get("host")
+    return {
+        "identifiers": {(DOMAIN, entry_id)},
+        "name": entry.data.get("name", "Lambda WP"),
+        "manufacturer": "Lambda",
+        "model": fw_version,
+        "configuration_url": f"http://{host}",
+        "sw_version": fw_version,
+        "entry_type": None,
+        "suggested_area": None,
+        "via_device": None,
+        "hw_version": None,
+        "serial_number": None,
+    }
 
 
 async def load_disabled_registers(hass: HomeAssistant, config_path: str) -> set[int]:
