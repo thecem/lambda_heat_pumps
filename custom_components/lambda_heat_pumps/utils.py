@@ -206,29 +206,3 @@ def is_register_disabled(address: int, disabled_registers: set[int]) -> bool:
     if is_disabled:
         _LOGGER.debug("Register %d is disabled (in set: %s)", address, disabled_registers)
     return is_disabled
-
-def get_entity_name(device_type, device_number, sensor_key, base_name, use_modbus_names):
-    """
-    Erzeugt den Namen für eine Entity je nach Schema.
-    - device_type: z.B. 'Hp', 'Hc', 'Boil', 'Buff', 'Sol', ...
-    - device_number: int, z.B. 1, 2, ...
-    - sensor_key: z.B. 'Flow_Line_Temperature'
-    - base_name: z.B. 'EU08L' (aus der Config)
-    - use_modbus_names: bool, steuert das Schema
-    """
-    _LOGGER.info("Entity Name Generation Parameters:")
-    _LOGGER.info(f"  base_name = {base_name}")
-    _LOGGER.info(f"  device_type = {device_type}")
-    _LOGGER.info(f"  device_number = {device_number}")
-    _LOGGER.info(f"  sensor_key = {sensor_key}")
-    _LOGGER.info(f"  use_modbus_names = {use_modbus_names} (type: {type(use_modbus_names)})")
-    
-    if use_modbus_names:
-        _LOGGER.info("Using Modbus naming schema")
-        name = f"{base_name}_{device_type}{device_number}_{sensor_key}"
-    else:
-        _LOGGER.info("Using new naming schema")
-        name = f"{base_name}_{device_type}_{device_number}_{sensor_key}".lower()
-    
-    _LOGGER.info(f"Generated name: {name}")
-    return name

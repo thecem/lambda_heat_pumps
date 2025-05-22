@@ -34,7 +34,7 @@ from .const import (
     BUFFER_REQUEST_TYPE,
 )
 from .coordinator import LambdaDataUpdateCoordinator
-from .utils import get_compatible_sensors, build_device_info, get_entity_name
+from .utils import get_compatible_sensors, build_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ async def async_setup_entry(
     )
 
     entities = []
-    name_prefix = entry.data.get("name", "lambda_wp").lower().replace(" ", "")
+    name_prefix = entry.data.get("name", "lambda").lower().replace(" ", "")
 
     compatible_static_sensors = get_compatible_sensors(SENSOR_TYPES, fw_version)
     for sensor_id, sensor_config in compatible_static_sensors.items():
@@ -366,14 +366,7 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
         self._entry = entry
         self._sensor_id = sensor_id
         self._config = sensor_config
-        use_modbus_names = entry.options.get("use_modbus_names", entry.data.get("use_modbus_names", False))
-        self._attr_name = get_entity_name(
-            device_type=sensor_config.get("device_type"),
-            device_number=sensor_id[2] if sensor_id.startswith("hp") else sensor_id[4] if sensor_id.startswith("boil") else sensor_id[6] if sensor_id.startswith("buffer") else sensor_id[5] if sensor_id.startswith("solar") else None,
-            sensor_key=sensor_id.split("_")[1],
-            base_name=sensor_config["name"],
-            use_modbus_names=use_modbus_names
-        )
+        self._attr_name = sensor_config["name"]
         self._attr_unique_id = sensor_id
         self.entity_id = f"sensor.{sensor_id}"
 
@@ -383,10 +376,20 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
             sensor_config,
         )
 
-        if sensor_config.get("unit") is None:
-            self._is_state_sensor = True
-        else:
+        if sensor_config.get("unit") == "°C":
             self._is_state_sensor = False
+        else:
+            state_patterns = [
+                "_operating_state",
+                "_error_state",
+                "_operating_mode",
+                "ambient_state",
+                "hp_state",
+                "request_type",
+            ]
+            self._is_state_sensor = any(
+                pattern in sensor_id for pattern in state_patterns
+            )
 
         if self._is_state_sensor:
             self._attr_native_unit_of_measurement = None

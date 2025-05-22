@@ -1,21 +1,15 @@
 """Constants for Lambda WP integration."""
 from __future__ import annotations
-### define all constants and defaults here.
 
-######  Sensor Templates have to be defined here, see below.
-
-
-#######################
 # Integration Constants
-#######################
 DOMAIN = "lambda_heat_pumps"
 ## disable this for production
 DEFAULT_NAME = "EU08L"
-DEFAULT_HOST = "192.168.178.125"
+DEFAULT_HOST = "192.168.178.194"
 ##DEFAULT_PORT = 502
 ## enable this for production
 ## DEFAULT_HOST = "IP_ADDRESS or hostname"
-DEFAULT_PORT = 502
+DEFAULT_PORT = 5020
 DEFAULT_SLAVE_ID = 1
 DEFAULT_FIRMWARE = "V0.0.3-3K"
 DEFAULT_ROOM_THERMOSTAT_CONTROL = False
@@ -24,19 +18,15 @@ DEFAULT_ROOM_THERMOSTAT_CONTROL = False
 DEFAULT_NUM_HPS = 1
 DEFAULT_NUM_BOIL = 1
 DEFAULT_NUM_HC = 1
-DEFAULT_NUM_BUFF = 0
-DEFAULT_NUM_SOL = 0
-# Max counts for devices
-MAX_NUM_HPS = 3
-MAX_NUM_BOIL = 5
-MAX_NUM_HC = 12
-MAX_NUM_BUFF = 5
-MAX_NUM_SOLAR = 2
+DEFAULT_NUM_BUFFER = 0
+DEFAULT_NUM_SOLAR = 0
+
 # Default temperature settings
 DEFAULT_HOT_WATER_MIN_TEMP = 40
 DEFAULT_HOT_WATER_MAX_TEMP = 60
 
 # Configuration Constants
+CONF_SLAVE_ID = "slave_id"
 CONF_ROOM_TEMPERATURE_ENTITY = "room_temperature_entity_{0}"
 # Format string for room_temperature_entity_1, _2, etc.
 
@@ -60,38 +50,173 @@ FIRMWARE_VERSION = {
 }
 
 #######################
-# Base Modbus Addresses
+# Base Addresses
 #######################
+
 # Heat Pump Base Addresses (1000-1400)
-HP_BASE_ADDRESS = 1
+HP_BASE_ADDRESS = {1: 1000, 2: 1100, 3: 1200, 4: 1300, 5: 1400}
+
 # Boiler Base Addresses (2000-2400)
-BOIL_BASE_ADDRESS = 2
+BOIL_BASE_ADDRESS = {1: 2000, 2: 2100, 3: 2200, 4: 2300, 5: 2400}
+
 # Buffer Base Addresses (3000-3400)
-BUFFER_BASE_ADDRESS = 3
+BUFFER_BASE_ADDRESS = {1: 3000, 2: 3100, 3: 3200, 4: 3300, 5: 3400}
+
 # Solar Base Addresses (4000-4100)
-SOLAR_BASE_ADDRESS = 4
+SOLAR_BASE_ADDRESS = {1: 4000, 2: 4100}
+
 # Heating Circuit Base Addresses (5000-5400)
-HC_BASE_ADDRESS = 5
-
-# Room Temperature Settings
-ROOM_TEMPERATURE_REGISTER_OFFSET = 4
-# Register offset for room temperature within a HC
-ROOM_TEMPERATURE_UPDATE_INTERVAL = (
-    1  # Update interval for room temperature (in minutes)
-)
-
-DEFAULT_HEATING_CIRCUIT_MIN_TEMP = 15
-DEFAULT_HEATING_CIRCUIT_MAX_TEMP = 35
-DEFAULT_HEATING_CIRCUIT_TEMP_STEP = 0.5
-
-DEFAULT_HOT_WATER_MIN_TEMP = 40
-DEFAULT_HOT_WATER_MAX_TEMP = 60
-DEFAULT_HOT_WATER_TEMP_STEP = 0,5
+HC_BASE_ADDRESS = {1: 5000, 2: 5100, 3: 5200, 4: 5300, 5: 5400}
 
 #######################
 # State Mappings
 #######################
-# All state mappings have been moved to const_states.py
+
+# Ambient States
+AMBIENT_OPERATING_STATE = {0: "Off", 1: "Automatik", 2: "Manual", 3: "Error"}
+
+# E-Manager States
+EMGR_OPERATING_STATE = {
+    0: "Off",
+    1: "Automatik",
+    2: "Manual",
+    3: "Error",
+    4: "Offline"
+}
+
+# Heat Pump States
+HP_ERROR_STATE = {
+    0: "OK",
+    1: "Message",
+    2: "Warning",
+    3: "Alarm",
+    4: "Fault"
+}
+
+
+HP_STATE = {
+    0: "Init",
+    1: "Reference",
+    2: "Restart-Block",
+    3: "Ready",
+    4: "Start Pumps",
+    5: "Start Compressor",
+    6: "Pre-Regulation",
+    7: "Regulation",
+    8: "Not Used",
+    9: "Cooling",
+    10: "Defrosting",
+    31: "Fault-Lock",
+    32: "Alarm-Block",
+    41: "Error-Reset",
+}
+
+HP_OPERATING_STATE = {
+    0: "Standby",
+    1: "Heizung",
+    2: "WW-Bereitung",
+    3: "Cold Climate",
+    4: "Circulation",
+    5: "Defrost",
+    6: "Off",
+    7: "Frost",
+    8: "Standby-Frost",
+    9: "Not used",
+    10: "Sommer",
+    11: "Ferienbetrieb",
+    12: "Error",
+    13: "Warning",
+    14: "Info-Message",
+    15: "Time-Block",
+    16: "Release-Block",
+    17: "Mintemp-Block",
+    18: "Firmware-Download",
+}
+
+HP_REQUEST_TYPE = {
+    0: "No Request",
+    1: "Flow Pump Circulation",
+    2: "Central Heating",
+    3: "Central Cooling",
+    4: "Domestic Hot Water",
+}
+
+# Boiler States
+BOIL_OPERATING_STATE = {
+    0: "Standby",
+    1: "Domestic Hot Water",
+    2: "Legio",
+    3: "Summer",
+    4: "Frost",
+    5: "Holiday",
+    6: "Prio-Stop",
+    7: "Error",
+    8: "Off",
+    9: "Prompt-DHW",
+    10: "Trailing-Stop",
+    11: "Temp-Lock",
+    12: "Standby-Frost",
+}
+
+# Buffer States
+BUFFER_OPERATION_STATE = {
+    0: "STBY",
+    1: "HEATING",
+    2: "COOLING",
+    3: "SUMMER",
+    4: "FROST",
+    5: "HOLIDAY",
+    6: "PRIO-STOP",
+    7: "ERROR",
+    8: "OFF",
+    9: "STBY-FROST",
+}
+
+# Solar States
+SOLAR_OPERATING_STATE = {
+    0: "Off",
+    1: "Active",
+    2: "Standby",
+    3: "Error",
+    4: "Frost Protection",
+    5: "Overheating Protection",
+}
+
+# Heating Circuit States
+HC_OPERATING_STATE = {
+    0: "Heating",
+    1: "Eco",
+    2: "Cooling",
+    3: "Floor-dry",
+    4: "Frost",
+    5: "Max-Temp",
+    6: "Error",
+    7: "Service",
+    8: "Holiday",
+    9: "Central Heating Summer",
+    10: "Central Cooling Winter",
+    11: "Prio-Stop",
+    12: "Off",
+    13: "Release-Off",
+    14: "Time-Off",
+    15: "Standby",
+    16: "Standby-Heating",
+    17: "Standby-Eco",
+    18: "Standby-Cooling",
+    19: "Standby-Frost",
+    20: "Standby-Floor-dry",
+}
+
+HC_OPERATING_MODE = {
+    0: "Off",
+    1: "Manual",
+    2: "Automatik",
+    3: "Auto-Heating",
+    4: "Auto-Cooling",
+    5: "Frost",
+    6: "Summer",
+    7: "Floor-dry",
+}
 
 #######################
 # Sensor Templates
@@ -107,7 +232,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 0,
         "data_type": "uint16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "total",
     },
@@ -119,7 +244,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 0,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "total",
     },
@@ -131,7 +256,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 0,
         "data_type": "uint16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "total",
     },
@@ -143,7 +268,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 0,
         "data_type": "uint16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "total",
     },
@@ -155,7 +280,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -167,7 +292,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -179,7 +304,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "total",
     },
@@ -191,7 +316,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -203,7 +328,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -215,7 +340,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "total",
     },
@@ -227,7 +352,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 0,
         "data_type": "uint16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "total",
     },
@@ -239,7 +364,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "total",
     },
@@ -251,7 +376,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 0,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -263,7 +388,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 2,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "total",
     },
@@ -275,7 +400,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 0,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "total",
     },
@@ -287,7 +412,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -299,7 +424,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -311,7 +436,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -323,7 +448,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 0,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "total",
     },
@@ -335,7 +460,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 0,
         "data_type": "int32",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "total_increasing",
     },
@@ -347,7 +472,7 @@ HP_SENSOR_TEMPLATES = {
         "precision": 0,
         "data_type": "int32",
         "firmware_version": 1,
-        "device_type": "Hp",
+        "device_type": "heat_pump",
         "writeable": False,
         "state_class": "total_increasing",
     },
@@ -357,293 +482,293 @@ HP_SENSOR_TEMPLATES = {
 BOIL_SENSOR_TEMPLATES = {
     "error_number": {
         "relative_address": 0,
-        "name": "Error Number",
+        "name": "Boiler Error Number",
         "unit": None,
         "scale": 1,
         "precision": 0,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Boil",
+        "device_type": "boiler",
         "writeable": False,
         "state_class": "total",
     },
     "operating_state": {
         "relative_address": 1,
-        "name": "Operating State",
+        "name": "Boiler Operating State",
         "unit": None,
         "scale": 1,
         "precision": 0,
         "data_type": "uint16",
         "firmware_version": 1,
-        "device_type": "Boil",
+        "device_type": "boiler",
         "writeable": False,
         "state_class": "total",
     },
     "actual_high_temperature": {
         "relative_address": 2,
-        "name": "Actual High Temperature",
+        "name": "Boiler Actual High Temperature",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Boil",
+        "device_type": "boiler",
         "writeable": False,
         "state_class": "measurement",
     },
     "actual_low_temperature": {
         "relative_address": 3,
-        "name": "Actual Low Temperature",
+        "name": "Boiler Actual Low Temperature",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Boil",
+        "device_type": "boiler",
         "writeable": False,
         "state_class": "measurement",
     },
     "target_high_temperature": {
         "relative_address": 50,
-        "name": "Target High Temperature",
+        "name": "Boiler Target High Temperature",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Boil",
+        "device_type": "boiler",
         "writeable": True,
         "state_class": "measurement",
     },
     "actual_circulation_temp": {
         "relative_address": 4,
-        "name": "Actual Circulation Temperature",
+        "name": "Boiler Actual Circulation Temperature",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Boil",
+        "device_type": "boiler",
         "writeable": False,
         "state_class": "total",
     },
     "actual_circulation_pump_state": {
         "relative_address": 5,
-        "name": "Circulation Pump State",
+        "name": "Boiler Circulation Pump State",
         "unit": None,
         "scale": 1,
         "precision": 0,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Boil",
+        "device_type": "boiler",
         "writeable": False,
         "state_class": "total",
     },
     "maximum_boiler_temp": {
         "relative_address": 50,
-        "name": "Maximum Temperature",
+        "name": "Boiler Maximum Temperature",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Boil",
+        "device_type": "boiler",
         "writeable": False,
         "state_class": "measurement",
     },
 }
 
 # Buffer Sensors
-BUFF_SENSOR_TEMPLATES = {
+BUFFER_SENSOR_TEMPLATES = {
     "error_number": {
         "relative_address": 0,
-        "name": "Error Number",
+        "name": "Buffer Error Number",
         "unit": None,
         "scale": 1,
         "precision": 0,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Buff",
+        "device_type": "buffer",
         "writeable": False,
     },
     "operating_state": {
         "relative_address": 1,
-        "name": "Operating State",
+        "name": "Buffer Operating State",
         "unit": None,
         "scale": 1,
         "precision": 0,
         "data_type": "uint16",
         "firmware_version": 1,
-        "device_type": "Buff",
+        "device_type": "buffer",
         "writeable": False,
     },
     "actual_high_temp": {
         "relative_address": 2,
-        "name": "Actual High Temperature",
+        "name": "Buffer Actual High Temperature",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Buff",
+        "device_type": "buffer",
         "writeable": False,
     },
     "actual_low_temp": {
         "relative_address": 3,
-        "name": "Actual Low Temperature",
+        "name": "Buffer Actual Low Temperature",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Buff",
+        "device_type": "buffer",
         "writeable": False,
     },
     "modbus_buffer_temp_high": {
         "relative_address": 4,
-        "name": "High Temperature (Modbus)",
+        "name": "Buffer High Temperature (Modbus)",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Buff",
+        "device_type": "buffer",
         "writeable": False,
     },
     "request_type": {
         "relative_address": 5,
-        "name": "Request Type",
+        "name": "Buffer Request Type",
         "unit": None,
         "scale": 1,
         "precision": 0,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Buff",
+        "device_type": "buffer",
         "writeable": False,
     },
     "request_flow_line_temp_setpoint": {
         "relative_address": 6,
-        "name": "Flow Line Temperature Setpoint",
+        "name": "Buffer Flow Line Temperature Setpoint",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Buff",
+        "device_type": "buffer",
         "writeable": False,
     },
     "request_return_line_temp_setpoint": {
         "relative_address": 7,
-        "name": "Return Line Temperature Setpoint",
+        "name": "Buffer Return Line Temperature Setpoint",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Buff",
+        "device_type": "buffer",
         "writeable": False,
     },
     "request_heat_sink_temp_diff_setpoint": {
         "relative_address": 8,
-        "name": "Heat Sink Temperature Difference Setpoint",
+        "name": "Buffer Heat Sink Temperature Difference Setpoint",
         "unit": "K",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Buff",
+        "device_type": "buffer",
         "writeable": False,
     },
     "modbus_request_heating_capacity": {
         "relative_address": 9,
-        "name": "Requested Heating Capacity",
+        "name": "Buffer Requested Heating Capacity",
         "unit": "kW",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Buff",
+        "device_type": "buffer",
         "writeable": False,
     },
     "maximum_buffer_temp": {
         "relative_address": 50,
-        "name": "Maximum Temperature",
+        "name": "Buffer Maximum Temperature",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Buff",
+        "device_type": "buffer",
         "writeable": False,
     },
 }
 
 # Solar Sensors
-SOL_SENSOR_TEMPLATES = {
+SOLAR_SENSOR_TEMPLATES = {
     "error_number": {
         "relative_address": 0,
-        "name": "Error Number",
+        "name": "Solar Error Number",
         "unit": None,
         "scale": 1,
         "precision": 0,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Sol",
+        "device_type": "solar",
         "writeable": False,
     },
     "operating_state": {
         "relative_address": 1,
-        "name": "Operating State",
+        "name": "Solar Operating State",
         "unit": None,
         "scale": 1,
         "precision": 0,
         "data_type": "uint16",
         "firmware_version": 1,
-        "device_type": "Sol",
+        "device_type": "solar",
         "writeable": False,
     },
     "collector_temperature": {
         "relative_address": 2,
-        "name": "Collector Temperature",
+        "name": "Solar Collector Temperature",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Sol",
+        "device_type": "solar",
         "writeable": False,
     },
     "storage_temperature": {
         "relative_address": 3,
-        "name": "Storage Temperature",
+        "name": "Solar Storage Temperature",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Sol",
+        "device_type": "solar",
         "writeable": False,
     },
     "power_current": {
         "relative_address": 4,
-        "name": "Power Current",
+        "name": "Solar Power Current",
         "unit": "kW",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Sol",
+        "device_type": "solar",
         "writeable": False,
     },
     "energy_total": {
         "relative_address": 5,
-        "name": "Energy Total",
+        "name": "Solar Energy Total",
         "unit": "kWh",
         "scale": 1,
         "precision": 0,
         "data_type": "int32",
         "firmware_version": 1,
-        "device_type": "Sol",
+        "device_type": "solar",
         "writeable": False,
     },
 }
@@ -652,25 +777,25 @@ SOL_SENSOR_TEMPLATES = {
 HC_SENSOR_TEMPLATES = {
     "error_number": {
         "relative_address": 0,
-        "name": "Error Number",
+        "name": "Heating Circuit Error Number",
         "unit": None,
         "scale": 1,
         "precision": 0,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hc",
+        "device_type": "heating_circuit",
         "writeable": False,
         "state_class": "total",
     },
     "operating_state": {
         "relative_address": 1,
-        "name": "Operating State",
+        "name": "Heating Circuit Operating State",
         "unit": None,
         "scale": 1,
         "precision": 0,
         "data_type": "uint16",
         "firmware_version": 1,
-        "device_type": "Hc",
+        "device_type": "heating_circuit",
         "writeable": False,
         "state_class": "total",
     },
@@ -682,7 +807,7 @@ HC_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hc",
+        "device_type": "heating_circuit",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -694,7 +819,7 @@ HC_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hc",
+        "device_type": "heating_circuit",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -706,7 +831,7 @@ HC_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hc",
+        "device_type": "heating_circuit",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -718,7 +843,7 @@ HC_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hc",
+        "device_type": "heating_circuit",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -730,7 +855,7 @@ HC_SENSOR_TEMPLATES = {
         "precision": 0,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hc",
+        "device_type": "heating_circuit",
         "writeable": False,
         "state_class": "total",
     },
@@ -742,7 +867,7 @@ HC_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hc",
+        "device_type": "heating_circuit",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -754,7 +879,7 @@ HC_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hc",
+        "device_type": "heating_circuit",
         "writeable": True,
         "state_class": "measurement",
     },
@@ -766,7 +891,7 @@ HC_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "Hc",
+        "device_type": "heating_circuit",
         "writeable": False,
         "state_class": "measurement",
     },
@@ -778,14 +903,14 @@ HC_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 3,
-        "device_type": "Hc",
+        "device_type": "heating_circuit",
         "writeable": False,
         "state_class": "measurement",
     },
 }
 
 # General Sensors
-GEN_SENSOR_TYPES = {
+SENSOR_TYPES = {
     # General Ambient
     "ambient_error_number": {
         "address": 0,
@@ -909,4 +1034,25 @@ GEN_SENSOR_TYPES = {
     },
 }
 
+# Room Temperature Settings
+ROOM_TEMPERATURE_REGISTER_OFFSET = 4
+# Register offset for room temperature within a HC
+ROOM_TEMPERATURE_UPDATE_INTERVAL = (
+    1  # Update interval for room temperature (in minutes)
+)
 
+DEFAULT_HEATING_CIRCUIT_MIN_TEMP = 15
+DEFAULT_HEATING_CIRCUIT_MAX_TEMP = 35
+DEFAULT_HEATING_CIRCUIT_TEMP_STEP = 0.5
+
+CIRCULATION_PUMP_STATE = {0: "OFF", 1: "ON"}
+
+SOLAR_OPERATION_STATE = {0: "STBY", 1: "HEATING", 2: "ERROR", 3: "OFF"}
+
+BUFFER_REQUEST_TYPE = {
+    -1: "INVALID REQUEST",
+    0: "NO REQUEST",
+    1: "FLOW PUMP CIRCULATION",
+    2: "CENTRAL HEATING",
+    3: "CENTRAL COOLING",
+}

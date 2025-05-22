@@ -32,7 +32,7 @@ from .const import (
     BOIL_BASE_ADDRESS,
     HC_BASE_ADDRESS,
 )
-from .utils import build_device_info, is_register_disabled, get_entity_name
+from .utils import build_device_info, is_register_disabled
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -128,7 +128,6 @@ async def async_setup_entry(
         return is_compatible
 
     entities = []
-    name_prefix = entry.data.get("name", "lambda_wp").lower().replace(" ", "")
 
     # Dynamische Hot Water Entities für alle Boiler
     # Diese werden immer erstellt, unabhängig von room_thermostat_control
@@ -280,7 +279,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
         self._attr_translation_key = translation_key
         self._attr_translation_placeholders = translation_placeholders or {}
         # unique_id und entity_id wie gehabt
-        name_prefix = entry.data.get("name", "lambda_wp").lower().replace(" ", "")
+        name_prefix = entry.data.get("name", "lambda").lower().replace(" ", "")
         if climate_type.startswith("hot_water"):
             idx = climate_type.split("_")[-1]
             self._attr_unique_id = f"{name_prefix}_hot_water_{idx}_climate"
@@ -298,14 +297,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
         self._attr_min_temp = min_temp
         self._attr_max_temp = max_temp
         self._attr_target_temperature_step = temp_step
-        use_modbus_names = entry.options.get("use_modbus_names", entry.data.get("use_modbus_names", False))
-        self._attr_name = get_entity_name(
-            device_type=climate_type,
-            device_number=idx,
-            sensor_key=climate_type,
-            base_name=name_prefix,
-            use_modbus_names=use_modbus_names
-        )
+        self._attr_name = entry.data.get("name", "lambda")
         _LOGGER.debug(
             "Climate entity initialized with min_temp: %s, max_temp: %s",
             min_temp,
