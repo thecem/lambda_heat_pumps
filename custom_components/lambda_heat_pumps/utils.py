@@ -22,16 +22,10 @@ def get_compatible_sensors(sensor_templates: dict, fw_version: int) -> dict:
     }
 
 
-def setup_debug_logging():
-    """Set up debug logging for the integration."""
-    logger = logging.getLogger("custom_components.lambda_heat_pumps")
-    logger.setLevel(logging.DEBUG)
-
-
 def build_device_info(entry, device_type, idx=None, sensor_id=None):
     """
     Build device_info dict for Home Assistant device registry.
-    device_type: 'main', 'heat_pump', 'boiler', 'heating_circuit', 'buffer', 'solar',
+    device_type: 'main', 'Hp', 'boil', 'heating_circuit', 'buff', 'sol',
                  oder für Climate-Entities: 'hot_water_climate', 'heating_circuit_climate' (werden intern gemappt)
     idx: Nummer des Subgeräts (z. B. 1, 2, ...)
     """
@@ -40,7 +34,7 @@ def build_device_info(entry, device_type, idx=None, sensor_id=None):
     fw_version = entry.data.get("firmware_version", "unknown")
     # Climate-Entity-Typen auf Subgeräte mappen
     if device_type == "hot_water_climate":
-        device_type = "boiler"
+        device_type = "boil"
     if device_type == "heating_circuit_climate":
         device_type = "heating_circuit"
     if device_type == "main":
@@ -58,7 +52,7 @@ def build_device_info(entry, device_type, idx=None, sensor_id=None):
             "hw_version": None,
             "serial_number": None,
         }
-    if device_type == "heat_pump":
+    if device_type == "Hp":
         device_id = f"{entry_id}_hp{idx}"
         return {
             "identifiers": {(DOMAIN, device_id)},
@@ -68,7 +62,7 @@ def build_device_info(entry, device_type, idx=None, sensor_id=None):
             "via_device": (DOMAIN, entry_id),
             "entry_type": "service",
         }
-    if device_type == "boiler":
+    if device_type == "boil":
         device_id = f"{entry_id}_boil{idx}"
         return {
             "identifiers": {(DOMAIN, device_id)},
@@ -88,7 +82,7 @@ def build_device_info(entry, device_type, idx=None, sensor_id=None):
             "via_device": (DOMAIN, entry_id),
             "entry_type": "service",
         }
-    if device_type == "buffer":
+    if device_type == "buff":
         device_id = f"{entry_id}_buffer{idx}"
         return {
             "identifiers": {(DOMAIN, device_id)},
@@ -98,7 +92,7 @@ def build_device_info(entry, device_type, idx=None, sensor_id=None):
             "via_device": (DOMAIN, entry_id),
             "entry_type": "service",
         }
-    if device_type == "solar":
+    if device_type == "sol":
         device_id = f"{entry_id}_solar{idx}"
         return {
             "identifiers": {(DOMAIN, device_id)},

@@ -62,7 +62,8 @@ async def async_setup_entry(
     )
 
     entities = []
-    name_prefix = entry.data.get("name", "lambda").lower().replace(" ", "")
+    name_prefix = entry.data.get("name", "lambda_wp").lower().replace(" ", "")
+    prefix = f"{name_prefix}_"
 
     compatible_static_sensors = get_compatible_sensors(SENSOR_TYPES, fw_version)
     for sensor_id, sensor_config in compatible_static_sensors.items():
@@ -88,17 +89,17 @@ async def async_setup_entry(
             sensor_config,
         )
         sensor_config_with_name = sensor_config.copy()
+        # Nur für statische Sensoren Prefix ergänzen, wenn nicht vorhanden
         if not sensor_config["name"].upper().startswith(name_prefix.upper()):
-            sensor_config_with_name[
-                "name"
-            ] = f"{name_prefix.upper()} {sensor_config['name']}"
+            sensor_config_with_name["name"] = f"{name_prefix.upper()} {sensor_config['name']}"
         else:
             sensor_config_with_name["name"] = sensor_config["name"]
+        full_sensor_id = f"{prefix}{sensor_id}"
         entities.append(
             LambdaSensor(
                 coordinator=coordinator,
                 entry=entry,
-                sensor_id=sensor_id,
+                sensor_id=full_sensor_id,
                 sensor_config=sensor_config_with_name,
             )
         )
@@ -131,16 +132,12 @@ async def async_setup_entry(
             sensor_config["name"] = (
                 f"{name_prefix.upper()} HP{hp_idx} {template['name']}"
             )
-            _LOGGER.debug(
-                "Creating sensor: %s at address: %d",
-                sensor_id,
-                address,
-            )
+            full_sensor_id = f"{prefix}{sensor_id}"
             entities.append(
                 LambdaSensor(
                     coordinator=coordinator,
                     entry=entry,
-                    sensor_id=sensor_id,
+                    sensor_id=full_sensor_id,
                     sensor_config=sensor_config,
                 )
             )
@@ -181,16 +178,12 @@ async def async_setup_entry(
             sensor_config["original_name"] = (
                 f"{name_prefix.upper()} Boil{boil_idx} {orig_name}"
             )
-            _LOGGER.debug(
-                "Creating boiler sensor: %s at address: %d",
-                sensor_id,
-                address,
-            )
+            full_sensor_id = f"{prefix}{sensor_id}"
             entities.append(
                 LambdaSensor(
                     coordinator=coordinator,
                     entry=entry,
-                    sensor_id=sensor_id,
+                    sensor_id=full_sensor_id,
                     sensor_config=sensor_config,
                 )
             )
@@ -225,16 +218,12 @@ async def async_setup_entry(
             sensor_config["name"] = (
                 f"{name_prefix.upper()} HC{hc_idx} {template['name']}"
             )
-            _LOGGER.debug(
-                "Creating sensor: %s at address: %d",
-                sensor_id,
-                address,
-            )
+            full_sensor_id = f"{prefix}{sensor_id}"
             entities.append(
                 LambdaSensor(
                     coordinator=coordinator,
                     entry=entry,
-                    sensor_id=sensor_id,
+                    sensor_id=full_sensor_id,
                     sensor_config=sensor_config,
                 )
             )
@@ -257,7 +246,7 @@ async def async_setup_entry(
     )
     for buffer_idx in range(1, num_buffer + 1):
         for template_key, template in compatible_buffer_templates.items():
-            sensor_id = f"buffer{buffer_idx}_{template_key}"
+            sensor_id = f"buff{buffer_idx}_{template_key}"
             base_addr = BUFFER_BASE_ADDRESS.get(buffer_idx, 3000)
             address = base_addr + template["relative_address"]
             # Prüfe ob das Register deaktiviert ist
@@ -271,18 +260,14 @@ async def async_setup_entry(
             sensor_config = template.copy()
             sensor_config["address"] = address
             sensor_config["name"] = (
-                f"{name_prefix.upper()} Buffer{buffer_idx} {template['name']}"
+                f"{name_prefix.upper()} Buff{buffer_idx} {template['name']}"
             )
-            _LOGGER.debug(
-                "Creating buffer sensor: %s at address: %d",
-                sensor_id,
-                address,
-            )
+            full_sensor_id = f"{prefix}{sensor_id}"
             entities.append(
                 LambdaSensor(
                     coordinator=coordinator,
                     entry=entry,
-                    sensor_id=sensor_id,
+                    sensor_id=full_sensor_id,
                     sensor_config=sensor_config,
                 )
             )
@@ -306,7 +291,7 @@ async def async_setup_entry(
     )
     for solar_idx in range(1, num_solar + 1):
         for template_key, template in compatible_solar_templates.items():
-            sensor_id = f"solar{solar_idx}_{template_key}"
+            sensor_id = f"sol{solar_idx}_{template_key}"
             base_addr = SOLAR_BASE_ADDRESS.get(solar_idx, 4000)
             address = base_addr + template["relative_address"]
             # Prüfe ob das Register deaktiviert ist
@@ -320,18 +305,14 @@ async def async_setup_entry(
             sensor_config = template.copy()
             sensor_config["address"] = address
             sensor_config["name"] = (
-                f"{name_prefix.upper()} Solar{solar_idx} {template['name']}"
+                f"{name_prefix.upper()} Sol{solar_idx} {template['name']}"
             )
-            _LOGGER.debug(
-                "Creating solar sensor: %s at address: %d",
-                sensor_id,
-                address,
-            )
+            full_sensor_id = f"{prefix}{sensor_id}"
             entities.append(
                 LambdaSensor(
                     coordinator=coordinator,
                     entry=entry,
-                    sensor_id=sensor_id,
+                    sensor_id=full_sensor_id,
                     sensor_config=sensor_config,
                 )
             )
@@ -506,14 +487,16 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
     def device_info(self):
         device_type = self._config.get("device_type")
         idx = None
-        if device_type == "heat_pump":
-            idx = self._sensor_id[2]
-        elif device_type == "boiler":
-            idx = self._sensor_id[4]
-        elif device_type == "heating_circuit":
-            idx = self._sensor_id[2]
-        elif device_type == "buffer":
-            idx = self._sensor_id[6]
-        elif device_type == "solar":
-            idx = self._sensor_id[5]
+        # Dynamische Sensoren: Index aus sensor_id extrahieren
+        if device_type in ("Hp", "boil", "buff", "sol", "heating_circuit"):
+            import re
+            # Suche nach z.B. hp1_, boil2_, buff3_, sol1_, hc2_ am Anfang
+            match = re.match(r"(hp|boil|buff|sol|hc)(\d+)_", self._sensor_id)
+            if match:
+                idx = match.group(2)
+            elif device_type == "heating_circuit":
+                # Fallback für HC, falls Namensschema abweicht
+                match = re.match(r"hc(\d+)_", self._sensor_id)
+                if match:
+                    idx = match.group(1)
         return build_device_info(self._entry, device_type, idx)

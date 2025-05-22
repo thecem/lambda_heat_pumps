@@ -278,21 +278,22 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
         self._target_temp_sensor = target_temp_sensor
         self._attr_translation_key = translation_key
         self._attr_translation_placeholders = translation_placeholders or {}
-        # unique_id und entity_id wie gehabt
-        name_prefix = entry.data.get("name", "lambda").lower().replace(" ", "")
+        # unique_id und entity_id mit Prefix
+        name_prefix = entry.data.get("name", "lambda_wp").lower().replace(" ", "")
+        prefix = f"{name_prefix}_"
         if climate_type.startswith("hot_water"):
             idx = climate_type.split("_")[-1]
-            self._attr_unique_id = f"{name_prefix}_hot_water_{idx}_climate"
-            self.entity_id = f"climate.{name_prefix}_hot_water_{idx}_climate"
+            self._attr_unique_id = f"{prefix}hot_water_{idx}_climate"
+            self.entity_id = f"climate.{prefix}hot_water_{idx}_climate"
             self._operating_state_sensor = f"boil{idx}_operating_state"
         elif climate_type.startswith("heating_circuit"):
             idx = climate_type.split("_")[-1]
-            self._attr_unique_id = f"{name_prefix}_heating_circuit_{idx}_climate"
-            self.entity_id = f"climate.{name_prefix}_heating_circuit_{idx}_climate"
+            self._attr_unique_id = f"{prefix}heating_circuit_{idx}_climate"
+            self.entity_id = f"climate.{prefix}heating_circuit_{idx}_climate"
             self._operating_state_sensor = f"hc{idx}_operating_state"
         else:
-            self._attr_unique_id = f"{name_prefix}_{climate_type}_climate"
-            self.entity_id = f"climate.{name_prefix}_{climate_type}_climate"
+            self._attr_unique_id = f"{prefix}{climate_type}_climate"
+            self.entity_id = f"climate.{prefix}{climate_type}_climate"
             self._operating_state_sensor = None
         self._attr_min_temp = min_temp
         self._attr_max_temp = max_temp

@@ -127,6 +127,9 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         )
         fw_version = int(FIRMWARE_VERSION.get(configured_fw, "1"))
 
+        name_prefix = entry.data.get("name", "lambda_wp").lower().replace(" ", "")
+        prefix = f"{name_prefix}_"
+
         if not self.client:
             self.client = ModbusTcpClient(self.host, port=self.port)
             if not await self.hass.async_add_executor_job(self.client.connect):
@@ -178,7 +181,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     else:
                         raw_value = result.registers[0]
                     scaled_value = raw_value * sensor_config["scale"]
-                    data[sensor_id] = scaled_value
+                    data[f"{prefix}{sensor_id}"] = scaled_value
             except Exception as ex:
                 _LOGGER.error("Exception in static sensor block: %s", ex)
             _LOGGER.debug("Static sensor block finished, entering HP sensor block...")
@@ -233,7 +236,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         else:
                             raw_value = result.registers[0]
                         scaled_value = raw_value * template["scale"]
-                        data[sensor_id] = scaled_value
+                        data[f"{prefix}{sensor_id}"] = scaled_value
                     except Exception as ex:
                         _LOGGER.error(
                             "Exception reading HP sensor %s at address %s: %s",
@@ -293,7 +296,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         else:
                             raw_value = result.registers[0]
                         scaled_value = raw_value * template["scale"]
-                        data[sensor_id] = scaled_value
+                        data[f"{prefix}{sensor_id}"] = scaled_value
                     except Exception as ex:
                         _LOGGER.error(
                             "Exception reading Boiler sensor %s at address %s: %s",
@@ -355,7 +358,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         else:
                             raw_value = result.registers[0]
                         scaled_value = raw_value * template["scale"]
-                        data[sensor_id] = scaled_value
+                        data[f"{prefix}{sensor_id}"] = scaled_value
                     except Exception as ex:
                         _LOGGER.error(
                             "Exception reading HC sensor %s at address %s: %s",
@@ -373,7 +376,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             for buffer_idx in range(1, num_buffer + 1):
                 _LOGGER.debug("Reading sensors for Buffer %s", buffer_idx)
                 for template_key, template in compatible_buffer_templates.items():
-                    sensor_id = f"buffer{buffer_idx}_{template_key}"
+                    sensor_id = f"buff{buffer_idx}_{template_key}"
                     address = BUFFER_BASE_ADDRESS.get(buffer_idx)
                     if address is None:
                         _LOGGER.warning("No base address for Buffer %s", buffer_idx)
@@ -416,7 +419,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         else:
                             raw_value = result.registers[0]
                         scaled_value = raw_value * template["scale"]
-                        data[sensor_id] = scaled_value
+                        data[f"{prefix}{sensor_id}"] = scaled_value
                     except Exception as ex:
                         _LOGGER.error(
                             "Exception reading Buffer sensor %s at address %s: %s",
@@ -436,7 +439,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             for solar_idx in range(1, num_solar + 1):
                 _LOGGER.debug("Reading sensors for Solar %s", solar_idx)
                 for template_key, template in compatible_solar_templates.items():
-                    sensor_id = f"solar{solar_idx}_{template_key}"
+                    sensor_id = f"sol{solar_idx}_{template_key}"
                     address = SOLAR_BASE_ADDRESS.get(solar_idx)
                     if address is None:
                         _LOGGER.warning("No base address for Solar %s", solar_idx)
@@ -479,7 +482,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         else:
                             raw_value = result.registers[0]
                         scaled_value = raw_value * template["scale"]
-                        data[sensor_id] = scaled_value
+                        data[f"{prefix}{sensor_id}"] = scaled_value
                     except Exception as ex:
                         _LOGGER.error(
                             "Exception reading Solar sensor %s at address %s: %s",
