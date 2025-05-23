@@ -357,44 +357,50 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
             sensor_config,
         )
 
-        if sensor_config.get("unit") == "°C":
-            self._is_state_sensor = False
-        else:
-            state_patterns = [
-                "_operating_state",
-                "_error_state",
-                "_operating_mode",
-                "ambient_state",
-                "hp_state",
-                "request_type",
-            ]
-            self._is_state_sensor = any(
-                pattern in sensor_id for pattern in state_patterns
-            )
+        # Bestimme, ob es sich um einen Status-/Mode-Sensor handelt
+        state_patterns = [
+            "_operating_state",
+            "_error_state",
+            "_operating_mode",
+            "ambient_state",
+            "hp_state",
+            "request_type",
+            "_state",
+            "_mode",
+            "mode",
+            "state",
+        ]
+        self._is_state_sensor = any(
+            pattern in sensor_id for pattern in state_patterns
+        )
 
         if self._is_state_sensor:
-            self._attr_native_unit_of_measurement = None
+            # Für Status-/Mode-Sensoren: Keine Metadaten setzen
             self._attr_device_class = None
             self._attr_state_class = None
+            self._attr_native_unit_of_measurement = None
+            self._attr_suggested_display_precision = None
         else:
-            self._attr_native_unit_of_measurement = sensor_config["unit"]
+            # Für numerische Sensoren: Metadaten aus der Konfiguration übernehmen
+            self._attr_native_unit_of_measurement = sensor_config.get("unit")
             if "precision" in sensor_config:
                 self._attr_suggested_display_precision = sensor_config["precision"]
 
-            if sensor_config["unit"] == "°C":
+            if sensor_config.get("unit") == "°C":
                 self._attr_device_class = SensorDeviceClass.TEMPERATURE
-            elif sensor_config["unit"] == "W":
+            elif sensor_config.get("unit") == "W":
                 self._attr_device_class = SensorDeviceClass.POWER
-            elif sensor_config["unit"] == "Wh":
+            elif sensor_config.get("unit") == "Wh":
                 self._attr_device_class = SensorDeviceClass.ENERGY
-                self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-            
-            # Set state_class from template if available
+
+            # State-Class nur für numerische Sensoren setzen
             if "state_class" in sensor_config:
                 if sensor_config["state_class"] == "total":
                     self._attr_state_class = SensorStateClass.TOTAL
                 elif sensor_config["state_class"] == "total_increasing":
                     self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+                elif sensor_config["state_class"] == "measurement":
+                    self._attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def native_value(self) -> float | str | None:
@@ -417,10 +423,13 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
                 HC_OPERATING_STATE,
                 HC_OPERATING_MODE,
                 CIRCULATION_PUMP_STATE,
+                SOLAR_OPERATION_STATE,
+                BUFFER_OPERATION_STATE,
+                BUFFER_REQUEST_TYPE,
             )
 
             try:
-                numeric_value = int(value)
+                numeric_value = int(float(value))  # robust für int/float-Strings
             except (ValueError, TypeError):
                 return f"Unknown state ({value})"
 
@@ -461,28 +470,13 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
                 state_mapping = HC_OPERATING_MODE
 
             if state_mapping is not None:
-                return state_mapping.get(
-                    numeric_value,
-                    f"Unknown state ({numeric_value})",
-                )
+                return state_mapping.get(numeric_value, f"Unknown state ({numeric_value})")
             return f"Unknown mapping for state ({numeric_value})"
 
-        return value
-
-    @property
-    def device_class(self) -> str | None:
-        """Return the device class of the sensor."""
-        if "state" in self._sensor_id or "mode" in self._sensor_id:
+        # Für numerische Sensoren: Float zurückgeben
+        try:
+            return float(value)
+        except (ValueError, TypeError):
             return None
-        return super().device_class
 
-    @property
-    def state_class(self) -> str | None:
-        """Return the state class of the sensor."""
-        if "state" in self._sensor_id or "mode" in self._sensor_id:
-            return None
-        return super().state_class
-
-    @property
-    def device_info(self):
-        return build_device_info(self._entry, "main")
+    # ...existing code...
