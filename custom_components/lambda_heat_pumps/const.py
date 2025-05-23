@@ -1056,3 +1056,17 @@ BUFFER_REQUEST_TYPE = {
     2: "CENTRAL HEATING",
     3: "CENTRAL COOLING",
 }
+
+# Patterns zur Erkennung von Status-/Mode-Sensoren
+STATE_SENSOR_PATTERNS = [
+    "_operating_state",
+    "_error_state",
+    "_operating_mode",
+    "ambient_state",
+    "hp_state",
+    "request_type",
+    "_state",
+    "_mode",
+    "mode",
+    "state",
+]

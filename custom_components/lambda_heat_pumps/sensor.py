@@ -32,6 +32,7 @@ from .const import (
     SOLAR_OPERATION_STATE,
     BUFFER_OPERATION_STATE,
     BUFFER_REQUEST_TYPE,
+    STATE_SENSOR_PATTERNS,  # <--- NEU
 )
 from .coordinator import LambdaDataUpdateCoordinator
 from .utils import get_compatible_sensors, build_device_info
@@ -358,20 +359,8 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
         )
 
         # Bestimme, ob es sich um einen Status-/Mode-Sensor handelt
-        state_patterns = [
-            "_operating_state",
-            "_error_state",
-            "_operating_mode",
-            "ambient_state",
-            "hp_state",
-            "request_type",
-            "_state",
-            "_mode",
-            "mode",
-            "state",
-        ]
         self._is_state_sensor = any(
-            pattern in sensor_id for pattern in state_patterns
+            pattern in sensor_id for pattern in STATE_SENSOR_PATTERNS
         )
 
         if self._is_state_sensor:
@@ -478,5 +467,3 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
             return float(value)
         except (ValueError, TypeError):
             return None
-
-    # ...existing code...
