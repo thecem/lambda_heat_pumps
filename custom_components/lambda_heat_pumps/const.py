@@ -576,6 +576,18 @@ BOIL_SENSOR_TEMPLATES = {
         "writeable": False,
         "state_class": "measurement",
     },
+    "dummy_fw2": {
+        "relative_address": 99,
+        "name": "Dummy Boiler FW2",
+        "unit": None,
+        "scale": 1,
+        "precision": 0,
+        "data_type": "int16",
+        "firmware_version": 2,
+        "device_type": "boil",
+        "writeable": False,
+        "state_class": "total",
+    },
 }
 
 # Buffer Sensors
@@ -1031,6 +1043,18 @@ SENSOR_TYPES = {
         "device_type": "main",
         "writeable": False,
         "state_class": "measurement",
+    },
+    "dummy_general_fw2": {
+        "address": 999,
+        "name": "Dummy General FW2",
+        "unit": None,
+        "scale": 1,
+        "precision": 0,
+        "data_type": "int16",
+        "firmware_version": 2,
+        "device_type": "main",
+        "writeable": False,
+        "state_class": "total",
     },
 }
 

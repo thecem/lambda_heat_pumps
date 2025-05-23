@@ -19,6 +19,9 @@ from .const import (
     SOLAR_SENSOR_TEMPLATES,
     SOLAR_BASE_ADDRESS,
     FIRMWARE_VERSION,
+    DEFAULT_FIRMWARE,
+    HC_SENSOR_TEMPLATES,
+    HC_BASE_ADDRESS,
 )
 from .utils import get_compatible_sensors, load_disabled_registers, is_register_disabled
 
@@ -62,6 +65,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             os.path.dirname(os.path.abspath(__file__)), "disabled_registers.yaml"
         )
         self.hass = hass
+        self.entry = entry
 
     async def async_init(self):
         """Async initialization."""
@@ -121,13 +125,14 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         from pymodbus.client import ModbusTcpClient
         from pymodbus.exceptions import ModbusException
 
-        entry = self.hass.config_entries.async_get_entry(self.config_entry_id)
-        configured_fw = entry.options.get(
-            "firmware_version", entry.data.get("firmware_version", "V0.0.4-3K")
+        # Firmware-Version bestimmen
+        configured_fw = self.entry.options.get(
+            "firmware_version",
+            self.entry.data.get("firmware_version", DEFAULT_FIRMWARE),
         )
         fw_version = int(FIRMWARE_VERSION.get(configured_fw, "1"))
 
-        name_prefix = entry.data.get("name", "lambda_wp").lower().replace(" ", "")
+        name_prefix = self.entry.data.get("name", "lambda_wp").lower().replace(" ", "")
         prefix = f"{name_prefix}_"
 
         if not self.client:
@@ -186,13 +191,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.error("Exception in static sensor block: %s", ex)
             _LOGGER.debug("Static sensor block finished, entering HP sensor block...")
             # 2. Dynamische HP-Sensoren abfragen
-            num_hps = entry.data.get("num_hps", 1)
-            compatible_hp_templates = get_compatible_sensors(
-                HP_SENSOR_TEMPLATES, fw_version
-            )
+            num_hps = self.entry.data.get("num_hps", 1)
+            hp_templates = get_compatible_sensors(HP_SENSOR_TEMPLATES, fw_version)
             for hp_idx in range(1, num_hps + 1):
                 _LOGGER.debug("Reading sensors for Heat Pump %s", hp_idx)
-                for template_key, template in compatible_hp_templates.items():
+                for template_key, template in hp_templates.items():
                     sensor_id = f"hp{hp_idx}_{template_key}"
                     base_address = HP_BASE_ADDRESS.get(hp_idx)
                     if base_address is None:
@@ -246,13 +249,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         )
             _LOGGER.debug("HP sensor block finished, entering Boiler sensor block...")
             # 3. Dynamische Boiler-Sensoren abfragen
-            num_boil = entry.data.get("num_boil", 1)
-            compatible_boil_templates = get_compatible_sensors(
-                BOIL_SENSOR_TEMPLATES, fw_version
-            )
+            num_boil = self.entry.data.get("num_boil", 1)
+            boil_templates = get_compatible_sensors(BOIL_SENSOR_TEMPLATES, fw_version)
             for boil_idx in range(1, num_boil + 1):
                 _LOGGER.debug("Reading sensors for Boiler %s", boil_idx)
-                for template_key, template in compatible_boil_templates.items():
+                for template_key, template in boil_templates.items():
                     sensor_id = f"boil{boil_idx}_{template_key}"
                     base_address = BOIL_BASE_ADDRESS.get(boil_idx)
                     if base_address is None:
@@ -306,15 +307,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         )
             _LOGGER.debug("Boiler sensor block finished, entering HC sensor block...")
             # 4. Dynamische HC-Sensoren abfragen
-            num_hc = entry.data.get("num_hc", 1)
-            from .const import HC_SENSOR_TEMPLATES, HC_BASE_ADDRESS
-
-            compatible_hc_templates = get_compatible_sensors(
-                HC_SENSOR_TEMPLATES, fw_version
-            )
+            num_hc = self.entry.data.get("num_hc", 1)
+            hc_templates = get_compatible_sensors(HC_SENSOR_TEMPLATES, fw_version)
             for hc_idx in range(1, num_hc + 1):
                 _LOGGER.debug("Reading sensors for Heating Circuit %s", hc_idx)
-                for template_key, template in compatible_hc_templates.items():
+                for template_key, template in hc_templates.items():
                     sensor_id = f"hc{hc_idx}_{template_key}"
                     address = HC_BASE_ADDRESS.get(hc_idx)
                     if address is None:
@@ -369,13 +366,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
 
             _LOGGER.debug("HC sensor block finished, entering Buffer sensor block...")
             # 5. Dynamische Buffer-Sensoren abfragen
-            num_buffer = entry.data.get("num_buffer", 1)
-            compatible_buffer_templates = get_compatible_sensors(
-                BUFFER_SENSOR_TEMPLATES, fw_version
-            )
+            num_buffer = self.entry.data.get("num_buffer", 1)
+            buffer_templates = get_compatible_sensors(BUFFER_SENSOR_TEMPLATES, fw_version)
             for buffer_idx in range(1, num_buffer + 1):
                 _LOGGER.debug("Reading sensors for Buffer %s", buffer_idx)
-                for template_key, template in compatible_buffer_templates.items():
+                for template_key, template in buffer_templates.items():
                     sensor_id = f"buff{buffer_idx}_{template_key}"
                     address = BUFFER_BASE_ADDRESS.get(buffer_idx)
                     if address is None:
@@ -432,13 +427,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                 "Buffer sensor block finished, entering Solar sensor block..."
             )
             # 6. Dynamische Solar-Sensoren abfragen
-            num_solar = entry.data.get("num_solar", 1)
-            compatible_solar_templates = get_compatible_sensors(
-                SOLAR_SENSOR_TEMPLATES, fw_version
-            )
+            num_solar = self.entry.data.get("num_solar", 1)
+            solar_templates = get_compatible_sensors(SOLAR_SENSOR_TEMPLATES, fw_version)
             for solar_idx in range(1, num_solar + 1):
                 _LOGGER.debug("Reading sensors for Solar %s", solar_idx)
-                for template_key, template in compatible_solar_templates.items():
+                for template_key, template in solar_templates.items():
                     sensor_id = f"sol{solar_idx}_{template_key}"
                     address = SOLAR_BASE_ADDRESS.get(solar_idx)
                     if address is None:
