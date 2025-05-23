@@ -33,6 +33,7 @@ from .const import (
     HC_BASE_ADDRESS,
 )
 from .utils import build_device_info, is_register_disabled
+from .coordinator import LambdaDataUpdateCoordinator  # type: ignore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -266,7 +267,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
 
     def __init__(
         self,
-        coordinator,
+        coordinator: "LambdaDataUpdateCoordinator",
         entry: ConfigEntry,
         climate_type: str,
         translation_key: str,
@@ -275,40 +276,63 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
         min_temp: float,
         max_temp: float,
         temp_step: float,
-        translation_placeholders: dict = None,
+        idx: int = 1,
     ) -> None:
-        """Initialize the climate entity."""
         super().__init__(coordinator)
         self._entry = entry
         self._climate_type = climate_type
+        self._translation_key = translation_key
         self._current_temp_sensor = current_temp_sensor
         self._target_temp_sensor = target_temp_sensor
-        self._attr_translation_key = translation_key
-        self._attr_translation_placeholders = translation_placeholders or {}
-        # unique_id und entity_id mit Prefix
+        self._min_temp = min_temp
+        self._max_temp = max_temp
+        self._temp_step = temp_step
+        self._idx = idx
+
+        # Prefix for unique_id/entity_id
         name_prefix = entry.data.get("name", "lambda_wp").lower().replace(" ", "")
         prefix = f"{name_prefix}_"
         self._prefix = prefix
+
+        # Set name and unique_id/entity_id for hot water and heating circuit
         if climate_type.startswith("hot_water"):
-            idx = climate_type.split("_")[-1]
-            self._attr_unique_id = f"{prefix}hot_water_{idx}"
-            self.entity_id = f"climate.{prefix}hot_water_{idx}"
-            self._operating_state_sensor = f"boil{idx}_operating_state"
+            # Extract index (always as int)
+            try:
+                idx_num = int(climate_type.split("_")[-1])
+            except Exception:
+                idx_num = idx
+            lang = entry.data.get("language", "de")
+            if lang == "de":
+                self._attr_name = f"Warmwasser{idx_num}"
+            else:
+                self._attr_name = f"Hot Water{idx_num}"
+            self._attr_unique_id = f"{prefix}hot_water_{idx_num}"
+            self.entity_id = f"climate.{prefix}hot_water_{idx_num}"
+            self._operating_state_sensor = f"boil{idx_num}_operating_state"
         elif climate_type.startswith("heating_circuit"):
-            idx = climate_type.split("_")[-1]
-            self._attr_unique_id = f"{prefix}heating_circuit_{idx}"
-            self.entity_id = f"climate.{prefix}heating_circuit_{idx}"
-            self._operating_state_sensor = f"hc{idx}_operating_state"
+            try:
+                idx_num = int(climate_type.split("_")[-1])
+            except Exception:
+                idx_num = idx
+            self._attr_name = f"Heizkreis{idx_num}" if entry.data.get("language", "de") == "de" else f"Heating Circuit{idx_num}"
+            self._attr_unique_id = f"{prefix}heating_circuit_{idx_num}"
+            self.entity_id = f"climate.{prefix}heating_circuit_{idx_num}"
+            self._operating_state_sensor = f"hc{idx_num}_operating_state"
         else:
-            self._attr_unique_id = f"{prefix}{climate_type}"
-            self.entity_id = f"climate.{prefix}{climate_type}"
+            # Fallback: use climate_type and idx
+            self._attr_name = f"{climate_type.capitalize()}{idx}"
+            self._attr_unique_id = f"{prefix}{climate_type}{idx}"
+            self.entity_id = f"climate.{prefix}{climate_type}{idx}"
             self._operating_state_sensor = None
+
         self._attr_min_temp = min_temp
         self._attr_max_temp = max_temp
         self._attr_target_temperature_step = temp_step
-        self._attr_name = entry.data.get("name", "lambda")
         _LOGGER.debug(
-            "Climate entity initialized with min_temp: %s, max_temp: %s",
+            "Climate entity initialized: name=%s, unique_id=%s, entity_id=%s, min_temp=%s, max_temp=%s",
+            self._attr_name,
+            self._attr_unique_id,
+            self.entity_id,
             min_temp,
             max_temp,
         )
@@ -362,7 +386,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
 
     @property
     def device_info(self):
-        """Return device information."""
+        # Climate-Entitäten immer dem Hauptgerät zuordnen
         return build_device_info(self._entry, "main")
 
     async def async_set_temperature(self, **kwargs: Any) -> None:

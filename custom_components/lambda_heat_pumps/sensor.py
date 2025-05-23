@@ -467,3 +467,32 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
             return float(value)
         except (ValueError, TypeError):
             return None
+
+    @property
+    def device_info(self):
+        # Versuche Instanztyp und Index aus sensor_id zu extrahieren
+        # Beispiel: hp1_..., boil2_..., hc1_..., buff1_..., sol1_...
+        import re
+        sensor_id = self._sensor_id
+        if sensor_id.startswith("hp"):
+            m = re.match(r"hp(\d+)_", sensor_id)
+            if m:
+                return build_device_info(self._entry, "hp", int(m.group(1)))
+        elif sensor_id.startswith("boil"):
+            m = re.match(r"boil(\d+)_", sensor_id)
+            if m:
+                return build_device_info(self._entry, "boil", int(m.group(1)))
+        elif sensor_id.startswith("hc"):
+            m = re.match(r"hc(\d+)_", sensor_id)
+            if m:
+                return build_device_info(self._entry, "hc", int(m.group(1)))
+        elif sensor_id.startswith("buff"):
+            m = re.match(r"buff(\d+)_", sensor_id)
+            if m:
+                return build_device_info(self._entry, "buffer", int(m.group(1)))
+        elif sensor_id.startswith("sol"):
+            m = re.match(r"sol(\d+)_", sensor_id)
+            if m:
+                return build_device_info(self._entry, "solar", int(m.group(1)))
+        # Fallback: Hauptgerät
+        return build_device_info(self._entry, "main")
