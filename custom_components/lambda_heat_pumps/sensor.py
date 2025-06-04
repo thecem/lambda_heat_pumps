@@ -20,22 +20,17 @@ from .const import (
     SENSOR_TYPES,
     FIRMWARE_VERSION,
     HP_SENSOR_TEMPLATES,
-    HP_BASE_ADDRESS,
     BOIL_SENSOR_TEMPLATES,
-    BOIL_BASE_ADDRESS,
     HC_SENSOR_TEMPLATES,
-    HC_BASE_ADDRESS,
     BUFFER_SENSOR_TEMPLATES,
-    BUFFER_BASE_ADDRESS,
     SOLAR_SENSOR_TEMPLATES,
-    SOLAR_BASE_ADDRESS,
     SOLAR_OPERATION_STATE,
     BUFFER_OPERATION_STATE,
     BUFFER_REQUEST_TYPE,
     STATE_SENSOR_PATTERNS,  # <--- NEU
 )
 from .coordinator import LambdaDataUpdateCoordinator
-from .utils import get_compatible_sensors, build_device_info
+from .utils import get_compatible_sensors, build_device_info, generate_base_addresses
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,290 +39,165 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Lambda sensor entries."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    """Set up the Lambda Heat Pumps sensors."""
+    _LOGGER.debug("Setting up Lambda sensors for entry %s", entry.entry_id)
+    
+    # Get coordinator from hass.data
+    coordinator_data = hass.data[DOMAIN][entry.entry_id]
+    if not coordinator_data or "coordinator" not in coordinator_data:
+        _LOGGER.error("No coordinator found for entry %s", entry.entry_id)
+        return
+        
+    coordinator = coordinator_data["coordinator"]
+    _LOGGER.debug("Found coordinator: %s", coordinator)
 
-    configured_fw = entry.options.get(
-        "firmware_version", entry.data.get("firmware_version", "V0.0.4-3K")
-    )
-    fw_version = int(FIRMWARE_VERSION.get(configured_fw, "1"))
-
-    _LOGGER.debug(
-        "Firmware-Version Setup - "
-        "Configured: %s, Numeric Version: %s, "
-        "Raw Entry Data: %s, Available Versions: %s",
-        configured_fw,
-        fw_version,
-        entry.data,
-        FIRMWARE_VERSION,
-    )
-
-    entities = []
-    name_prefix = entry.data.get("name", "lambda_wp").lower().replace(" ", "")
-    prefix = f"{name_prefix}_"
-
-    compatible_static_sensors = get_compatible_sensors(SENSOR_TYPES, fw_version)
-    for sensor_id, sensor_config in compatible_static_sensors.items():
-        # Prüfe ob das Register deaktiviert ist
-        if coordinator.is_register_disabled(sensor_config["address"]):
-            _LOGGER.debug(
-                "Skipping disabled register %d for sensor %s",
-                sensor_config["address"],
-                sensor_id
-            )
-            continue
-
-        sensor_fw = sensor_config.get("firmware_version", 1)
-        is_compatible = sensor_fw <= fw_version
-        _LOGGER.debug(
-            "Sensor Compatibility Check - "
-            "Sensor: %s, Required FW: %s, Current FW: %s, "
-            "Compatible: %s, Raw Sensor Config: %s",
-            sensor_id,
-            sensor_fw,
-            fw_version,
-            is_compatible,
-            sensor_config,
-        )
-        sensor_config_with_name = sensor_config.copy()
-        # Nur für statische Sensoren Prefix ergänzen, wenn nicht vorhanden
-        if not sensor_config["name"].upper().startswith(name_prefix.upper()):
-            sensor_config_with_name["name"] = f"{name_prefix.upper()} {sensor_config['name']}"
-        else:
-            sensor_config_with_name["name"] = sensor_config["name"]
-        full_sensor_id = f"{prefix}{sensor_id}"
-        entities.append(
-            LambdaSensor(
-                coordinator=coordinator,
-                entry=entry,
-                sensor_id=full_sensor_id,
-                sensor_config=sensor_config_with_name,
-            )
-        )
-
-    compatible_hp_templates = get_compatible_sensors(
-        HP_SENSOR_TEMPLATES,
-        fw_version,
-    )
+    # Get device counts from config
     num_hps = entry.data.get("num_hps", 1)
-    _LOGGER.debug(
-        "Starting dynamic sensor generation for %d heat pumps",
-        num_hps,
-    )
-    for hp_idx in range(1, num_hps + 1):
-        for template_key, template in compatible_hp_templates.items():
-            sensor_id = f"hp{hp_idx}_{template_key}"
-            address = HP_BASE_ADDRESS[hp_idx] + template["relative_address"]
-            
-            # Prüfe ob das Register deaktiviert ist
-            if coordinator.is_register_disabled(address):
-                _LOGGER.debug(
-                    "Skipping disabled register %d for sensor %s",
-                    address,
-                    sensor_id
-                )
-                continue
-
-            sensor_config = template.copy()
-            sensor_config["address"] = address
-            sensor_config["name"] = (
-                f"{name_prefix.upper()} HP{hp_idx} {template['name']}"
-            )
-            full_sensor_id = f"{prefix}{sensor_id}"
-            entities.append(
-                LambdaSensor(
-                    coordinator=coordinator,
-                    entry=entry,
-                    sensor_id=full_sensor_id,
-                    sensor_config=sensor_config,
-                )
-            )
-    _LOGGER.debug(
-        "Total number of dynamic HP sensors created: %d",
-        len(entities) - len(compatible_static_sensors),
-    )
-
-    compatible_boil_templates = get_compatible_sensors(
-        BOIL_SENSOR_TEMPLATES,
-        fw_version,
-    )
     num_boil = entry.data.get("num_boil", 1)
-    _LOGGER.debug(
-        "Starting dynamic sensor generation for %d boilers",
-        num_boil,
-    )
-    for boil_idx in range(1, num_boil + 1):
-        for template_key, template in compatible_boil_templates.items():
-            sensor_id = f"boil{boil_idx}_{template_key}"
-            address = BOIL_BASE_ADDRESS[boil_idx] + template["relative_address"]
-            
-            # Prüfe ob das Register deaktiviert ist
-            if coordinator.is_register_disabled(address):
-                _LOGGER.debug(
-                    "Skipping disabled register %d for sensor %s",
-                    address,
-                    sensor_id
-                )
-                continue
-
-            sensor_config = template.copy()
-            sensor_config["address"] = address
-            orig_name = template["name"].replace("Boiler ", "")
-            sensor_config["name"] = (
-                f"{name_prefix.upper()} Boil{boil_idx} {orig_name}"
-            )
-            sensor_config["original_name"] = (
-                f"{name_prefix.upper()} Boil{boil_idx} {orig_name}"
-            )
-            full_sensor_id = f"{prefix}{sensor_id}"
-            entities.append(
-                LambdaSensor(
-                    coordinator=coordinator,
-                    entry=entry,
-                    sensor_id=full_sensor_id,
-                    sensor_config=sensor_config,
-                )
-            )
-    _LOGGER.debug(
-        "Total number of dynamic Boiler sensors created: %d",
-        len(entities) - len(compatible_static_sensors),
-    )
-
-    compatible_hc_templates = get_compatible_sensors(
-        HC_SENSOR_TEMPLATES,
-        fw_version,
-    )
+    num_buff = entry.data.get("num_buff", 0)
+    num_sol = entry.data.get("num_sol", 0)
     num_hc = entry.data.get("num_hc", 1)
-    _LOGGER.debug(
-        "Starting dynamic sensor generation for %d heating circuits",
-        num_hc,
-    )
+
+    # Create sensors for each device type
+    sensors = []
+
+    # Heat Pump sensors
+    for hp_idx in range(1, num_hps + 1):
+        base_address = generate_base_addresses('hp', num_hps)[hp_idx]
+        for sensor_id, sensor_info in HP_SENSOR_TEMPLATES.items():
+            # Set default device class based on unit if not specified
+            device_class = sensor_info.get("device_class")
+            if not device_class and sensor_info.get("unit") == "°C":
+                device_class = SensorDeviceClass.TEMPERATURE
+            elif not device_class and sensor_info.get("unit") == "W":
+                device_class = SensorDeviceClass.POWER
+            elif not device_class and sensor_info.get("unit") == "Wh":
+                device_class = SensorDeviceClass.ENERGY
+
+            sensors.append(
+                LambdaSensor(
+                    coordinator=coordinator,
+                    entry=entry,
+                    sensor_id=f"hp{hp_idx}_{sensor_id}",
+                    name=sensor_info["name"].format(hp_idx),
+                    unit=sensor_info.get("unit", ""),
+                    address=base_address + sensor_info["relative_address"],
+                    scale=sensor_info.get("scale", 1.0),
+                    state_class=sensor_info.get("state_class", ""),
+                    device_class=device_class,
+                )
+            )
+
+    # Boiler sensors
+    for boil_idx in range(1, num_boil + 1):
+        base_address = generate_base_addresses('boil', num_boil)[boil_idx]
+        for sensor_id, sensor_info in BOIL_SENSOR_TEMPLATES.items():
+            # Set default device class based on unit if not specified
+            device_class = sensor_info.get("device_class")
+            if not device_class and sensor_info.get("unit") == "°C":
+                device_class = SensorDeviceClass.TEMPERATURE
+            elif not device_class and sensor_info.get("unit") == "W":
+                device_class = SensorDeviceClass.POWER
+            elif not device_class and sensor_info.get("unit") == "Wh":
+                device_class = SensorDeviceClass.ENERGY
+
+            sensors.append(
+                LambdaSensor(
+                    coordinator=coordinator,
+                    entry=entry,
+                    sensor_id=f"boil{boil_idx}_{sensor_id}",
+                    name=sensor_info["name"].format(boil_idx),
+                    unit=sensor_info.get("unit", ""),
+                    address=base_address + sensor_info["relative_address"],
+                    scale=sensor_info.get("scale", 1.0),
+                    state_class=sensor_info.get("state_class", ""),
+                    device_class=device_class,
+                )
+            )
+
+    # Buffer sensors
+    for buff_idx in range(1, num_buff + 1):
+        base_address = generate_base_addresses('buff', num_buff)[buff_idx]
+        for sensor_id, sensor_info in BUFFER_SENSOR_TEMPLATES.items():
+            # Set default device class based on unit if not specified
+            device_class = sensor_info.get("device_class")
+            if not device_class and sensor_info.get("unit") == "°C":
+                device_class = SensorDeviceClass.TEMPERATURE
+            elif not device_class and sensor_info.get("unit") == "W":
+                device_class = SensorDeviceClass.POWER
+            elif not device_class and sensor_info.get("unit") == "Wh":
+                device_class = SensorDeviceClass.ENERGY
+
+            sensors.append(
+                LambdaSensor(
+                    coordinator=coordinator,
+                    entry=entry,
+                    sensor_id=f"buff{buff_idx}_{sensor_id}",
+                    name=sensor_info["name"].format(buff_idx),
+                    unit=sensor_info.get("unit", ""),
+                    address=base_address + sensor_info["relative_address"],
+                    scale=sensor_info.get("scale", 1.0),
+                    state_class=sensor_info.get("state_class", ""),
+                    device_class=device_class,
+                )
+            )
+
+    # Solar sensors
+    for sol_idx in range(1, num_sol + 1):
+        base_address = generate_base_addresses('sol', num_sol)[sol_idx]
+        for sensor_id, sensor_info in SOLAR_SENSOR_TEMPLATES.items():
+            # Set default device class based on unit if not specified
+            device_class = sensor_info.get("device_class")
+            if not device_class and sensor_info.get("unit") == "°C":
+                device_class = SensorDeviceClass.TEMPERATURE
+            elif not device_class and sensor_info.get("unit") == "W":
+                device_class = SensorDeviceClass.POWER
+            elif not device_class and sensor_info.get("unit") == "Wh":
+                device_class = SensorDeviceClass.ENERGY
+
+            sensors.append(
+                LambdaSensor(
+                    coordinator=coordinator,
+                    entry=entry,
+                    sensor_id=f"sol{sol_idx}_{sensor_id}",
+                    name=sensor_info["name"].format(sol_idx),
+                    unit=sensor_info.get("unit", ""),
+                    address=base_address + sensor_info["relative_address"],
+                    scale=sensor_info.get("scale", 1.0),
+                    state_class=sensor_info.get("state_class", ""),
+                    device_class=device_class,
+                )
+            )
+
+    # Heating Circuit sensors
     for hc_idx in range(1, num_hc + 1):
-        for template_key, template in compatible_hc_templates.items():
-            sensor_id = f"hc{hc_idx}_{template_key}"
-            address = HC_BASE_ADDRESS[hc_idx] + template["relative_address"]
-            # Prüfe ob das Register deaktiviert ist
-            if coordinator.is_register_disabled(address):
-                _LOGGER.debug(
-                    "Skipping disabled register %d for sensor %s",
-                    address,
-                    sensor_id
-                )
-                continue
-            sensor_config = template.copy()
-            sensor_config["address"] = address
-            sensor_config["name"] = (
-                f"{name_prefix.upper()} HC{hc_idx} {template['name']}"
-            )
-            full_sensor_id = f"{prefix}{sensor_id}"
-            entities.append(
+        base_address = generate_base_addresses('hc', num_hc)[hc_idx]
+        for sensor_id, sensor_info in HC_SENSOR_TEMPLATES.items():
+            # Set default device class based on unit if not specified
+            device_class = sensor_info.get("device_class")
+            if not device_class and sensor_info.get("unit") == "°C":
+                device_class = SensorDeviceClass.TEMPERATURE
+            elif not device_class and sensor_info.get("unit") == "W":
+                device_class = SensorDeviceClass.POWER
+            elif not device_class and sensor_info.get("unit") == "Wh":
+                device_class = SensorDeviceClass.ENERGY
+
+            sensors.append(
                 LambdaSensor(
                     coordinator=coordinator,
                     entry=entry,
-                    sensor_id=full_sensor_id,
-                    sensor_config=sensor_config,
+                    sensor_id=f"hc{hc_idx}_{sensor_id}",
+                    name=sensor_info["name"].format(hc_idx),
+                    unit=sensor_info.get("unit", ""),
+                    address=base_address + sensor_info["relative_address"],
+                    scale=sensor_info.get("scale", 1.0),
+                    state_class=sensor_info.get("state_class", ""),
+                    device_class=device_class,
                 )
             )
-    _LOGGER.debug(
-        "Total number of dynamic HC sensors created: %d",
-        len(entities)
-        - len(compatible_static_sensors)
-        - num_hps * len(compatible_hp_templates)
-        - num_boil * len(compatible_boil_templates),
-    )
 
-    compatible_buffer_templates = get_compatible_sensors(
-        BUFFER_SENSOR_TEMPLATES,
-        fw_version,
-    )
-    num_buffer = entry.data.get("num_buffer", 1)
-    _LOGGER.debug(
-        "Starting dynamic sensor generation for %d buffer modules",
-        num_buffer,
-    )
-    for buffer_idx in range(1, num_buffer + 1):
-        for template_key, template in compatible_buffer_templates.items():
-            sensor_id = f"buff{buffer_idx}_{template_key}"
-            base_addr = BUFFER_BASE_ADDRESS.get(buffer_idx, 3000)
-            address = base_addr + template["relative_address"]
-            # Prüfe ob das Register deaktiviert ist
-            if coordinator.is_register_disabled(address):
-                _LOGGER.debug(
-                    "Skipping disabled register %d for sensor %s",
-                    address,
-                    sensor_id
-                )
-                continue
-            sensor_config = template.copy()
-            sensor_config["address"] = address
-            sensor_config["name"] = (
-                f"{name_prefix.upper()} Buff{buffer_idx} {template['name']}"
-            )
-            full_sensor_id = f"{prefix}{sensor_id}"
-            entities.append(
-                LambdaSensor(
-                    coordinator=coordinator,
-                    entry=entry,
-                    sensor_id=full_sensor_id,
-                    sensor_config=sensor_config,
-                )
-            )
-    _LOGGER.debug(
-        "Total number of dynamic Buffer sensors created: %d",
-        len(entities)
-        - len(compatible_static_sensors)
-        - num_hps * len(compatible_hp_templates)
-        - num_boil * len(compatible_boil_templates)
-        - num_hc * len(compatible_hc_templates),
-    )
-
-    compatible_solar_templates = get_compatible_sensors(
-        SOLAR_SENSOR_TEMPLATES,
-        fw_version,
-    )
-    num_solar = entry.data.get("num_solar", 1)
-    _LOGGER.debug(
-        "Starting dynamic sensor generation for %d solar modules",
-        num_solar,
-    )
-    for solar_idx in range(1, num_solar + 1):
-        for template_key, template in compatible_solar_templates.items():
-            sensor_id = f"sol{solar_idx}_{template_key}"
-            base_addr = SOLAR_BASE_ADDRESS.get(solar_idx, 4000)
-            address = base_addr + template["relative_address"]
-            # Prüfe ob das Register deaktiviert ist
-            if coordinator.is_register_disabled(address):
-                _LOGGER.debug(
-                    "Skipping disabled register %d for sensor %s",
-                    address,
-                    sensor_id
-                )
-                continue
-            sensor_config = template.copy()
-            sensor_config["address"] = address
-            sensor_config["name"] = (
-                f"{name_prefix.upper()} Sol{solar_idx} {template['name']}"
-            )
-            full_sensor_id = f"{prefix}{sensor_id}"
-            entities.append(
-                LambdaSensor(
-                    coordinator=coordinator,
-                    entry=entry,
-                    sensor_id=full_sensor_id,
-                    sensor_config=sensor_config,
-                )
-            )
-    _LOGGER.debug(
-        "Total number of dynamic Solar sensors created: %d",
-        len(entities)
-        - len(compatible_static_sensors)
-        - num_hps * len(compatible_hp_templates)
-        - num_boil * len(compatible_boil_templates)
-        - num_hc * len(compatible_hc_templates)
-        - num_buffer * len(compatible_buffer_templates),
-    )
-
-    async_add_entities(entities)
+    _LOGGER.debug("Created %d sensors", len(sensors))
+    async_add_entities(sensors)
 
 
 class LambdaSensor(CoordinatorEntity, SensorEntity):
@@ -341,21 +211,32 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
         coordinator: LambdaDataUpdateCoordinator,
         entry: ConfigEntry,
         sensor_id: str,
-        sensor_config: Dict[str, Any],
+        name: str,
+        unit: str,
+        address: int,
+        scale: float,
+        state_class: str,
+        device_class: SensorDeviceClass,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._entry = entry
         self._sensor_id = sensor_id
-        self._config = sensor_config
-        self._attr_name = sensor_config["name"]
+        self._attr_name = name
         self._attr_unique_id = sensor_id
         self.entity_id = f"sensor.{sensor_id}"
 
         _LOGGER.debug(
             "Sensor initialized with ID: %s and config: %s",
             sensor_id,
-            sensor_config,
+            {
+                "name": name,
+                "unit": unit,
+                "address": address,
+                "scale": scale,
+                "state_class": state_class,
+                "device_class": device_class,
+            },
         )
 
         # Bestimme, ob es sich um einen Status-/Mode-Sensor handelt
@@ -371,24 +252,38 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
             self._attr_suggested_display_precision = None
         else:
             # Für numerische Sensoren: Metadaten aus der Konfiguration übernehmen
-            self._attr_native_unit_of_measurement = sensor_config.get("unit")
-            if "precision" in sensor_config:
-                self._attr_suggested_display_precision = sensor_config["precision"]
+            self._attr_native_unit_of_measurement = unit
+            if "precision" in {
+                "name": name,
+                "unit": unit,
+                "address": address,
+                "scale": scale,
+                "state_class": state_class,
+                "device_class": device_class,
+            }:
+                self._attr_suggested_display_precision = {
+                    "name": name,
+                    "unit": unit,
+                    "address": address,
+                    "scale": scale,
+                    "state_class": state_class,
+                    "device_class": device_class,
+                }["precision"]
 
-            if sensor_config.get("unit") == "°C":
+            if unit == "°C":
                 self._attr_device_class = SensorDeviceClass.TEMPERATURE
-            elif sensor_config.get("unit") == "W":
+            elif unit == "W":
                 self._attr_device_class = SensorDeviceClass.POWER
-            elif sensor_config.get("unit") == "Wh":
+            elif unit == "Wh":
                 self._attr_device_class = SensorDeviceClass.ENERGY
 
             # State-Class nur für numerische Sensoren setzen
-            if "state_class" in sensor_config:
-                if sensor_config["state_class"] == "total":
+            if state_class:
+                if state_class == "total":
                     self._attr_state_class = SensorStateClass.TOTAL
-                elif sensor_config["state_class"] == "total_increasing":
+                elif state_class == "total_increasing":
                     self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-                elif sensor_config["state_class"] == "measurement":
+                elif state_class == "measurement":
                     self._attr_state_class = SensorStateClass.MEASUREMENT
 
     @property

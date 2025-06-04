@@ -164,15 +164,7 @@ Diese Fehler können auftreten, wenn:
 - Ein oder mehrere Register nicht verfügbar sind (diese können deaktiviert werden)
 - Der Lambda Controller zu viele gleichzeitige Anfragen erhält
 
-## Next Steps
-
-Once your integration is running:
-- Create automations based on temperature readings
-- Set up notifications for error states
-- Use the climate entities to control your heating and hot water
-- Create dashboards with temperature graphs and status information
-
-For advanced configuration and complete entity reference, see the full documentation.
+## Optimierung der Performance / Performance Optimization
 
 ### Optimierung der Abfrageintervalle
 
@@ -194,3 +186,13 @@ lambda_heat_pumps:
 Für viele Heizkreise (z.B. 8 oder mehr) empfehlen wir ein Scan-Intervall von mindestens 45 Sekunden.
 
 Tipp: Deaktivieren Sie Register von Sensoren, die Sie nicht benötigen, um die Anzahl der Modbus-Abfragen zu reduzieren.
+
+## Next Steps
+
+Once your integration is running:
+- Create automations based on temperature readings
+- Set up notifications for error states
+- Use the climate entities to control your heating and hot water
+- Create dashboards with temperature graphs and status information
+
+For advanced configuration and complete entity reference, see the full documentation.

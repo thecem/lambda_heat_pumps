@@ -29,227 +29,60 @@ from .const import (
     DEFAULT_HEATING_CIRCUIT_MAX_TEMP,
     DEFAULT_HEATING_CIRCUIT_TEMP_STEP,
     DEFAULT_FIRMWARE,
-    BOIL_BASE_ADDRESS,
-    HC_BASE_ADDRESS,
 )
-from .utils import build_device_info, is_register_disabled
+from .utils import build_device_info, is_register_disabled, generate_base_addresses
 from .coordinator import LambdaDataUpdateCoordinator  # type: ignore
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up Lambda climate entities."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    """Set up the Lambda Heat Pumps climate entities."""
+    _LOGGER.debug("Setting up Lambda climate entities for entry %s", entry.entry_id)
+    
+    # Get coordinator from hass.data
+    coordinator_data = hass.data[DOMAIN][entry.entry_id]
+    if not coordinator_data or "coordinator" not in coordinator_data:
+        _LOGGER.error("No coordinator found for entry %s", entry.entry_id)
+        return
+        
+    coordinator = coordinator_data["coordinator"]
+    _LOGGER.debug("Found coordinator: %s", coordinator)
 
-    # Hole die Konfigurationsoptionen
-    options = entry.options
+    # Get device counts from config
+    num_boil = entry.data.get("num_boil", 1)
+    num_hc = entry.data.get("num_hc", 1)
 
-    # Hole die konfigurierte Firmware-Version
-    configured_fw = entry.options.get(
-        "firmware_version",
-        entry.data.get("firmware_version", DEFAULT_FIRMWARE),
-    )
-    fw_version = int(FIRMWARE_VERSION.get(configured_fw, "1"))
-
-    _LOGGER.debug(
-        "Climate Firmware-Version Setup - Configured: %s, "
-        "Numeric Version: %s, Raw Entry Data: %s",
-        configured_fw,
-        fw_version,
-        entry.data,
-    )
-
-    # Funktion zur Überprüfung der Sensor-Firmware-Kompatibilität
-    def is_sensor_compatible(sensor_id: str) -> bool:
-        # Prefix entfernen, falls vorhanden
-        if sensor_id.startswith(prefix):
-            sensor_id_noprefix = sensor_id[len(prefix):]
-        else:
-            sensor_id_noprefix = sensor_id
-        # Prüfe dynamische Boiler-Sensoren
-        if sensor_id_noprefix.startswith("boil"):
-            parts = sensor_id_noprefix.split("_", 1)
-            if len(parts) == 2 and parts[1] in BOIL_SENSOR_TEMPLATES:
-                template = BOIL_SENSOR_TEMPLATES[parts[1]]
-                sensor_fw = template.get("firmware_version", 1)
-                is_compatible = sensor_fw <= fw_version
-                _LOGGER.debug(
-                    "Climate Boiler Sensor Check - "
-                    "Sensor: %s, FW: %s, Current: %s, Compatible: %s",
-                    sensor_id_noprefix,
-                    sensor_fw,
-                    fw_version,
-                    is_compatible,
-                )
-                return is_compatible
-            _LOGGER.warning(
-                "Boiler sensor template for '%s' not found.",
-                sensor_id_noprefix,
-            )
-            return False
-        # Prüfe dynamische HC-Sensoren
-        if sensor_id_noprefix.startswith("hc"):
-            parts = sensor_id_noprefix.split("_", 1)
-            if len(parts) == 2 and parts[1] in HC_SENSOR_TEMPLATES:
-                template = HC_SENSOR_TEMPLATES[parts[1]]
-                sensor_fw = template.get("firmware_version", 1)
-                is_compatible = sensor_fw <= fw_version
-                _LOGGER.debug(
-                    "Climate HC Sensor Check - "
-                    "Sensor: %s, FW: %s, Current: %s, Compatible: %s",
-                    sensor_id_noprefix,
-                    sensor_fw,
-                    fw_version,
-                    is_compatible,
-                )
-                return is_compatible
-            _LOGGER.warning(
-                "HC sensor template for '%s' not found.",
-                sensor_id_noprefix,
-            )
-            return False
-        # Prüfe statische Sensoren
-        sensor_config = SENSOR_TYPES.get(sensor_id_noprefix)
-        if not sensor_config:
-            _LOGGER.warning(
-                "Sensor '%s' not found in SENSOR_TYPES.",
-                sensor_id_noprefix,
-            )
-            return False
-        sensor_fw = sensor_config.get("firmware_version", 1)
-        is_compatible = sensor_fw <= fw_version
-        _LOGGER.debug(
-            "Climate Sensor Check - "
-            "Sensor: %s, FW: %s, Current: %s, Compatible: %s",
-            sensor_id_noprefix,
-            sensor_fw,
-            fw_version,
-            is_compatible,
-        )
-        return is_compatible
-
+    # Create climate entities for each device type
     entities = []
 
-    # Dynamische Hot Water Entities für alle Boiler
-    # Diese werden immer erstellt, unabhängig von room_thermostat_control
-    num_boil = entry.data.get("num_boil", 1)
-    name_prefix = entry.data.get("name", "lambda_wp").lower().replace(" ", "")
-    prefix = f"{name_prefix}_"
+    # Boiler climate entities
     for boil_idx in range(1, num_boil + 1):
-        hw_current_temp_sensor = (
-            f"{prefix}boil{boil_idx}_actual_high_temperature"
+        base_address = generate_base_addresses('boil', num_boil)[boil_idx]
+        entities.append(
+            LambdaBoiler(
+                coordinator,
+                f"boil{boil_idx}",
+                "",  # name intentionally left empty
+                base_address,
+            )
         )
-        hw_target_temp_sensor = (
-            f"{prefix}boil{boil_idx}_target_high_temperature"
+
+    # Heating Circuit climate entities
+    for hc_idx in range(1, num_hc + 1):
+        base_address = generate_base_addresses('hc', num_hc)[hc_idx]
+        entities.append(
+            LambdaHeatingCircuit(
+                coordinator,
+                f"hc{hc_idx}",
+                "",  # name intentionally left empty
+                base_address,
+            )
         )
-        
-        # Prüfe ob die relevanten Register deaktiviert sind
-        current_temp_address = BOIL_BASE_ADDRESS[boil_idx] + BOIL_SENSOR_TEMPLATES["actual_high_temperature"]["relative_address"]
-        target_temp_address = BOIL_BASE_ADDRESS[boil_idx] + BOIL_SENSOR_TEMPLATES["target_high_temperature"]["relative_address"]
-        
-        if is_register_disabled(current_temp_address, coordinator.disabled_registers) or is_register_disabled(target_temp_address, coordinator.disabled_registers):
-            _LOGGER.debug(
-                "Skipping hot water climate entity for Boil%d due to disabled registers",
-                boil_idx
-            )
-            continue
-            
-        if (
-            is_sensor_compatible(hw_current_temp_sensor)
-            and is_sensor_compatible(hw_target_temp_sensor)
-        ):
-            if num_boil == 1:
-                translation_key = "hot_water"
-                translation_placeholders = None
-            else:
-                translation_key = "hot_water_numbered"
-                translation_placeholders = {"number": boil_idx}
-            kwargs = dict(
-                coordinator=coordinator,
-                entry=entry,
-                climate_type=f"hot_water_{boil_idx}",
-                translation_key=translation_key,
-                current_temp_sensor=hw_current_temp_sensor,
-                target_temp_sensor=hw_target_temp_sensor,
-                min_temp=options.get(
-                    "hot_water_min_temp",
-                    DEFAULT_HOT_WATER_MIN_TEMP,
-                ),
-                max_temp=options.get(
-                    "hot_water_max_temp",
-                    DEFAULT_HOT_WATER_MAX_TEMP,
-                ),
-                temp_step=1,
-            )
-            if translation_placeholders is not None:
-                kwargs["translation_placeholders"] = translation_placeholders
-            entities.append(LambdaClimateEntity(**kwargs))
 
-    # Dynamische Heating Circuit Entities für alle Heizkreise
-    # Nur erzeugen wenn room_thermostat_control aktiv ist
-    room_thermostat_control = entry.options.get("room_thermostat_control", False)
-    if room_thermostat_control:
-        num_hc = entry.data.get("num_hc", 1)
-        for hc_idx in range(1, num_hc + 1):
-            hc_current_temp_sensor = (
-                f"{prefix}hc{hc_idx}_room_device_temperature"
-            )
-            hc_target_temp_sensor = (
-                f"{prefix}hc{hc_idx}_target_room_temperature"
-            )
-            
-            # Prüfe ob die relevanten Register deaktiviert sind
-            current_temp_address = HC_BASE_ADDRESS[hc_idx] + HC_SENSOR_TEMPLATES["room_device_temperature"]["relative_address"]
-            target_temp_address = HC_BASE_ADDRESS[hc_idx] + HC_SENSOR_TEMPLATES["target_room_temperature"]["relative_address"]
-            
-            if is_register_disabled(current_temp_address, coordinator.disabled_registers) or is_register_disabled(target_temp_address, coordinator.disabled_registers):
-                _LOGGER.debug(
-                    "Skipping heating circuit climate entity for HC%d due to disabled registers",
-                    hc_idx
-                )
-                continue
-                
-            if (
-                is_sensor_compatible(hc_current_temp_sensor)
-                and is_sensor_compatible(hc_target_temp_sensor)
-            ):
-                if num_hc == 1:
-                    translation_key = "heating_circuit"
-                    translation_placeholders = None
-                else:
-                    translation_key = "heating_circuit_numbered"
-                    translation_placeholders = {"number": hc_idx}
-                kwargs = dict(
-                    coordinator=coordinator,
-                    entry=entry,
-                    climate_type=f"heating_circuit_{hc_idx}",
-                    translation_key=translation_key,
-                    current_temp_sensor=hc_current_temp_sensor,
-                    target_temp_sensor=hc_target_temp_sensor,
-                    min_temp=options.get(
-                        "heating_circuit_min_temp",
-                        DEFAULT_HEATING_CIRCUIT_MIN_TEMP,
-                    ),
-                    max_temp=options.get(
-                        "heating_circuit_max_temp",
-                        DEFAULT_HEATING_CIRCUIT_MAX_TEMP,
-                    ),
-                    temp_step=options.get(
-                        "heating_circuit_temp_step",
-                        DEFAULT_HEATING_CIRCUIT_TEMP_STEP,
-                    ),
-                )
-                if translation_placeholders is not None:
-                    kwargs["translation_placeholders"] = translation_placeholders
-                entities.append(LambdaClimateEntity(**kwargs))
-    else:
-        _LOGGER.debug("Room thermostat control is disabled, skipping heating circuit climate entities")
-
+    _LOGGER.debug("Created %d climate entities", len(entities))
     async_add_entities(entities)
 
 
@@ -407,7 +240,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
                     sensor_info = BOIL_SENSOR_TEMPLATES[parts[1]].copy()
                     idx = int(target_temp_sensor_noprefix[4])
                     sensor_info["address"] = (
-                        BOIL_BASE_ADDRESS[idx]
+                        generate_base_addresses('boil', num_boil)[idx]
                         + sensor_info["relative_address"]
                     )
             elif target_temp_sensor_noprefix.startswith("hc"):
@@ -416,7 +249,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
                     sensor_info = HC_SENSOR_TEMPLATES[parts[1]].copy()
                     idx = int(target_temp_sensor_noprefix[2])
                     sensor_info["address"] = (
-                        HC_BASE_ADDRESS[idx]
+                        generate_base_addresses('hc', num_hc)[idx]
                         + sensor_info["relative_address"]
                     )
             else:
@@ -469,3 +302,67 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
                 "Error setting target temperature: %s",
                 ex,
             )
+
+
+class LambdaBoiler(LambdaClimateEntity):
+    """Representation of a Lambda Boiler."""
+
+    def __init__(
+        self,
+        coordinator: "LambdaDataUpdateCoordinator",
+        climate_type: str,
+        name: str,
+        base_address: int,
+    ) -> None:
+        idx = int(climate_type.replace("boil", ""))
+        super().__init__(
+            coordinator=coordinator,
+            entry=coordinator.entry,
+            climate_type=climate_type,
+            translation_key="boiler",
+            current_temp_sensor=f"{climate_type}_actual_high_temperature",
+            target_temp_sensor=f"{climate_type}_target_high_temperature",
+            min_temp=DEFAULT_HOT_WATER_MIN_TEMP,
+            max_temp=DEFAULT_HOT_WATER_MAX_TEMP,
+            temp_step=1,
+        )
+        self._base_address = base_address
+        self._attr_name = f"Boiler {idx}"
+        self._attr_unique_id = f"boiler_{idx}"
+
+    @property
+    def device_info(self):
+        # Boiler-Entitäten immer dem Hauptgerät zuordnen
+        return build_device_info(self._entry, "main")
+
+
+class LambdaHeatingCircuit(LambdaClimateEntity):
+    """Representation of a Lambda Heating Circuit."""
+
+    def __init__(
+        self,
+        coordinator: "LambdaDataUpdateCoordinator",
+        climate_type: str,
+        name: str,
+        base_address: int,
+    ) -> None:
+        idx = int(climate_type.replace("hc", ""))
+        super().__init__(
+            coordinator=coordinator,
+            entry=coordinator.entry,
+            climate_type=climate_type,
+            translation_key="heating_circuit",
+            current_temp_sensor=f"{climate_type}_room_device_temperature",
+            target_temp_sensor=f"{climate_type}_target_room_temperature",
+            min_temp=DEFAULT_HEATING_CIRCUIT_MIN_TEMP,
+            max_temp=DEFAULT_HEATING_CIRCUIT_MAX_TEMP,
+            temp_step=DEFAULT_HEATING_CIRCUIT_TEMP_STEP,
+        )
+        self._base_address = base_address
+        self._attr_name = f"Heizkreis {idx}"
+        self._attr_unique_id = f"hc_{idx}"
+
+    @property
+    def device_info(self):
+        # Heating Circuit-Entitäten immer dem Hauptgerät zuordnen
+        return build_device_info(self._entry, "main")

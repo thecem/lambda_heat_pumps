@@ -13,9 +13,7 @@ from homeassistant.helpers.event import async_track_time_interval
 from .const import (
     DOMAIN,
     CONF_ROOM_TEMPERATURE_ENTITY,
-    ROOM_TEMPERATURE_REGISTER_OFFSET,
     ROOM_TEMPERATURE_UPDATE_INTERVAL,
-    HC_BASE_ADDRESS,
 )
 
 # Konstanten für Zustandsarten definieren

@@ -9,10 +9,12 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.exceptions import ConfigEntryNotReady
 
 from .const import DOMAIN, DEBUG_PREFIX
 from .coordinator import LambdaDataUpdateCoordinator
 from .services import async_setup_services, async_unload_services
+from .utils import generate_base_addresses
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=30)
@@ -45,15 +47,30 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Lambda Heat Pumps from a config entry."""
-    _LOGGER.debug(
-        "Setting up Lambda integration with config: %s",
-        entry.data,
-    )
-
+    _LOGGER.debug("Setting up Lambda integration with config: %s", entry.data)
+    
+    # Generate base addresses based on configured device counts
+    num_hps = entry.data.get("num_hps", 1)
+    num_boil = entry.data.get("num_boil", 1)
+    num_buff = entry.data.get("num_buff", 0)
+    num_sol = entry.data.get("num_sol", 0)
+    num_hc = entry.data.get("num_hc", 1)
+    
+    _LOGGER.debug("Device counts - HPs: %d, Boilers: %d, Buffers: %d, Solar: %d, HCs: %d",
+                 num_hps, num_boil, num_buff, num_sol, num_hc)
+    
+    # Generate base addresses
+    HP_BASE_ADDRESS, BOIL_BASE_ADDRESS, BUFFER_BASE_ADDRESS, SOLAR_BASE_ADDRESS, HC_BASE_ADDRESS = generate_base_addresses('hp', num_hps), generate_base_addresses('boil', num_boil), generate_base_addresses('buff', num_buff), generate_base_addresses('sol', num_sol), generate_base_addresses('hc', num_hc)
+    
+    _LOGGER.debug("Generated base addresses - HP: %s, Boil: %s, Buff: %s, Sol: %s, HC: %s",
+                 HP_BASE_ADDRESS, BOIL_BASE_ADDRESS, BUFFER_BASE_ADDRESS, 
+                 SOLAR_BASE_ADDRESS, HC_BASE_ADDRESS)
+    
+    # Create coordinator
+    coordinator = LambdaDataUpdateCoordinator(hass, entry)
+    
     try:
-        coordinator = LambdaDataUpdateCoordinator(hass, entry)
         await coordinator.async_init()
-        
         # Warte auf die erste Datenabfrage
         await coordinator.async_refresh()
         
@@ -61,9 +78,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.error("Failed to fetch initial data from Lambda device")
             return False
 
+        # Store coordinator
         hass.data.setdefault(DOMAIN, {})
         hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
+        _LOGGER.debug("Stored coordinator in hass.data[%s][%s]", DOMAIN, entry.entry_id)
 
+        # Set up platforms
         await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
         # Beim ersten Setup die Services registrieren
@@ -122,9 +142,7 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
                 hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
 
                 # Set up platforms
-                await hass.config_entries.async_forward_entry_setups(
-                    entry, PLATFORMS
-                )
+                await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
                 # Set up services if this is the first entry
                 if len(hass.data[DOMAIN]) == 1:

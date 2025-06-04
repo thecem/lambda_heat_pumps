@@ -5,11 +5,11 @@ from __future__ import annotations
 DOMAIN = "lambda_heat_pumps"
 ## disable this for production
 DEFAULT_NAME = "EU08L"
-DEFAULT_HOST = "192.168.178.125"
+DEFAULT_HOST = "192.168.178.194"
 ##DEFAULT_PORT = 502
 ## enable this for production
 ## DEFAULT_HOST = "IP_ADDRESS or hostname"
-DEFAULT_PORT = 502
+DEFAULT_PORT = 5020
 DEFAULT_SLAVE_ID = 1
 DEFAULT_FIRMWARE = "V0.0.3-3K"
 DEFAULT_ROOM_THERMOSTAT_CONTROL = False
@@ -55,25 +55,6 @@ FIRMWARE_VERSION = {
     "V0.0.6-3K": "4",
     "V0.0.7-3K": "5",
 }
-
-#######################
-# Base Addresses
-#######################
-
-# Heat Pump Base Addresses (1000-1400)
-HP_BASE_ADDRESS = {1: 1000, 2: 1100, 3: 1200, 4: 1300, 5: 1400}
-
-# Boiler Base Addresses (2000-2400)
-BOIL_BASE_ADDRESS = {1: 2000, 2: 2100, 3: 2200, 4: 2300, 5: 2400}
-
-# Buffer Base Addresses (3000-3400)
-BUFFER_BASE_ADDRESS = {1: 3000, 2: 3100, 3: 3200, 4: 3300, 5: 3400}
-
-# Solar Base Addresses (4000-4100)
-SOLAR_BASE_ADDRESS = {1: 4000, 2: 4100}
-
-# Heating Circuit Base Addresses (5000-5400)
-HC_BASE_ADDRESS = {1: 5000, 2: 5100, 3: 5200, 4: 5300, 5: 5400}
 
 #######################
 # State Mappings
@@ -557,7 +538,7 @@ BOIL_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "boil",
         "writeable": False,
-        "state_class": "total",
+        "state_class": "measurement",
     },
     "actual_circulation_pump_state": {
         "relative_address": 5,
@@ -1065,8 +1046,35 @@ SENSOR_TYPES = {
     },
 }
 
+# Climate Sensors
+CLIMATE_TEMPLATES = {
+    "error_number": {
+        "relative_address": 0,
+        "name": "Error Number",
+        "unit": None,
+        "scale": 1,
+        "precision": 0,
+        "data_type": "int16",
+        "firmware_version": 1,
+        "device_type": "sol",
+        "writeable": False,
+    },
+    "operating_state": {
+        "relative_address": 1,
+        "name": "Operating State",
+        "unit": None,
+        "scale": 1,
+        "precision": 0,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "sol",
+        "writeable": False,
+    },
+}
+
+
+
 # Room Temperature Settings
-ROOM_TEMPERATURE_REGISTER_OFFSET = 4
 # Register offset for room temperature within a HC
 ROOM_TEMPERATURE_UPDATE_INTERVAL = (
     1  # Update interval for room temperature (in minutes)
@@ -1101,3 +1109,18 @@ STATE_SENSOR_PATTERNS = [
     "mode",
     "state",
 ]
+
+#######################
+# Base Addresses
+#######################
+# Base addresses for all device types (HP, Boil, Buffer, Solar, HC) are now generated dynamically
+# using the generate_base_addresses(device_type, count) function in utils.py.
+
+BASE_ADDRESSES = {
+        'hp': 1000,    # Heat pumps start at 1000
+        'boil': 2000,  # Boilers start at 2000
+        'buff': 3000,  # Buffers start at 3000
+        'sol': 4000,   # Solar starts at 4000
+        'hc': 5000     # Heating circuits start at 5000
+}
+  

@@ -4,6 +4,9 @@ import os
 import yaml
 import aiofiles
 from homeassistant.core import HomeAssistant
+from .const import (
+    BASE_ADDRESSES ,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -141,3 +144,22 @@ def is_register_disabled(address: int, disabled_registers: set[int]) -> bool:
     if is_disabled:
         _LOGGER.debug("Register %d is disabled (in set: %s)", address, disabled_registers)
     return is_disabled
+
+def generate_base_addresses(device_type: str, count: int) -> dict:
+    """Generate base addresses for a given device type and count.
+    
+    Args:
+        device_type: Type of device (hp, boil, buff, sol, hc)
+        count: Number of devices
+        
+    Returns:
+        dict: Dictionary with device numbers as keys and base addresses as values
+    """
+    base_addresses = BASE_ADDRESSES
+    
+    start_address = base_addresses.get(device_type, 0)
+    if start_address == 0:
+        return {}
+        
+    return {i: start_address + (i-1) * 100 for i in range(1, count + 1)}
+
