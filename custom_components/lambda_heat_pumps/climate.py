@@ -67,6 +67,7 @@ async def async_setup_entry(
                 f"boil{boil_idx}",
                 "",  # name intentionally left empty
                 base_address,
+                num_boil=num_boil,
             )
         )
 
@@ -79,6 +80,7 @@ async def async_setup_entry(
                 f"hc{hc_idx}",
                 "",  # name intentionally left empty
                 base_address,
+                num_hc=num_hc,
             )
         )
 
@@ -240,7 +242,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
                     sensor_info = BOIL_SENSOR_TEMPLATES[parts[1]].copy()
                     idx = int(target_temp_sensor_noprefix[4])
                     sensor_info["address"] = (
-                        generate_base_addresses('boil', num_boil)[idx]
+                        generate_base_addresses('boil', self._num_boil)[idx]
                         + sensor_info["relative_address"]
                     )
             elif target_temp_sensor_noprefix.startswith("hc"):
@@ -249,7 +251,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
                     sensor_info = HC_SENSOR_TEMPLATES[parts[1]].copy()
                     idx = int(target_temp_sensor_noprefix[2])
                     sensor_info["address"] = (
-                        generate_base_addresses('hc', num_hc)[idx]
+                        generate_base_addresses('hc', self._num_hc)[idx]
                         + sensor_info["relative_address"]
                     )
             else:
@@ -313,6 +315,7 @@ class LambdaBoiler(LambdaClimateEntity):
         climate_type: str,
         name: str,
         base_address: int,
+        num_boil: int,
     ) -> None:
         idx = int(climate_type.replace("boil", ""))
         super().__init__(
@@ -329,6 +332,7 @@ class LambdaBoiler(LambdaClimateEntity):
         self._base_address = base_address
         self._attr_name = f"Boiler {idx}"
         self._attr_unique_id = f"boiler_{idx}"
+        self._num_boil = num_boil
 
     @property
     def device_info(self):
@@ -345,6 +349,7 @@ class LambdaHeatingCircuit(LambdaClimateEntity):
         climate_type: str,
         name: str,
         base_address: int,
+        num_hc: int,
     ) -> None:
         idx = int(climate_type.replace("hc", ""))
         super().__init__(
@@ -361,6 +366,7 @@ class LambdaHeatingCircuit(LambdaClimateEntity):
         self._base_address = base_address
         self._attr_name = f"Heizkreis {idx}"
         self._attr_unique_id = f"hc_{idx}"
+        self._num_hc = num_hc
 
     @property
     def device_info(self):

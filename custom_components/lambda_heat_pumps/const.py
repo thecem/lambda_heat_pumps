@@ -1048,27 +1048,33 @@ SENSOR_TYPES = {
 
 # Climate Sensors
 CLIMATE_TEMPLATES = {
-    "error_number": {
-        "relative_address": 0,
-        "name": "Error Number",
-        "unit": None,
-        "scale": 1,
-        "precision": 0,
+    "hot_water": {
+        "relative_address": 2,
+        "relative_set_address": 50,
+        "name": "HOT Water",
+        "unit": "°C",
+        "scale": 0.1,
+        "precision": 0.5,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "sol",
-        "writeable": False,
+        "device_type": "boil",
+        "writeable": True,
+        "hvac_mode": "heat", 
+        "state_class": "measurement",
     },
-    "operating_state": {
-        "relative_address": 1,
-        "name": "Operating State",
-        "unit": None,
-        "scale": 1,
-        "precision": 0,
+    "heating_circuit": {
+        "relative_address": 4,
+        "relative_set_address": 51,
+        "name": "Heating Circuit",
+        "unit": "°C",
+        "scale": 0.1,
+        "precision": 0.1,
         "data_type": "uint16",
         "firmware_version": 1,
-        "device_type": "sol",
-        "writeable": False,
+        "device_type": "hc",
+        "writeable": True,
+        "hvac_mode": "heat", 
+        "state_class": "measurement",
     },
 }
 

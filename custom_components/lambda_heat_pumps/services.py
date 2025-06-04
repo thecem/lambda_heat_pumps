@@ -29,6 +29,20 @@ UPDATE_ROOM_TEMPERATURE_SCHEMA = vol.Schema(
     }
 )
 
+# Service Schema für read_modbus_register
+READ_MODBUS_REGISTER_SCHEMA = vol.Schema(
+    {
+        vol.Required("register_address"): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+    }
+)
+
+# Service Schema für write_modbus_register
+WRITE_MODBUS_REGISTER_SCHEMA = vol.Schema(
+    {
+        vol.Required("register_address"): vol.All(vol.Coerce(int), vol.Range(min=0, max=65535)),
+        vol.Required("value"): vol.All(vol.Coerce(int), vol.Range(min=-32768, max=65535)),
+    }
+)
 
 async def async_setup_services(hass: HomeAssistant) -> None:
     """Set up Lambda WP services."""
@@ -170,6 +184,70 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         ex,
                     )
 
+    async def async_read_modbus_register(call: ServiceCall) -> dict:
+        """Read a value from a Modbus register of the Lambda heat pump and return it for display in the developer tools."""
+        lambda_entries = hass.data.get(DOMAIN, {})
+        if not lambda_entries:
+            _LOGGER.error("No Lambda WP integrations found")
+            return {"error": "No Lambda WP integrations found"}
+
+        register_address = call.data.get("register_address")
+
+        for entry_id, entry_data in lambda_entries.items():
+            coordinator = entry_data.get("coordinator")
+            if not coordinator or not coordinator.client:
+                _LOGGER.error("Coordinator or Modbus client not available for entry_id %s", entry_id)
+                continue
+
+            try:
+                result = await hass.async_add_executor_job(
+                    coordinator.client.read_holding_registers,
+                    register_address,
+                    1,
+                    entry_data.get("slave_id", 1),
+                )
+                if result.isError():
+                    _LOGGER.error("Failed to read Modbus register: %s", result)
+                    return {"error": str(result)}
+                else:
+                    value = result.registers[0]
+                    _LOGGER.info("Read Modbus register %s: %s", register_address, value)
+                    return {"value": value}
+            except Exception as ex:
+                _LOGGER.error("Error reading Modbus register: %s", ex)
+                return {"error": str(ex)}
+        return {"error": "No valid coordinator found"}
+
+    async def async_write_modbus_register(call: ServiceCall) -> None:
+        """Write a value to a Modbus register of the Lambda heat pump."""
+        lambda_entries = hass.data.get(DOMAIN, {})
+        if not lambda_entries:
+            _LOGGER.error("No Lambda WP integrations found")
+            return
+
+        register_address = call.data.get("register_address")
+        value = call.data.get("value")
+
+        for entry_id, entry_data in lambda_entries.items():
+            coordinator = entry_data.get("coordinator")
+            if not coordinator or not coordinator.client:
+                _LOGGER.error("Coordinator or Modbus client not available for entry_id %s", entry_id)
+                continue
+
+            try:
+                result = await hass.async_add_executor_job(
+                    coordinator.client.write_registers,
+                    register_address,
+                    [value],
+                    entry_data.get("slave_id", 1),
+                )
+                if result.isError():
+                    _LOGGER.error("Failed to write Modbus register: %s", result)
+                else:
+                    _LOGGER.info("Wrote Modbus register %s with value %s", register_address, value)
+            except Exception as ex:
+                _LOGGER.error("Error writing Modbus register: %s", ex)
+
     # Setup regelmäßige Aktualisierungen für alle Entries
     @callback
     def setup_scheduled_updates() -> None:
@@ -247,6 +325,23 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         "update_room_temperature",
         async_update_room_temperature,
         schema=UPDATE_ROOM_TEMPERATURE_SCHEMA,
+    )
+
+    # Registriere read_modbus_register Service
+    hass.services.async_register(
+        DOMAIN,
+        "read_modbus_register",
+        async_read_modbus_register,
+        schema=READ_MODBUS_REGISTER_SCHEMA,
+        supports_response=True,
+    )
+
+    # Registriere write_modbus_register Service
+    hass.services.async_register(
+        DOMAIN,
+        "write_modbus_register",
+        async_write_modbus_register,
+        schema=WRITE_MODBUS_REGISTER_SCHEMA,
     )
 
     # Unregister-Callback für das Entfernen aller Unsubscriber

@@ -59,12 +59,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug("Device counts - HPs: %d, Boilers: %d, Buffers: %d, Solar: %d, HCs: %d",
                  num_hps, num_boil, num_buff, num_sol, num_hc)
     
-    # Generate base addresses
-    HP_BASE_ADDRESS, BOIL_BASE_ADDRESS, BUFFER_BASE_ADDRESS, SOLAR_BASE_ADDRESS, HC_BASE_ADDRESS = generate_base_addresses('hp', num_hps), generate_base_addresses('boil', num_boil), generate_base_addresses('buff', num_buff), generate_base_addresses('sol', num_sol), generate_base_addresses('hc', num_hc)
-    
-    _LOGGER.debug("Generated base addresses - HP: %s, Boil: %s, Buff: %s, Sol: %s, HC: %s",
-                 HP_BASE_ADDRESS, BOIL_BASE_ADDRESS, BUFFER_BASE_ADDRESS, 
-                 SOLAR_BASE_ADDRESS, HC_BASE_ADDRESS)
+    # Log generated base addresses direkt ohne Variablen
+    _LOGGER.debug(
+        "Generated base addresses - HP: %s, Boil: %s, Buff: %s, Sol: %s, HC: %s",
+        generate_base_addresses('hp', num_hps),
+        generate_base_addresses('boil', num_boil),
+        generate_base_addresses('buff', num_buff),
+        generate_base_addresses('sol', num_sol),
+        generate_base_addresses('hc', num_hc)
+    )
     
     # Create coordinator
     coordinator = LambdaDataUpdateCoordinator(hass, entry)

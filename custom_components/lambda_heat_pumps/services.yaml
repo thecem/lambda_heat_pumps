@@ -8,4 +8,41 @@ update_room_temperature:
       required: false
       selector:
         entity:
-          integration: lambda_heat_pumps 
+          integration: lambda_heat_pumps
+
+read_modbus_register:
+  name: Read Modbus Register
+  description: Reads a value from a Modbus register of the Lambda heat pump.
+  fields:
+    register_address:
+      name: Register Address
+      description: The Modbus register address to read from.
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 65535
+          mode: box
+
+write_modbus_register:
+  name: Write Modbus Register
+  description: Writes a value to a Modbus register of the Lambda heat pump.
+  fields:
+    register_address:
+      name: Register Address
+      description: The Modbus register address to write to.
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 65535
+          mode: box
+    value:
+      name: Value
+      description: The value to write to the register.
+      required: true
+      selector:
+        number:
+          min: -32768
+          max: 65535
+          mode: box 
