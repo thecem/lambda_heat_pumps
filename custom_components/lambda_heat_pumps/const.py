@@ -21,6 +21,13 @@ DEFAULT_NUM_HC = 1
 DEFAULT_NUM_BUFFER = 0
 DEFAULT_NUM_SOLAR = 0
 
+# Maximum counts for devices (from Modbus documentation)
+MAX_NUM_HPS = 3         # Heat pumps
+MAX_NUM_BOIL = 5        # Boilers
+MAX_NUM_HC = 12         # Heating circuits
+MAX_NUM_BUFFER = 5      # Buffers
+MAX_NUM_SOLAR = 2       # Solar modules
+
 # Default temperature settings
 DEFAULT_HOT_WATER_MIN_TEMP = 40
 DEFAULT_HOT_WATER_MAX_TEMP = 60

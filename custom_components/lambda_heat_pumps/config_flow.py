@@ -37,6 +37,11 @@ from .const import (
     CONF_SLAVE_ID,
     FIRMWARE_VERSION,
     CONF_ROOM_TEMPERATURE_ENTITY,
+    MAX_NUM_HPS,
+    MAX_NUM_BOIL,
+    MAX_NUM_HC,
+    MAX_NUM_BUFFER,
+    MAX_NUM_SOLAR,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -153,7 +158,7 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                         ): selector.NumberSelector(
                             selector.NumberSelectorConfig(
                                 min=1,
-                                max=5,
+                                max=MAX_NUM_HPS,
                                 step=1,
                                 mode=selector.NumberSelectorMode.BOX,
                             )
@@ -172,7 +177,7 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                         ): selector.NumberSelector(
                             selector.NumberSelectorConfig(
                                 min=0,
-                                max=5,
+                                max=MAX_NUM_BOIL,
                                 step=1,
                                 mode=selector.NumberSelectorMode.BOX,
                             )
@@ -191,7 +196,7 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                         ): selector.NumberSelector(
                             selector.NumberSelectorConfig(
                                 min=0,
-                                max=5,
+                                max=MAX_NUM_HC,
                                 step=1,
                                 mode=selector.NumberSelectorMode.BOX,
                             )
@@ -210,7 +215,7 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                         ): selector.NumberSelector(
                             selector.NumberSelectorConfig(
                                 min=0,
-                                max=5,
+                                max=MAX_NUM_BUFFER,
                                 step=1,
                                 mode=selector.NumberSelectorMode.BOX,
                             )
@@ -229,7 +234,7 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                         ): selector.NumberSelector(
                             selector.NumberSelectorConfig(
                                 min=0,
-                                max=5,
+                                max=MAX_NUM_SOLAR,
                                 step=1,
                                 mode=selector.NumberSelectorMode.BOX,
                             )
