@@ -24,10 +24,12 @@ Diese Migration korrigiert die Metadaten in der Datenbank, ohne die historischen
 
 ## Voraussetzungen
 
-- Home Assistant Version 2021.9 oder höher (wegen Statistics Meta API)
-
+- Home Assistant Version 2023.12 oder höher
+  - Die automatische Migration über `config_entry.version` ist ab dieser Version verfügbar
+  - Die Datenbankstruktur mit `states_meta`, `states` und `state_attributes` ist ab dieser Version standardisiert
+  - Die `shared_attrs` in der `state_attributes` Tabelle werden ab dieser Version verwendet
+  - Die Integration mit dem Recorder und der Datenbankstruktur ist ab dieser Version stabil
 - Custom Integration `lambda_heat_pumps` muss bereits installiert sein
-
 - Datenbankzugriff über den Recorder
 
 ## Implementierung
@@ -40,101 +42,68 @@ Wir führen die Migration beim ersten Start nach dem Update durch.
 
 #### 1. Migrationsfunktion
 
+Die Migration erfolgt über die Aktualisierung der `shared_attrs` in der `state_attributes` Tabelle. Die Datenbankstruktur besteht aus:
+
+- `states_meta`: Enthält die Entity-IDs
+- `states`: Verknüpft mit `states_meta` über `metadata_id`
+- `state_attributes`: Enthält die `shared_attrs` mit den Entity-Attributen
+
 Füge folgende Funktion in deine Integration ein (z.B. in `__init__.py`):
 
 ```python
-
 from homeassistant.components.recorder import get_instance
-
 from homeassistant.components.recorder.statistics import update_statistics_metadata
 
-async def async_migrate_temperature_sensors(hass: HomeAssistant):
+async def async_migrate_temperature_sensors(hass):
+    """Migrate temperature sensors from state_class total to measurement."""
+    recorder = get_instance(hass)
 
-"""Migrate temperature sensors from state_class total to measurement."""
+    # Liste der Entity-IDs aller Temperatursensoren in deiner Integration
+    # Diese Liste muss angepasst werden, um alle betroffenen Sensoren zu enthalten!
+    temperature_entities = [
+        "sensor.eu08l_ambient_temperature",
+        "sensor.eu08l_ambient_temperature_1h",
+        "sensor.eu08l_ambient_temperature_calculated",
+        "sensor.eu08l_hp1_flow_line_temperature",
+        "sensor.eu08l_hp1_return_line_temperature",
+        "sensor.eu08l_hp1_energy_source_inlet_temperature",
+        "sensor.eu08l_hp1_energy_source_outlet_temperature",
+        "sensor.eu08l_boil1_actual_high_temperature",
+        "sensor.eu08l_boil1_actual_low_temperature",
+        "sensor.eu08l_hc1_flow_line_temperature",
+        "sensor.eu08l_hc1_return_line_temperature",
+        # ... weitere Temperatursensoren
+    ]
 
-recorder = get_instance(hass)
+    def _update_metadata():
+        with recorder.session_scope() as session:
+            # Holen der vorhandenen Metadaten
+            metadata = recorder.statistics_meta_manager.get_metadata(session)
+            for meta in metadata:
+                if meta["statistic_id"] in temperature_entities:
+                    # Aktualisiere state_class
+                    new_meta = {**meta, "state_class": "measurement"}
+                    update_statistics_metadata(recorder, meta["statistic_id"], new_meta)
 
-# Liste der Entity-IDs aller Temperatursensoren in deiner Integration
-
-# Diese Liste muss angepasst werden, um alle betroffenen Sensoren zu enthalten!
-
-temperature_entities = [
-
-"sensor.eu08l_ambient_temperature",
-
-"sensor.eu08l_ambient_temperature_1h",
-
-"sensor.eu08l_ambient_temperature_calculated",
-
-"sensor.eu08l_hp1_flow_line_temperature",
-
-"sensor.eu08l_hp1_return_line_temperature",
-
-"sensor.eu08l_hp1_energy_source_inlet_temperature",
-
-"sensor.eu08l_hp1_energy_source_outlet_temperature",
-
-"sensor.eu08l_boil1_actual_high_temperature",
-
-"sensor.eu08l_boil1_actual_low_temperature",
-
-"sensor.eu08l_hc1_flow_line_temperature",
-
-"sensor.eu08l_hc1_return_line_temperature",
-
-# ... weitere Temperatursensoren
-
-]
-
-def _update_metadata():
-
-with recorder.session_scope() as session:
-
-# Holen der vorhandenen Metadaten
-
-metadata = recorder.statistics_meta_manager.get_metadata(session)
-
-for meta in metadata:
-
-if meta["statistic_id"] in temperature_entities:
-
-# Aktualisiere state_class
-
-new_meta = {**meta, "state_class": "measurement"}
-
-update_statistics_metadata(recorder, meta["statistic_id"], new_meta)
-
-await recorder.async_add_executor_job(_update_metadata)
-
-```
+    await recorder.async_add_executor_job(_update_metadata)
 
 #### 2. Integration in `async_setup_entry`
 
 In der `async_setup_entry` Funktion deiner Integration:
 
 ```python
+async def async_setup_entry(hass, config_entry):
+    # ... existierendes Setup
 
-async def async_setup_entry(hass: HomeAssistant, config_entry):
+    # Migration nur bei der ersten Einrichtung oder nach einem Update
+    if config_entry.version == 1:
+        _LOGGER.info("Starting migration for temperature sensors")
+        await async_migrate_temperature_sensors(hass)
 
-# ... existierendes Setup
-
-# Migration nur bei der ersten Einrichtung oder nach einem Update
-
-if config_entry.version == 1:
-
-_LOGGER.info("Starting migration for temperature sensors")
-
-await async_migrate_temperature_sensors(hass)
-
-# Erhöhe die Konfigurationsversion
-
-hass.config_entries.async_update_entry(config_entry, version=2)
-
-_LOGGER.info("Migration completed. Config entry version set to 2")
-
-return True
-
-```
+        # Erhöhe die Konfigurationsversion
+        hass.config_entries.async_update_entry(config_entry, version=2)
+        _LOGGER.info("Migration completed. Config entry version set to 2")
+        return True
 
 #### 3. Erhöhe die Version in `manifest.json`
 
@@ -169,14 +138,10 @@ Dies geschieht automatisch im obigen Code, wenn `config_entry.version == 1`.
 - Implementiere eine Fehlerbehandlung, um Probleme während der Migration abzufangen.
 
 ```python
-
 try:
-
-await async_migrate_temperature_sensors(hass)
-
+    await async_migrate_temperature_sensors(hass)
 except Exception as e:
-
-_LOGGER.error("Migration failed: %s", e)
+    _LOGGER.error("Migration failed: %s", e)
 
 # Optional: Benachrichtigung an den Benutzer
 
@@ -187,15 +152,10 @@ _LOGGER.error("Migration failed: %s", e)
 - Informiere den Benutzer über den Erfolg oder Fehler der Migration.
 
 ```python
-
 hass.components.persistent_notification.async_create(
-
-"Die Migration der Temperatursensoren wurde erfolgreich durchgeführt.",
-
-title="Lambda Heat Pumps Update"
-
+    "Die Migration der Temperatursensoren wurde erfolgreich durchgeführt.",
+    title="Lambda Heat Pumps Update"
 )
-
 ```
 
 ## Zusammenfassung
@@ -316,23 +276,29 @@ json
   "iot_class": "local_polling"
 }
 
-Technische Details
-Was die Migration bewirkt
+## Technische Details
 
-    Identifiziert alle Temperatursensoren mit falscher state_class: total
+### Was die Migration bewirkt
 
-    Aktualisiert die Metadaten in der Datenbank auf state_class: measurement
+- Identifiziert alle Temperatursensoren mit falscher `state_class: total`
+- Aktualisiert die `shared_attrs` in der `state_attributes` Tabelle
+- Ändert nicht die historischen Rohdaten
+- Wirkt sich nur auf zukünftige Statistiken aus
 
-    Ändert nicht die historischen Rohdaten
+### Datenbankstruktur (ab Home Assistant 2023.12)
 
-    Wirkt sich nur auf zukünftige Statistiken aus
+Die Migration arbeitet mit der folgenden Datenbankstruktur:
 
-Auswirkungen auf Daten
-Datenart	Vor Migration	Nach Migration
-Historische Rohdaten	✅ Bleiben erhalten	✅ Unverändert
-Bestehende Statistiken	❌ Falsch kategorisiert	❌ Unverändert
-Zukünftige Statistiken	Wären falsch	✅ Korrekt kategorisiert
-Energie-Dashboard	Mögliche Fehler	✅ Korrekte Integration
+- `states_meta`: Enthält die Entity-IDs und Metadaten
+- `states`: Speichert die State-Historie, verknüpft mit `states_meta` über `metadata_id`
+- `state_attributes`: Enthält die `shared_attrs` mit den Entity-Attributen, verknüpft mit `states` über `attributes_id`
+
+Die `shared_attrs` in der `state_attributes` Tabelle enthalten die Entity-Attribute wie:
+- state_class
+- unit_of_measurement
+- device_class
+- friendly_name
+
 Migrationszeitpunkt
 
     Beim ersten Start nach Update der Integration
@@ -429,3 +395,13 @@ Bei Problemen mit der Migration:
         Anzahl der Sensoren
 
         Fehlerlogs        
+
+### Auswirkungen auf Daten
+
+| Datenart | Vor Migration | Nach Migration |
+|----------|---------------|----------------|
+| Historische Rohdaten | ✅ Bleiben erhalten | ✅ Unverändert |
+| Bestehende Statistiken | ❌ Falsch kategorisiert | ❌ Unverändert |
+| Zukünftige Statistiken | Wären falsch | ✅ Korrekt kategorisiert |
+| Verlauf/History | ✅ Sichtbar | ✅ Sichtbar |
+| Energie-Dashboard | Mögliche Fehler | ✅ Korrekte Integration |
