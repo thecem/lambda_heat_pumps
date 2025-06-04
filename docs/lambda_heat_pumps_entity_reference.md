@@ -158,3 +158,16 @@ This document provides a detailed reference of all entities created by the Lambd
 - State sensors return mapped text values rather than raw numbers
 - Some entities are read-only, while others (especially climate entities) allow control
 - Energy measurement entities use the "total_increasing" state class for proper energy statistics
+
+## Modbus Register Services
+
+The following Home Assistant services are available for advanced Modbus access:
+- `lambda_heat_pumps.read_modbus_register`: Reads a value from any Modbus register address.
+- `lambda_heat_pumps.write_modbus_register`: Writes a value to any Modbus register address.
+
+See the main documentation for usage examples.
+
+## Notes on Climate Entities
+
+- Heating circuit climate entities are only created if a room thermostat sensor is configured for the respective circuit.
+- All climate entities are defined by templates in `const.py` for maintainability and flexibility.

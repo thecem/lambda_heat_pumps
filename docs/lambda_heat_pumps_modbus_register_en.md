@@ -149,3 +149,11 @@ Index Subindex Number
 
 - Data points between 00-49 that are written to must be regularly updated (timeout after 5 minutes)
 - Data points above 50 can be written once and are permanently stored
+
+## Modbus Register Services
+
+The integration provides two Home Assistant services for direct Modbus register access:
+- `lambda_heat_pumps.read_modbus_register`: Reads any Modbus register value.
+- `lambda_heat_pumps.write_modbus_register`: Writes a value to any Modbus register.
+
+These services can be used via the Developer Tools. Register addresses are calculated dynamically and must be specified according to the Modbus documentation.

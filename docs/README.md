@@ -31,6 +31,12 @@ This integration allows you to connect your Lambda Heat Pump system to Home Assi
 - Configurable polling interval for data updates
 - Detailed entity attributes for comprehensive system information
 
+## New Features (2024)
+
+- Modbus register read/write services for advanced users
+- Dynamic entity creation: Heating circuit climate entities are only created if a room thermostat is configured
+- All climate entities are now defined by templates in const.py for easier maintenance and extension
+
 ## Component Documentation
 
 The Lambda Heat Pumps integration is comprised of several components:

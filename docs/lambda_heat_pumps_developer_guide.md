@@ -277,3 +277,19 @@ When contributing to the project:
   ```bash
   mbpoll -a 1 -r 1000 -c 10 -t 3 -1 192.168.1.100 502
   ```
+
+## Modbus Register Services
+
+The integration provides two Home Assistant services for advanced Modbus access:
+- `lambda_heat_pumps.read_modbus_register`: Read any Modbus register from the Lambda controller.
+- `lambda_heat_pumps.write_modbus_register`: Write a value to any Modbus register of the Lambda controller.
+
+These services are defined in `services.py` and documented in `services.yaml`.
+
+## Template-based Climate Entities
+
+All climate entities (boiler, heating circuit) are now defined by templates in `const.py`. This allows for easy extension and central management of entity properties.
+
+## Dynamic Entity Creation
+
+Heating circuit climate entities are only created if a room thermostat sensor is configured for the respective circuit in the integration options.

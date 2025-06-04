@@ -187,6 +187,24 @@ Für viele Heizkreise (z.B. 8 oder mehr) empfehlen wir ein Scan-Intervall von mi
 
 Tipp: Deaktivieren Sie Register von Sensoren, die Sie nicht benötigen, um die Anzahl der Modbus-Abfragen zu reduzieren.
 
+## Modbus Register Services
+
+The integration provides two additional Home Assistant services for advanced users:
+- `lambda_heat_pumps.read_modbus_register`: Read any Modbus register from the Lambda controller.
+- `lambda_heat_pumps.write_modbus_register`: Write a value to any Modbus register of the Lambda controller.
+
+You can use these services via the Developer Tools → Services UI. See the main documentation for details and examples.
+
+## Dynamic Entity Creation
+
+- Heating circuit climate entities are only created if a room thermostat sensor is configured for the respective circuit in the integration options.
+- Boiler and other device entities are created based on the configured device count.
+
+## Template-based Climate Entities
+
+- All climate entities (boiler, heating circuit) are now defined by templates in `const.py`.
+- This makes it easy to extend or adjust entity properties centrally.
+
 ## Next Steps
 
 Once your integration is running:

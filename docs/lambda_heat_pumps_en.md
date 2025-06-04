@@ -10,6 +10,9 @@ The Lambda Heat Pumps integration is a custom component for Home Assistant that 
 4. [Sensor Data Retrieval](#sensor-data-retrieval)
 5. [Configuration](#configuration)
 6. [Function Overview](#function-overview)
+7. [Modbus Register Services](#modbus-register-services)
+8. [Dynamic Entity Creation](#dynamic-entity-creation)
+9. [Template-based Climate Entities](#template-based-climate-entities)
 
 ## Integration Structure
 
@@ -231,3 +234,21 @@ def get_compatible_sensors(sensor_templates: dict, fw_version: int) -> dict:
 ```
 
 Each sensor has a `firmware_version` attribute that indicates the minimum version from which the sensor is available.
+
+## Modbus Register Services
+
+The integration provides two Home Assistant services for advanced Modbus access:
+- `lambda_heat_pumps.read_modbus_register`: Read any Modbus register from the Lambda controller.
+- `lambda_heat_pumps.write_modbus_register`: Write a value to any Modbus register of the Lambda controller.
+
+These services can be used via the Developer Tools. See the documentation for details.
+
+## Dynamic Entity Creation
+
+- Heating circuit climate entities are only created if a room thermostat sensor is configured for the respective circuit in the integration options.
+- Boiler and other device entities are created based on the configured device count.
+
+## Template-based Climate Entities
+
+- All climate entities (boiler, heating circuit) are now defined by templates in `const.py`.
+- This makes it easy to extend or adjust entity properties centrally.

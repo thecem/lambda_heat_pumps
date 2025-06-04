@@ -45,6 +45,15 @@ The integration polls data at regular intervals (default: 30 seconds), so there 
 ### Can I use this integration in automations?
 Yes, all entities and services provided by the integration can be used in Home Assistant automations, scripts, and scenes.
 
+### Can I read or write arbitrary Modbus registers?
+Yes, the integration provides two services: `read_modbus_register` and `write_modbus_register`. You can use these via the Home Assistant Developer Tools to read or write any Modbus register address. See the documentation for details.
+
+### Why is my heating circuit climate entity missing?
+Heating circuit climate entities are only created if a room thermostat sensor is configured for that circuit in the integration options.
+
+### How are climate entities defined?
+All climate entities are now defined by templates in `const.py`, making it easy to adjust or extend their properties centrally.
+
 ## Troubleshooting
 
 ### Why do some entities show "unavailable"?

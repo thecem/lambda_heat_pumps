@@ -10,6 +10,9 @@ Die Lambda Wärmepumpen Integration ist eine benutzerdefinierte Komponente für 
 4. [Sensor-Abruf](#sensor-abruf)
 5. [Konfiguration](#konfiguration)
 6. [Funktionsübersicht](#funktionsübersicht)
+7. [Modbus-Register-Services](#modbus-register-services)
+8. [Dynamische Entity-Erstellung](#dynamische-entity-erstellung)
+9. [Template-basierte Climate-Entities](#template-basierte-climate-entities)
 
 ## Aufbau der Integration
 
@@ -231,3 +234,21 @@ def get_compatible_sensors(sensor_templates: dict, fw_version: int) -> dict:
 ```
 
 Jeder Sensor hat ein `firmware_version`-Attribut, das die Mindestversion angibt, ab der der Sensor verfügbar ist.
+
+## Modbus-Register-Services
+
+Die Integration stellt zwei Home Assistant-Services für den direkten Zugriff auf Modbus-Register bereit:
+- `lambda_heat_pumps.read_modbus_register`: Liest einen beliebigen Modbus-Registerwert aus.
+- `lambda_heat_pumps.write_modbus_register`: Schreibt einen Wert in ein beliebiges Modbus-Register.
+
+Diese Services können über die Entwicklerwerkzeuge genutzt werden. Die Registeradressen werden dynamisch berechnet und müssen entsprechend der Modbus-Dokumentation angegeben werden.
+
+## Dynamische Entity-Erstellung
+
+- Heizkreis-Klima-Entitäten werden nur erstellt, wenn für den jeweiligen Heizkreis ein Raumthermostat-Sensor in den Integrationsoptionen konfiguriert ist.
+- Boiler- und andere Geräte-Entitäten werden entsprechend der konfigurierten Geräteanzahl erstellt.
+
+## Template-basierte Climate-Entities
+
+- Alle Climate-Entities (Boiler, Heizkreis) sind jetzt zentral in `const.py` als Templates definiert.
+- Dadurch können Eigenschaften zentral gepflegt und erweitert werden.
