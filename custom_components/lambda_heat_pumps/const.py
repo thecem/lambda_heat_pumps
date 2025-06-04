@@ -1051,7 +1051,7 @@ CLIMATE_TEMPLATES = {
     "hot_water": {
         "relative_address": 2,
         "relative_set_address": 50,
-        "name": "HOT Water",
+        "name": "Hot Water",
         "unit": "°C",
         "scale": 0.1,
         "precision": 0.5,
@@ -1059,12 +1059,12 @@ CLIMATE_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "boil",
         "writeable": True,
-        "hvac_mode": "heat", 
+        "hvac_mode": {"heat"}, 
         "state_class": "measurement",
     },
     "heating_circuit": {
-        "relative_address": 4,
-        "relative_set_address": 51,
+        "relative_address": 4, ## room_device_temperature
+        "relative_set_address": 51, ## target_room_temperature
         "name": "Heating Circuit",
         "unit": "°C",
         "scale": 0.1,
@@ -1073,7 +1073,7 @@ CLIMATE_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "hc",
         "writeable": True,
-        "hvac_mode": "heat", 
+        "hvac_mode": {"heat"}, 
         "state_class": "measurement",
     },
 }
