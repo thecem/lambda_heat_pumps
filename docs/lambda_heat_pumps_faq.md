@@ -45,15 +45,6 @@ The integration polls data at regular intervals (default: 30 seconds), so there 
 ### Can I use this integration in automations?
 Yes, all entities and services provided by the integration can be used in Home Assistant automations, scripts, and scenes.
 
-### Can I read or write arbitrary Modbus registers?
-Yes, the integration provides two services: `read_modbus_register` and `write_modbus_register`. You can use these via the Home Assistant Developer Tools to read or write any Modbus register address. See the documentation for details.
-
-### Why is my heating circuit climate entity missing?
-Heating circuit climate entities are only created if a room thermostat sensor is configured for that circuit in the integration options.
-
-### How are climate entities defined?
-All climate entities are now defined by templates in `const.py`, making it easy to adjust or extend their properties centrally.
-
 ## Troubleshooting
 
 ### Why do some entities show "unavailable"?
@@ -76,6 +67,81 @@ logger:
 
 ### What should I do if I get timeout errors?
 Network timeouts can occur if there are connectivity issues between Home Assistant and the Lambda controller. Check your network setup and try increasing the polling interval in the integration options.
+
+## Developer Issues
+
+### I'm getting "Python Jedi server crashed" errors in VS Code. How can I fix this?
+This error occurs when the Python language server (Jedi) crashes repeatedly in VS Code. To resolve it:
+
+1. **Restart VS Code**: Close and reopen VS Code completely
+2. **Check Python Extensions**: Make sure your Python extension is up-to-date
+3. **Reset VS Code Python Settings**:
+   - Open Command Palette (`Ctrl+Shift+P`)
+   - Type and select "Python: Select Interpreter"
+   - Choose your Python interpreter again
+4. **Create/Update settings.json**:
+   - Open Command Palette (`Ctrl+Shift+P`)
+   - Type and select "Preferences: Open Settings (JSON)"
+   - Add or update these settings:
+   ```json
+   {
+     "python.linting.enabled": true,
+     "python.jediEnabled": false,
+     "python.languageServer": "Pylance",
+     "python.analysis.extraPaths": [
+       "${workspaceFolder}"
+     ]
+   }
+   ```
+5. **Check Memory Usage**: If the server crashes persist, your system might be low on memory. Close other applications to free up resources.
+
+### How do I set up a development environment for working on the integration?
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/GuidoJeuken-6512/lambda_heat_pumps_hacs
+   ```
+
+2. **Set up a virtual environment**:
+   ```bash
+   cd lambda_heat_pumps_hacs
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   pip install -r requirements_test.txt
+   ```
+
+3. **Run the tests**:
+   ```bash
+   pytest
+   ```
+
+4. **Development workflow**:
+   - Make your changes
+   - Run `pytest` to verify your changes don't break existing functionality
+   - Submit a pull request with your improvements
+
+### How can I debug the integration during development?
+
+1. **Enable debug logging** in your `configuration.yaml`:
+   ```yaml
+   logger:
+     default: info
+     logs:
+       custom_components.lambda_heat_pumps: debug
+   ```
+
+2. **Use Visual Studio Code Debug Configuration**:
+   - Use the included `.vscode/launch.json` configuration for debugging
+   - Set breakpoints in your code
+   - Use the Debug Console to examine variables
+
+3. **Log to a file** for persistent debugging:
+   ```python
+   import logging
+   _LOGGER = logging.getLogger(__name__)
+   _LOGGER.debug("Debug message with variable: %s", variable)
+   ```
 
 ## Advanced Topics
 

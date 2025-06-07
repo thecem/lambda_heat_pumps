@@ -49,8 +49,29 @@ _LOGGER = logging.getLogger(__name__)
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
     """Validate the user input allows us to connect."""
-    # hass and data arguments are unused, kept for interface compatibility
-    pass
+    from pymodbus.client import ModbusTcpClient
+    
+    client = ModbusTcpClient(data[CONF_HOST], port=data[CONF_PORT])
+    try:
+        if not await hass.async_add_executor_job(client.connect):
+            raise CannotConnect("Could not connect to Modbus TCP")
+        
+        # Test read of a register to verify connection
+        result = await hass.async_add_executor_job(
+            client.read_holding_registers,
+            0,  # Start address
+            1,  # Number of registers to read
+            data[CONF_SLAVE_ID]
+        )
+        
+        if result.isError():
+            raise CannotConnect("Failed to read from device")
+            
+    except Exception as ex:
+        _LOGGER.error("Connection test failed: %s", ex)
+        raise CannotConnect("Failed to connect to device") from ex
+    finally:
+        client.close()
 
 
 class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -345,6 +366,8 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
             _LOGGER.exception("Unexpected exception")
             errors["base"] = "unknown"
 
+        # Zeige das vollständige Formular mit allen Feldern an
+        firmware_options = list(FIRMWARE_VERSION.keys())
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema(
@@ -355,28 +378,159 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                             CONF_NAME,
                             existing_data.get(CONF_NAME, DEFAULT_NAME)
                         ),
-                    ): str,
+                    ): selector.TextSelector(),
                     vol.Required(
                         CONF_HOST,
                         default=user_input.get(
                             CONF_HOST,
                             existing_data.get(CONF_HOST, DEFAULT_HOST)
                         ),
-                    ): str,
+                    ): selector.TextSelector(),
                     vol.Required(
                         CONF_PORT,
-                        default=user_input.get(
-                            CONF_PORT,
-                            existing_data.get(CONF_PORT, DEFAULT_PORT)
+                        default=int(
+                            user_input.get(
+                                CONF_PORT,
+                                existing_data.get(CONF_PORT, DEFAULT_PORT),
+                            )
                         ),
-                    ): int,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=65535,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
                     vol.Required(
                         CONF_SLAVE_ID,
-                        default=user_input.get(
-                            CONF_SLAVE_ID,
-                            existing_data.get(CONF_SLAVE_ID, DEFAULT_SLAVE_ID)
+                        default=int(
+                            user_input.get(
+                                CONF_SLAVE_ID,
+                                existing_data.get(
+                                    CONF_SLAVE_ID,
+                                    DEFAULT_SLAVE_ID
+                                ),
+                            )
                         ),
-                    ): int,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=255,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Required(
+                        "num_hps",
+                        default=int(
+                            user_input.get(
+                                "num_hps",
+                                existing_data.get(
+                                    "num_hps",
+                                    DEFAULT_NUM_HPS
+                                ),
+                            )
+                        ),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=MAX_NUM_HPS,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Required(
+                        "num_boil",
+                        default=int(
+                            user_input.get(
+                                "num_boil",
+                                existing_data.get(
+                                    "num_boil",
+                                    DEFAULT_NUM_BOIL
+                                ),
+                            )
+                        ),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0,
+                            max=MAX_NUM_BOIL,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Required(
+                        "num_hc",
+                        default=int(
+                            user_input.get(
+                                "num_hc",
+                                existing_data.get(
+                                    "num_hc",
+                                    DEFAULT_NUM_HC
+                                ),
+                            )
+                        ),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0,
+                            max=MAX_NUM_HC,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Required(
+                        "num_buffer",
+                        default=int(
+                            user_input.get(
+                                "num_buffer",
+                                existing_data.get(
+                                    "num_buffer",
+                                    DEFAULT_NUM_BUFFER
+                                ),
+                            )
+                        ),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0,
+                            max=MAX_NUM_BUFFER,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Required(
+                        "num_solar",
+                        default=int(
+                            user_input.get(
+                                "num_solar",
+                                existing_data.get(
+                                    "num_solar",
+                                    DEFAULT_NUM_SOLAR
+                                ),
+                            )
+                        ),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0,
+                            max=MAX_NUM_SOLAR,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Optional(
+                        "firmware_version",
+                        default=user_input.get(
+                            "firmware_version",
+                            existing_data.get(
+                                "firmware_version",
+                                DEFAULT_FIRMWARE
+                            ),
+                        ),
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=firmware_options,
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
                 }
             ),
             errors=errors,
