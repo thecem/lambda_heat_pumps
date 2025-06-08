@@ -4,6 +4,8 @@ from datetime import timedelta
 import logging
 import asyncio
 from typing import Dict, Any
+import os
+import aiofiles
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -31,6 +33,30 @@ PLATFORMS = [
     Platform.CLIMATE,
 ]
 
+LAMBDA_WP_CONFIG_TEMPLATE = """# Lambda WP configuration
+# This file is used by Lambda WP Integration to define the configuration of Lambda WP.
+# The file is created during the installation of the Lambda WP Integration and can then be edited with the file editor or visual studio code.
+# Modbus registrations that are not required can be deactivated here.
+# Disabled registrations as an example:
+#disabled_registers:
+# - 2004 # boil1_actual_circulation_temp
+
+# overwritten sensor names as an example:
+# these override the names of the sensors created by the Lambda WP integration.
+#sensors_names_override:
+#- id: actual_heating_capacity
+#  override_name: Hp_QP_heating
+# sensors_names_override does only functions if use_legacy_modbus_names is set to true!!!
+
+
+disabled_registers:
+ - 100000 # this sensor does not exits, this is just an example
+
+sensors_names_override:
+- id: name_of_the_sensor_to_override_example
+  override_name: new_name_of_the_sensor_example
+"""
+
 def setup_debug_logging(hass: HomeAssistant, config: ConfigType) -> None:
     """Set up debug logging for the integration."""
     # hass argument is unused, kept for interface compatibility
@@ -48,6 +74,13 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Lambda Heat Pumps from a config entry."""
     _LOGGER.debug("Setting up Lambda integration with config: %s", entry.data)
+    
+    # Prüfe, ob lambda_wp_config.yaml existiert, sonst anlegen
+    config_dir = hass.config.config_dir
+    lambda_config_path = os.path.join(config_dir, "lambda_wp_config.yaml")
+    if not os.path.exists(lambda_config_path):
+        async with aiofiles.open(lambda_config_path, "w") as f:
+            await f.write(LAMBDA_WP_CONFIG_TEMPLATE)
     
     # Generate base addresses based on configured device counts
     num_hps = entry.data.get("num_hps", 1)

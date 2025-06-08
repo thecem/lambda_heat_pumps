@@ -35,8 +35,8 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
 
         # Dynamische Namen und IDs
         self._attr_name = f"{self._template['name']} {idx}"
-        self._attr_unique_id = f"{DOMAIN}_{device_type}_{idx}_{entry.entry_id}"
-        self.entity_id = f"climate.{DOMAIN}_{device_type}_{idx}_{entry.entry_id}"
+        self._attr_unique_id = f"{DOMAIN}_{device_type}_{idx}"
+        self.entity_id = f"climate.{DOMAIN}_{device_type}_{idx}"
 
         # Temperaturbereich und Schrittweite
         self._attr_min_temp = 40 if device_type == "hot_water" else 20
