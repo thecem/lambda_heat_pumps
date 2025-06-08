@@ -47,6 +47,11 @@ HP_REQUEST_TYPE = {
 }
 
 # Boiler States
+BOIL_CIRCULATION_PUMP_STATE = {
+    0: "Off",
+    1: "On",
+}
+
 BOIL_OPERATING_STATE = {
     0: "Off",
     1: "Standby",
