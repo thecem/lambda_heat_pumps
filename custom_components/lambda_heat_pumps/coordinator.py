@@ -52,13 +52,8 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.setLevel(logging.DEBUG)
         self.client = None
         self.config_entry_id = entry.entry_id
-        self.disabled_registers = set()
         self._config_dir = hass.config.config_dir
         self._config_path = os.path.join(self._config_dir, "lambda_heat_pumps")
-        # Nutze die lokale Datei im Custom Component-Ordner
-        self._disabled_registers_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "disabled_registers.yaml"
-        )
         self.hass = hass
         self.entry = entry
 
@@ -67,13 +62,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Initializing Lambda coordinator")
         _LOGGER.debug("Config directory: %s", self._config_dir)
         _LOGGER.debug("Config path: %s", self._config_path)
-        _LOGGER.debug("Disabled registers path: %s", self._disabled_registers_path)
 
         try:
             await self._ensure_config_dir()
             _LOGGER.debug("Config directory ensured")
 
-            self.disabled_registers = await load_disabled_registers(self.hass, self._disabled_registers_path)
+            self.disabled_registers = await load_disabled_registers(self.hass)
             _LOGGER.debug("Loaded disabled registers: %s", self.disabled_registers)
 
             if not self.disabled_registers:

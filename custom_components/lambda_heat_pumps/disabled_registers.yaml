@@ -6,9 +6,3 @@
 # - 1235  # boil1_actual_circulation_pump_state
 
 disabled_registers:
-  - 2004  # boil1_actual_circulation_temp
-  - 2005  # boil1_actual_circulation_pump_state 
-  - 5007
-  - 2099
-  - 999
-  

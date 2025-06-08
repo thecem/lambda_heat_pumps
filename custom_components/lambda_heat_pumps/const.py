@@ -217,7 +217,6 @@ HP_SENSOR_TEMPLATES = {
         "device_type": "Hp",
         "writeable": False,
         "state_class": "total",
-        "override_name": "Hp_QP_heating",
     },
     "inverter_power_consumption": {
         "relative_address": 12,
