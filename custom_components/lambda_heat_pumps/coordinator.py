@@ -18,7 +18,7 @@ from .const import (
     DEFAULT_FIRMWARE,
     HC_SENSOR_TEMPLATES,
 )
-from .utils import get_compatible_sensors, load_disabled_registers, is_register_disabled, generate_base_addresses
+from .utils import get_compatible_sensors, load_disabled_registers, is_register_disabled, generate_base_addresses, to_signed_16bit, to_signed_32bit
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=30)
@@ -174,8 +174,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         continue
                     if count == 2:
                         value = (result.registers[0] << 16) | result.registers[1]
+                        if sensor_info.get("data_type") == "int32":
+                            value = to_signed_32bit(value)
                     else:
                         value = result.registers[0]
+                        if sensor_info.get("data_type") == "int16":
+                            value = to_signed_16bit(value)
                     if "scale" in sensor_info:
                         value = value * sensor_info["scale"]
                     data[sensor_id] = value
@@ -218,8 +222,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             continue
                         if count == 2:
                             value = (result.registers[0] << 16) | result.registers[1]
+                            if sensor_info.get("data_type") == "int32":
+                                value = to_signed_32bit(value)
                         else:
                             value = result.registers[0]
+                            if sensor_info.get("data_type") == "int16":
+                                value = to_signed_16bit(value)
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
                         # override_name-Mechanismus
@@ -265,8 +273,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             continue
                         if count == 2:
                             value = (result.registers[0] << 16) | result.registers[1]
+                            if sensor_info.get("data_type") == "int32":
+                                value = to_signed_32bit(value)
                         else:
                             value = result.registers[0]
+                            if sensor_info.get("data_type") == "int16":
+                                value = to_signed_16bit(value)
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
                         use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
@@ -307,8 +319,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                 continue
                             if count == 2:
                                 value = (result.registers[0] << 16) | result.registers[1]
+                                if sensor_info.get("data_type") == "int32":
+                                    value = to_signed_32bit(value)
                             else:
                                 value = result.registers[0]
+                                if sensor_info.get("data_type") == "int16":
+                                    value = to_signed_16bit(value)
                             if "scale" in sensor_info:
                                 value = value * sensor_info["scale"]
                             use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
@@ -349,8 +365,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                 continue
                             if count == 2:
                                 value = (result.registers[0] << 16) | result.registers[1]
+                                if sensor_info.get("data_type") == "int32":
+                                    value = to_signed_32bit(value)
                             else:
                                 value = result.registers[0]
+                                if sensor_info.get("data_type") == "int16":
+                                    value = to_signed_16bit(value)
                             if "scale" in sensor_info:
                                 value = value * sensor_info["scale"]
                             use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
@@ -390,8 +410,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             continue
                         if count == 2:
                             value = (result.registers[0] << 16) | result.registers[1]
+                            if sensor_info.get("data_type") == "int32":
+                                value = to_signed_32bit(value)
                         else:
                             value = result.registers[0]
+                            if sensor_info.get("data_type") == "int16":
+                                value = to_signed_16bit(value)
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
                         use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)

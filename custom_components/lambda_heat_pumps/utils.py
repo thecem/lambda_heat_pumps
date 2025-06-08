@@ -163,3 +163,11 @@ def generate_base_addresses(device_type: str, count: int) -> dict:
         
     return {i: start_address + (i-1) * 100 for i in range(1, count + 1)}
 
+def to_signed_16bit(val):
+    """Wandelt einen 16-Bit-Wert in signed um."""
+    return val - 0x10000 if val >= 0x8000 else val
+
+def to_signed_32bit(val):
+    """Wandelt einen 32-Bit-Wert in signed um."""
+    return val - 0x100000000 if val >= 0x80000000 else val
+
