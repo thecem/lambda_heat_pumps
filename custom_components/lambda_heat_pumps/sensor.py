@@ -89,6 +89,11 @@ async def async_setup_entry(
                         scale=sensor_info.get("scale", 1.0),
                         state_class=sensor_info.get("state_class", ""),
                         device_class=device_class,
+                        relative_address=sensor_info.get("relative_address", 0),
+                        data_type=sensor_info.get("data_type", None),
+                        device_type=sensor_info.get("device_type", None),
+                        txt_mapping=sensor_info.get("txt_mapping", False),
+                        precision=sensor_info.get("precision", None),
                     )
                 )
 
@@ -113,14 +118,28 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
         scale: float,
         state_class: str,
         device_class: SensorDeviceClass,
+        relative_address: int,
+        data_type: str,
+        device_type: str,
+        txt_mapping: bool = False,
+        precision: int | float | None = None,
     ) -> None:
-        """Initialize the sensor."""
         super().__init__(coordinator)
         self._entry = entry
         self._sensor_id = sensor_id
         self._attr_name = name
         self._attr_unique_id = sensor_id
         self.entity_id = f"sensor.{sensor_id}"
+        self._unit = unit
+        self._address = address
+        self._scale = scale
+        self._state_class = state_class
+        self._device_class = device_class
+        self._relative_address = relative_address
+        self._data_type = data_type
+        self._device_type = device_type
+        self._txt_mapping = txt_mapping
+        self._precision = precision
 
         _LOGGER.debug(
             "Sensor initialized with ID: %s and config: %s",
@@ -132,49 +151,31 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
                 "scale": scale,
                 "state_class": state_class,
                 "device_class": device_class,
+                "relative_address": relative_address,
+                "data_type": data_type,
+                "device_type": device_type,
+                "txt_mapping": txt_mapping,
+                "precision": precision,
             },
         )
 
-        # Hole die Sensor-Info aus dem entsprechenden Template
-        device_type = sensor_id.split('_')[0][:-1]  # z.B. "hp" aus "hp1_..."
-        sensor_key = sensor_id.split('_', 1)[1]  # z.B. "error_state" aus "hp1_error_state"
-        
-        if device_type == "hp":
-            sensor_info = HP_SENSOR_TEMPLATES.get(sensor_key, {})
-        elif device_type == "boil":
-            sensor_info = BOIL_SENSOR_TEMPLATES.get(sensor_key, {})
-        elif device_type == "buff":
-            sensor_info = BUFFER_SENSOR_TEMPLATES.get(sensor_key, {})
-        elif device_type == "sol":
-            sensor_info = SOLAR_SENSOR_TEMPLATES.get(sensor_key, {})
-        elif device_type == "hc":
-            sensor_info = HC_SENSOR_TEMPLATES.get(sensor_key, {})
-        else:
-            sensor_info = SENSOR_TYPES.get(sensor_key, {})
-
-        # Bestimme, ob es sich um einen Status-/Mode-Sensor handelt
-        self._is_state_sensor = sensor_info.get("txt_mapping", False)
+        self._is_state_sensor = txt_mapping
 
         if self._is_state_sensor:
-            # Für Status-/Mode-Sensoren: Keine Metadaten setzen
             self._attr_device_class = None
             self._attr_state_class = None
             self._attr_native_unit_of_measurement = None
             self._attr_suggested_display_precision = None
         else:
-            # Für numerische Sensoren: Metadaten aus der Konfiguration übernehmen
             self._attr_native_unit_of_measurement = unit
-            if "precision" in sensor_info:
-                self._attr_suggested_display_precision = sensor_info["precision"]
-
+            if precision is not None:
+                self._attr_suggested_display_precision = precision
             if unit == "°C":
                 self._attr_device_class = SensorDeviceClass.TEMPERATURE
             elif unit == "W":
                 self._attr_device_class = SensorDeviceClass.POWER
             elif unit == "Wh":
                 self._attr_device_class = SensorDeviceClass.ENERGY
-
-            # State-Class nur für numerische Sensoren setzen
             if state_class:
                 if state_class == "total":
                     self._attr_state_class = SensorStateClass.TOTAL
@@ -185,49 +186,21 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self) -> float | str | None:
-        """Return the state of the sensor."""
         if not self.coordinator.data:
             return None
-
         value = self.coordinator.data.get(self._sensor_id)
         if value is None:
             return None
-
         if self._is_state_sensor:
             try:
                 numeric_value = int(float(value))
             except (ValueError, TypeError):
                 return f"Unknown state ({value})"
-
-            # Hole die Sensor-Info aus dem entsprechenden Template
-            device_type = self._sensor_id.split('_')[0][:-1]  # z.B. "hp" aus "hp1_..."
-            sensor_key = self._sensor_id.split('_', 1)[1]  # z.B. "error_state" aus "hp1_error_state"
-            
-            if device_type == "hp":
-                sensor_info = HP_SENSOR_TEMPLATES.get(sensor_key, {})
-            elif device_type == "boil":
-                sensor_info = BOIL_SENSOR_TEMPLATES.get(sensor_key, {})
-            elif device_type == "buff":
-                sensor_info = BUFFER_SENSOR_TEMPLATES.get(sensor_key, {})
-            elif device_type == "sol":
-                sensor_info = SOLAR_SENSOR_TEMPLATES.get(sensor_key, {})
-            elif device_type == "hc":
-                sensor_info = HC_SENSOR_TEMPLATES.get(sensor_key, {})
-            else:
-                sensor_info = SENSOR_TYPES.get(sensor_key, {})
-            
-            # Konstruiere den Namen des Mapping-Dictionaries
-            # Beispiel: "MAIN_CIRCULATION_PUMP_STATE" oder "HP_ERROR_STATE"
-            mapping_name = f"{sensor_info.get('device_type', '').upper()}_{self._attr_name.upper().replace(' ', '_')}"
-            
-            # Versuche das Mapping direkt aus dem importierten const_mapping zu holen
+            mapping_name = f"{self._device_type.upper()}_{self._attr_name.upper().replace(' ', '_')}"
             try:
                 state_mapping = globals().get(mapping_name)
-                
                 if state_mapping is not None:
                     return state_mapping.get(numeric_value, f"Unknown state ({numeric_value})")
-                
-                # Erweiterte Warnung mit Modbus-Register-Informationen
                 _LOGGER.warning(
                     "No state mapping found for sensor '%s' (tried mapping name: %s) with value %s. "
                     "Sensor details: device_type=%s, register=%d, data_type=%s. "
@@ -235,17 +208,14 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
                     self._attr_name,
                     mapping_name,
                     numeric_value,
-                    sensor_info.get('device_type', 'unknown'),
-                    sensor_info.get('relative_address', -1),
-                    sensor_info.get('data_type', 'unknown')
+                    self._device_type,
+                    self._relative_address,
+                    self._data_type
                 )
                 return f"Unknown mapping for state ({numeric_value})"
-                
             except Exception as e:
                 _LOGGER.error("Error accessing mapping dictionary: %s", str(e))
                 return f"Error loading mappings ({numeric_value})"
-
-        # Für numerische Sensoren: Float zurückgeben
         try:
             return float(value)
         except (ValueError, TypeError):
@@ -253,29 +223,19 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def device_info(self):
-        # Versuche Instanztyp und Index aus sensor_id zu extrahieren
-        # Beispiel: hp1_..., boil2_..., hc1_..., buff1_..., sol1_...
-        import re
-        sensor_id = self._sensor_id
-        if sensor_id.startswith("hp"):
-            m = re.match(r"hp(\d+)_", sensor_id)
-            if m:
-                return build_device_info(self._entry, "hp", int(m.group(1)))
-        elif sensor_id.startswith("boil"):
-            m = re.match(r"boil(\d+)_", sensor_id)
-            if m:
-                return build_device_info(self._entry, "boil", int(m.group(1)))
-        elif sensor_id.startswith("hc"):
-            m = re.match(r"hc(\d+)_", sensor_id)
-            if m:
-                return build_device_info(self._entry, "hc", int(m.group(1)))
-        elif sensor_id.startswith("buff"):
-            m = re.match(r"buff(\d+)_", sensor_id)
-            if m:
-                return build_device_info(self._entry, "buffer", int(m.group(1)))
-        elif sensor_id.startswith("sol"):
-            m = re.match(r"sol(\d+)_", sensor_id)
-            if m:
-                return build_device_info(self._entry, "solar", int(m.group(1)))
-        # Fallback: Hauptgerät
-        return build_device_info(self._entry, "main")
+        """Return device info for this sensor."""
+        # Use device_type from sensor template, defaulting to "main" if not set
+        device_type = self._device_type.lower() if self._device_type else "main"
+        
+        # Extract index from sensor_id if it exists
+        idx = None
+        if self._sensor_id:
+            parts = self._sensor_id.split('_')
+            if len(parts) > 0:
+                # Extract number from prefix (e.g., "hp1" -> 1)
+                import re
+                match = re.search(r'\d+', parts[0])
+                if match:
+                    idx = int(match.group())
+        
+        return build_device_info(self._entry, device_type, idx)
