@@ -726,6 +726,7 @@ HC_SENSOR_TEMPLATES = {
         "device_type": "hc",
         "writeable": False,
         "state_class": "total",
+        "txt_mapping": True,
     },
     "set_flow_line_offset_temperature": {
         "relative_address": 50,

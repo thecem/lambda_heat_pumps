@@ -164,10 +164,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         continue
                     try:
                         _LOGGER.debug("Reading register %d for sensor %s", address, sensor_id)
+                        count = 2 if sensor_info.get("data_type") == "int32" else 1
                         result = await self.hass.async_add_executor_job(
                             self.client.read_holding_registers,
                             address,
-                            1,
+                            count,
                             self.entry.data.get("slave_id", 1)
                         )
                         if hasattr(result, "isError") and result.isError():
@@ -187,7 +188,10 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                 result,
                             )
                             continue
-                        value = result.registers[0]
+                        if count == 2:
+                            value = (result.registers[0] << 16) | result.registers[1]
+                        else:
+                            value = result.registers[0]
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
                         data[f"hp{hp_idx}_{sensor_id}"] = value
@@ -211,10 +215,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     if is_register_disabled(address, self.disabled_registers):
                         continue
                     try:
+                        count = 2 if sensor_info.get("data_type") == "int32" else 1
                         result = await self.hass.async_add_executor_job(
                             self.client.read_holding_registers,
                             address,
-                            1,
+                            count,
                             self.entry.data.get("slave_id", 1)
                         )
                         if hasattr(result, "isError") and result.isError():
@@ -224,7 +229,10 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                 result,
                             )
                             continue
-                        value = result.registers[0]
+                        if count == 2:
+                            value = (result.registers[0] << 16) | result.registers[1]
+                        else:
+                            value = result.registers[0]
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
                         data[f"boil{boil_idx}_{sensor_id}"] = value
@@ -244,10 +252,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         if is_register_disabled(address, self.disabled_registers):
                             continue
                         try:
+                            count = 2 if sensor_info.get("data_type") == "int32" else 1
                             result = await self.hass.async_add_executor_job(
                                 self.client.read_holding_registers,
                                 address,
-                                1,
+                                count,
                                 self.entry.data.get("slave_id", 1)
                             )
                             if hasattr(result, "isError") and result.isError():
@@ -257,7 +266,10 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                     result,
                                 )
                                 continue
-                            value = result.registers[0]
+                            if count == 2:
+                                value = (result.registers[0] << 16) | result.registers[1]
+                            else:
+                                value = result.registers[0]
                             if "scale" in sensor_info:
                                 value = value * sensor_info["scale"]
                             data[f"buff{buff_idx}_{sensor_id}"] = value
@@ -277,10 +289,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         if is_register_disabled(address, self.disabled_registers):
                             continue
                         try:
+                            count = 2 if sensor_info.get("data_type") == "int32" else 1
                             result = await self.hass.async_add_executor_job(
                                 self.client.read_holding_registers,
                                 address,
-                                1,
+                                count,
                                 self.entry.data.get("slave_id", 1)
                             )
                             if hasattr(result, "isError") and result.isError():
@@ -290,7 +303,10 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                     result,
                                 )
                                 continue
-                            value = result.registers[0]
+                            if count == 2:
+                                value = (result.registers[0] << 16) | result.registers[1]
+                            else:
+                                value = result.registers[0]
                             if "scale" in sensor_info:
                                 value = value * sensor_info["scale"]
                             data[f"sol{sol_idx}_{sensor_id}"] = value
@@ -309,10 +325,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     if is_register_disabled(address, self.disabled_registers):
                         continue
                     try:
+                        count = 2 if sensor_info.get("data_type") == "int32" else 1
                         result = await self.hass.async_add_executor_job(
                             self.client.read_holding_registers,
                             address,
-                            1,
+                            count,
                             self.entry.data.get("slave_id", 1)
                         )
                         if hasattr(result, "isError") and result.isError():
@@ -322,7 +339,10 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                 result,
                             )
                             continue
-                        value = result.registers[0]
+                        if count == 2:
+                            value = (result.registers[0] << 16) | result.registers[1]
+                        else:
+                            value = result.registers[0]
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
                         data[f"hc{hc_idx}_{sensor_id}"] = value
