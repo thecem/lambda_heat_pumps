@@ -223,12 +223,12 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                             )
                         ),
                         vol.Required(
-                            "num_buffer",
+                            "num_buff",
                             default=int(
                                 user_input.get(
-                                    "num_buffer",
+                                    "num_buff",
                                     existing_data.get(
-                                        "num_buffer",
+                                        "num_buff",
                                         DEFAULT_NUM_BUFFER
                                     ),
                                 )
@@ -242,12 +242,12 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                             )
                         ),
                         vol.Required(
-                            "num_solar",
+                            "num_sol",
                             default=int(
                                 user_input.get(
-                                    "num_solar",
+                                    "num_sol",
                                     existing_data.get(
-                                        "num_solar",
+                                        "num_sol",
                                         DEFAULT_NUM_SOLAR
                                     ),
                                 )
@@ -288,8 +288,8 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                 "num_hps",
                 "num_boil",
                 "num_hc",
-                "num_buffer",
-                "num_solar",
+                "num_buff",
+                "num_sol",
             ]:
                 if key in user_input:
                     user_input[key] = int(user_input[key])
@@ -479,12 +479,12 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                         )
                     ),
                     vol.Required(
-                        "num_buffer",
+                        "num_buff",
                         default=int(
                             user_input.get(
-                                "num_buffer",
+                                "num_buff",
                                 existing_data.get(
-                                    "num_buffer",
+                                    "num_buff",
                                     DEFAULT_NUM_BUFFER
                                 ),
                             )
@@ -498,12 +498,12 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                         )
                     ),
                     vol.Required(
-                        "num_solar",
+                        "num_sol",
                         default=int(
                             user_input.get(
-                                "num_solar",
+                                "num_sol",
                                 existing_data.get(
-                                    "num_solar",
+                                    "num_sol",
                                     DEFAULT_NUM_SOLAR
                                 ),
                             )

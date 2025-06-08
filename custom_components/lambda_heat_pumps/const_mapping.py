@@ -81,7 +81,7 @@ HC_OPERATING_MODE = {
 }
 
 # Buffer States
-BUFF_OPERATION_STATE = {
+BUFF_OPERATING_STATE = {
     0: "Off",
     1: "Standby",
     2: "Starting",
@@ -100,7 +100,7 @@ BUFF_REQUEST_TYPE = {
 
 # Solar States
 
-SOL_OPERATION_STATE = {0: "STBY", 1: "HEATING", 2: "ERROR", 3: "OFF"}
+SOL_OPERATING_STATE = {0: "STBY", 1: "HEATING", 2: "ERROR", 3: "OFF"}
 
 # Circulation Pump States
 MAIN_CIRCULATION_PUMP_STATE = {

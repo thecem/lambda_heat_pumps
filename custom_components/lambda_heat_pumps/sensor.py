@@ -22,8 +22,8 @@ from .const import (
     HP_SENSOR_TEMPLATES,
     BOIL_SENSOR_TEMPLATES,
     HC_SENSOR_TEMPLATES,
-    BUFFER_SENSOR_TEMPLATES,
-    SOLAR_SENSOR_TEMPLATES,
+    BUFF_SENSOR_TEMPLATES,
+    SOL_SENSOR_TEMPLATES,
 )
 from .const_mapping import *  # Import all state mappings
 from .coordinator import LambdaDataUpdateCoordinator
@@ -61,8 +61,8 @@ async def async_setup_entry(
     TEMPLATES = [
         ("hp", num_hps, HP_SENSOR_TEMPLATES),
         ("boil", num_boil, BOIL_SENSOR_TEMPLATES),
-        ("buff", num_buff, BUFFER_SENSOR_TEMPLATES),
-        ("sol", num_sol, SOLAR_SENSOR_TEMPLATES),
+        ("buff", num_buff, BUFF_SENSOR_TEMPLATES),
+        ("sol", num_sol, SOL_SENSOR_TEMPLATES),
         ("hc", num_hc, HC_SENSOR_TEMPLATES),
     ]
 
@@ -70,6 +70,10 @@ async def async_setup_entry(
         for idx in range(1, count + 1):
             base_address = generate_base_addresses(prefix, count)[idx]
             for sensor_id, sensor_info in template.items():
+                address = base_address + sensor_info["relative_address"]
+                if coordinator.is_register_disabled(address):
+                    _LOGGER.debug("Skipping sensor %s (address %d) because register is disabled", f"{prefix}{idx}_{sensor_id}", address)
+                    continue
                 device_class = sensor_info.get("device_class")
                 if not device_class and sensor_info.get("unit") == "°C":
                     device_class = SensorDeviceClass.TEMPERATURE
@@ -78,20 +82,32 @@ async def async_setup_entry(
                 elif not device_class and sensor_info.get("unit") == "Wh":
                     device_class = SensorDeviceClass.ENERGY
 
+                # Generate name based on prefix and sensor info
+                prefix_upper = prefix.upper()
+                if prefix == "hc" and sensor_info.get("device_type") == "Climate":
+                    # Climate sensors keep original name format
+                    name = sensor_info["name"].format(idx)
+                else:
+                    # Other sensors include prefix in name
+                    name = f"{prefix_upper}{idx} {sensor_info['name']}"
+
+                # Ensure correct device_type based on prefix
+                device_type = prefix.upper() if prefix in ["hp", "boil", "hc", "buff", "sol"] else sensor_info.get("device_type", "main")
+
                 sensors.append(
                     LambdaSensor(
                         coordinator=coordinator,
                         entry=entry,
                         sensor_id=f"{prefix}{idx}_{sensor_id}",
-                        name=sensor_info["name"].format(idx),
+                        name=name,
                         unit=sensor_info.get("unit", ""),
-                        address=base_address + sensor_info["relative_address"],
+                        address=address,
                         scale=sensor_info.get("scale", 1.0),
                         state_class=sensor_info.get("state_class", ""),
                         device_class=device_class,
                         relative_address=sensor_info.get("relative_address", 0),
                         data_type=sensor_info.get("data_type", None),
-                        device_type=sensor_info.get("device_type", None),
+                        device_type=device_type,
                         txt_mapping=sensor_info.get("txt_mapping", False),
                         precision=sensor_info.get("precision", None),
                     )
@@ -196,7 +212,14 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
                 numeric_value = int(float(value))
             except (ValueError, TypeError):
                 return f"Unknown state ({value})"
-            mapping_name = f"{self._device_type.upper()}_{self._attr_name.upper().replace(' ', '_')}"
+            
+            # Extract base name without index (e.g. "HP1 Operating State" -> "Operating State")
+            base_name = self._attr_name
+            if self._device_type and self._device_type.upper() in base_name:
+                # Remove prefix and index (e.g. "HP1 " or "BOIL2 ")
+                base_name = ' '.join(base_name.split()[1:])
+            
+            mapping_name = f"{self._device_type.upper()}_{base_name.upper().replace(' ', '_')}"
             try:
                 state_mapping = globals().get(mapping_name)
                 if state_mapping is not None:

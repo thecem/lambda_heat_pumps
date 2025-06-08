@@ -12,8 +12,8 @@ from .const import (
     SENSOR_TYPES,
     HP_SENSOR_TEMPLATES,
     BOIL_SENSOR_TEMPLATES,
-    BUFFER_SENSOR_TEMPLATES,
-    SOLAR_SENSOR_TEMPLATES,
+    BUFF_SENSOR_TEMPLATES,
+    SOL_SENSOR_TEMPLATES,
     FIRMWARE_VERSION,
     DEFAULT_FIRMWARE,
     HC_SENSOR_TEMPLATES,
@@ -239,7 +239,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             if num_buff > 0:
                 for buff_idx in range(1, num_buff + 1):
                     base_address = generate_base_addresses('buff', num_buff)[buff_idx]
-                    for sensor_id, sensor_info in BUFFER_SENSOR_TEMPLATES.items():
+                    for sensor_id, sensor_info in BUFF_SENSOR_TEMPLATES.items():
                         address = base_address + sensor_info["relative_address"]
                         if is_register_disabled(address, self.disabled_registers):
                             continue
@@ -272,7 +272,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             if num_sol > 0:
                 for sol_idx in range(1, num_sol + 1):
                     base_address = generate_base_addresses('sol', num_sol)[sol_idx]
-                    for sensor_id, sensor_info in SOLAR_SENSOR_TEMPLATES.items():
+                    for sensor_id, sensor_info in SOL_SENSOR_TEMPLATES.items():
                         address = base_address + sensor_info["relative_address"]
                         if is_register_disabled(address, self.disabled_registers):
                             continue

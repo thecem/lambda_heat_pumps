@@ -444,7 +444,7 @@ BOIL_SENSOR_TEMPLATES = {
 }
 
 # Buffer Sensors
-BUFFER_SENSOR_TEMPLATES = {
+BUFF_SENSOR_TEMPLATES = {
     "error_number": {
         "relative_address": 0,
         "name": "Error Number",
@@ -570,7 +570,7 @@ BUFFER_SENSOR_TEMPLATES = {
 }
 
 # Solar Sensors
-SOLAR_SENSOR_TEMPLATES = {
+SOL_SENSOR_TEMPLATES = {
     "error_number": {
         "relative_address": 0,
         "name": "Error Number",
