@@ -217,6 +217,7 @@ HP_SENSOR_TEMPLATES = {
         "device_type": "Hp",
         "writeable": False,
         "state_class": "total",
+        "override_name": "Hp_QP_heating",
     },
     "inverter_power_consumption": {
         "relative_address": 12,
@@ -736,7 +737,7 @@ HC_SENSOR_TEMPLATES = {
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
-        "device_type": "heating_circuit",
+        "device_type": "hc",
         "writeable": False,
         "state_class": "measurement",
     },

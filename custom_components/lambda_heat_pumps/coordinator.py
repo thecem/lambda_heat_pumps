@@ -185,7 +185,6 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             # Heat Pump data
             for hp_idx in range(1, num_hps + 1):
                 base_address = generate_base_addresses('hp', num_hps)[hp_idx]
-                _LOGGER.debug("Reading Heat Pump %d data from base address %d", hp_idx, base_address)
                 for sensor_id, sensor_info in HP_SENSOR_TEMPLATES.items():
                     address = base_address + sensor_info["relative_address"]
                     if is_register_disabled(address, self.disabled_registers):
@@ -223,7 +222,13 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             value = result.registers[0]
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
-                        data[f"hp{hp_idx}_{sensor_id}"] = value
+                        # override_name-Mechanismus
+                        use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
+                        if use_legacy_modbus_names and "override_name" in sensor_info:
+                            sensor_id_final = sensor_info["override_name"]
+                        else:
+                            sensor_id_final = f"hp{hp_idx}_{sensor_id}"
+                        data[sensor_id_final] = value
                         _LOGGER.debug("Successfully read register %d: %s", address, value)
                     except Exception as ex:
                         _LOGGER.error(
@@ -264,7 +269,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             value = result.registers[0]
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
-                        data[f"boil{boil_idx}_{sensor_id}"] = value
+                        use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
+                        if use_legacy_modbus_names and "override_name" in sensor_info:
+                            sensor_id_final = sensor_info["override_name"]
+                        else:
+                            sensor_id_final = f"boil{boil_idx}_{sensor_id}"
+                        data[sensor_id_final] = value
                     except Exception as ex:
                         _LOGGER.error(
                             "Error reading register %d: %s",
@@ -301,7 +311,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                 value = result.registers[0]
                             if "scale" in sensor_info:
                                 value = value * sensor_info["scale"]
-                            data[f"buff{buff_idx}_{sensor_id}"] = value
+                            use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
+                            if use_legacy_modbus_names and "override_name" in sensor_info:
+                                sensor_id_final = sensor_info["override_name"]
+                            else:
+                                sensor_id_final = f"buff{buff_idx}_{sensor_id}"
+                            data[sensor_id_final] = value
                         except Exception as ex:
                             _LOGGER.error(
                                 "Error reading register %d: %s",
@@ -338,7 +353,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                 value = result.registers[0]
                             if "scale" in sensor_info:
                                 value = value * sensor_info["scale"]
-                            data[f"sol{sol_idx}_{sensor_id}"] = value
+                            use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
+                            if use_legacy_modbus_names and "override_name" in sensor_info:
+                                sensor_id_final = sensor_info["override_name"]
+                            else:
+                                sensor_id_final = f"sol{sol_idx}_{sensor_id}"
+                            data[sensor_id_final] = value
                         except Exception as ex:
                             _LOGGER.error(
                                 "Error reading register %d: %s",
@@ -374,7 +394,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             value = result.registers[0]
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
-                        data[f"hc{hc_idx}_{sensor_id}"] = value
+                        use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
+                        if use_legacy_modbus_names and "override_name" in sensor_info:
+                            sensor_id_final = sensor_info["override_name"]
+                        else:
+                            sensor_id_final = f"hc{hc_idx}_{sensor_id}"
+                        data[sensor_id_final] = value
                     except Exception as ex:
                         _LOGGER.error(
                             "Error reading register %d: %s",
