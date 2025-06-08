@@ -24,6 +24,11 @@ HP_STATE = {
     5: "Error",
 }
 
+HP_RELAIS_STATE_2ND_HEATING_STAGE = {
+    0: "Off",
+    1: "On",
+}
+
 HP_OPERATING_STATE = {
     0: "Off",
     1: "Standby",
@@ -93,14 +98,14 @@ BUFF_REQUEST_TYPE = {
 SOL_OPERATION_STATE = {0: "STBY", 1: "HEATING", 2: "ERROR", 3: "OFF"}
 
 # Circulation Pump States
-CIRCULATION_PUMP_STATE = {
+MAIN_CIRCULATION_PUMP_STATE = {
     0: "Off",
     1: "On",
     2: "Error",
 }
 
 # Ambient States
-AMBIENT_OPERATING_STATE = {
+MAIN_AMBIENT_OPERATING_STATE = {
     0: "Off",
     1: "Standby",
     2: "Starting",
@@ -110,7 +115,7 @@ AMBIENT_OPERATING_STATE = {
 }
 
 # E-Manager States
-EMGR_OPERATING_STATE = {
+MAIN_EMGR_OPERATING_STATE = {
     0: "Off",
     1: "Standby",
     2: "Starting",

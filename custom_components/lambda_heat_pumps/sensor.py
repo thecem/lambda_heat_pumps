@@ -300,32 +300,51 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
             except (ValueError, TypeError):
                 return f"Unknown state ({value})"
 
-            # Mapping von Sensor-Namen zu den entsprechenden State-Mappings
-            state_mappings = {
-                "Error State": HP_ERROR_STATE,
-                "State": HP_STATE,
-                "Operating State": HP_OPERATING_STATE,
-                "Relais State 2nd Heating Stage": CIRCULATION_PUMP_STATE,
-                "Boil Operating State": BOIL_OPERATING_STATE,
-                "Heating Circuit Operating State": HC_OPERATING_STATE,
-                "Heating Circuit Operating Mode": HC_OPERATING_MODE,
-                "Buffer Operating State": BUFF_OPERATION_STATE,
-                "Solar Operating State": SOL_OPERATION_STATE,
-                "Ambient Operating State": AMBIENT_OPERATING_STATE,
-                "E-Manager Operating State": EMGR_OPERATING_STATE,
-            }
+            # Hole die Sensor-Info aus dem entsprechenden Template
+            device_type = self._sensor_id.split('_')[0][:-1]  # z.B. "hp" aus "hp1_..."
+            sensor_key = self._sensor_id.split('_', 1)[1]  # z.B. "error_state" aus "hp1_error_state"
             
-            state_mapping = state_mappings.get(self._attr_name)
-            if state_mapping is not None:
-                return state_mapping.get(numeric_value, f"Unknown state ({numeric_value})")
+            if device_type == "hp":
+                sensor_info = HP_SENSOR_TEMPLATES.get(sensor_key, {})
+            elif device_type == "boil":
+                sensor_info = BOIL_SENSOR_TEMPLATES.get(sensor_key, {})
+            elif device_type == "buff":
+                sensor_info = BUFFER_SENSOR_TEMPLATES.get(sensor_key, {})
+            elif device_type == "sol":
+                sensor_info = SOLAR_SENSOR_TEMPLATES.get(sensor_key, {})
+            elif device_type == "hc":
+                sensor_info = HC_SENSOR_TEMPLATES.get(sensor_key, {})
+            else:
+                sensor_info = SENSOR_TYPES.get(sensor_key, {})
             
-            # Warnung ausgeben, wenn kein Mapping gefunden wurde
-            _LOGGER.warning(
-                "No state mapping found for sensor '%s' with value %s. This sensor is marked as state sensor (txt_mapping=True) but no corresponding mapping dictionary was found.",
-                self._attr_name,
-                numeric_value
-            )
-            return f"Unknown mapping for state ({numeric_value})"
+            # Konstruiere den Namen des Mapping-Dictionaries
+            # Beispiel: "MAIN_CIRCULATION_PUMP_STATE" oder "HP_ERROR_STATE"
+            mapping_name = f"{sensor_info.get('device_type', '').upper()}_{self._attr_name.upper().replace(' ', '_')}"
+            
+            # Versuche das Mapping direkt aus dem importierten const_mapping zu holen
+            try:
+                state_mapping = globals().get(mapping_name)
+                
+                if state_mapping is not None:
+                    return state_mapping.get(numeric_value, f"Unknown state ({numeric_value})")
+                
+                # Erweiterte Warnung mit Modbus-Register-Informationen
+                _LOGGER.warning(
+                    "No state mapping found for sensor '%s' (tried mapping name: %s) with value %s. "
+                    "Sensor details: device_type=%s, register=%d, data_type=%s. "
+                    "This sensor is marked as state sensor (txt_mapping=True) but no corresponding mapping dictionary was found.",
+                    self._attr_name,
+                    mapping_name,
+                    numeric_value,
+                    sensor_info.get('device_type', 'unknown'),
+                    sensor_info.get('relative_address', -1),
+                    sensor_info.get('data_type', 'unknown')
+                )
+                return f"Unknown mapping for state ({numeric_value})"
+                
+            except Exception as e:
+                _LOGGER.error("Error accessing mapping dictionary: %s", str(e))
+                return f"Error loading mappings ({numeric_value})"
 
         # Für numerische Sensoren: Float zurückgeben
         try:
