@@ -266,6 +266,16 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
                     self._attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        use_legacy_modbus_names = self.coordinator.entry.data.get("use_legacy_modbus_names", False)
+        if use_legacy_modbus_names and hasattr(self.coordinator, "sensor_overrides"):
+            override_name = self.coordinator.sensor_overrides.get(self._sensor_id)
+            if override_name:
+                return override_name
+        return self._attr_name
+
+    @property
     def native_value(self) -> float | str | None:
         if not self.coordinator.data:
             return None

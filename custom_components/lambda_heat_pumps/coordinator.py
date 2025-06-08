@@ -70,11 +70,16 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             self.disabled_registers = await load_disabled_registers(self.hass)
             _LOGGER.debug("Loaded disabled registers: %s", self.disabled_registers)
 
+            # Lade sensor_overrides direkt beim Init
+            self.sensor_overrides = await self._load_sensor_overrides()
+            _LOGGER.debug("Loaded sensor name overrides: %s", self.sensor_overrides)
+
             if not self.disabled_registers:
                 _LOGGER.debug("No disabled registers configured - this is normal if you haven't disabled any registers")
         except Exception as e:
             _LOGGER.error("Failed to initialize coordinator: %s", str(e))
             self.disabled_registers = set()
+            self.sensor_overrides = {}
             raise
 
     async def _ensure_config_dir(self):
@@ -430,3 +435,25 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as ex:
             _LOGGER.error("Error updating data: %s", ex)
             raise UpdateFailed(f"Error updating data: {ex}")
+
+    async def _load_sensor_overrides(self) -> dict[str, str]:
+        """Lädt die Sensor-Namen-Überschreibungen aus der lambda_wp_config.yaml, wenn use_legacy_modbus_names True ist."""
+        use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
+        if not use_legacy_modbus_names:
+            return {}
+        config_dir = self.hass.config.config_dir
+        lambda_config_path = os.path.join(config_dir, "lambda_wp_config.yaml")
+        if not os.path.exists(lambda_config_path):
+            return {}
+        try:
+            async with aiofiles.open(lambda_config_path, "r") as f:
+                content = await f.read()
+                config = yaml.safe_load(content) or {}
+                overrides = {}
+                for sensor in config.get("sensors_names_override", []):
+                    if "id" in sensor and "override_name" in sensor:
+                        overrides[sensor["id"]] = sensor["override_name"]
+                return overrides
+        except Exception as e:
+            _LOGGER.error(f"Fehler beim Laden der Sensor-Namen-Überschreibungen: {e}")
+            return {}
