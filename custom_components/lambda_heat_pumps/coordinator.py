@@ -153,6 +153,35 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                 if not connected:
                     raise ConnectionError("Failed to reconnect to Modbus TCP")
 
+            # General/Ambient data
+            for sensor_id, sensor_info in SENSOR_TYPES.items():
+                address = sensor_info["address"]
+                if is_register_disabled(address, self.disabled_registers):
+                    continue
+                try:
+                    count = 2 if sensor_info.get("data_type") == "int32" else 1
+                    result = await self.hass.async_add_executor_job(
+                        self.client.read_holding_registers,
+                        address,
+                        count,
+                        self.entry.data.get("slave_id", 1)
+                    )
+                    if hasattr(result, "isError") and result.isError():
+                        _LOGGER.error("Error reading register %d: %s", address, result)
+                        continue
+                    if not hasattr(result, "registers") or not result.registers:
+                        _LOGGER.error("Invalid response for register %d: %s", address, result)
+                        continue
+                    if count == 2:
+                        value = (result.registers[0] << 16) | result.registers[1]
+                    else:
+                        value = result.registers[0]
+                    if "scale" in sensor_info:
+                        value = value * sensor_info["scale"]
+                    data[sensor_id] = value
+                except Exception as ex:
+                    _LOGGER.error("Error reading register %d: %s", address, ex)
+
             # Heat Pump data
             for hp_idx in range(1, num_hps + 1):
                 base_address = generate_base_addresses('hp', num_hps)[hp_idx]

@@ -2,26 +2,29 @@
 
 # Heat Pump States
 HP_ERROR_STATE = {
-    0: "No Error",
-    1: "Error 1",
-    2: "Error 2",
-    3: "Error 3",
-    4: "Error 4",
-    5: "Error 5",
-    6: "Error 6",
-    7: "Error 7",
-    8: "Error 8",
-    9: "Error 9",
-    10: "Error 10",
+    0: "NONE",
+    1: "MESSAGE",
+    2: "WARNING",
+    3: "ALARM",
+    4: "FAULT",
 }
 
 HP_STATE = {
-    0: "Off",
-    1: "Standby",
-    2: "Starting",
-    3: "Running",
-    4: "Stopping",
-    5: "Error",
+    0: "INIT",
+    1: "REFERENCE",
+    2: "RESTART-BLOCK",
+    3: "READY",
+    4: "START PUMPS",
+    5: "START COMPRESSOR",
+    6: "PRE-REGULATION",
+    7: "REGULATION",
+    8: "Not Used",
+    9: "COOLING",
+    10: "DEFROSTING",
+    20: "STOPPING",
+    30: "FAULT-LOCK",
+    31: "ALARM-BLOCK",
+    40: "ERROR-RESET",
 }
 
 HP_RELAIS_STATE_2ND_HEATING_STAGE = {
@@ -30,20 +33,33 @@ HP_RELAIS_STATE_2ND_HEATING_STAGE = {
 }
 
 HP_OPERATING_STATE = {
-    0: "Off",
-    1: "Standby",
-    2: "Starting",
-    3: "Running",
-    4: "Stopping",
-    5: "Error",
+    0: "STBY",
+    1: "CH",
+    2: "DHW",
+    3: "CC",
+    4: "CIRCULATE",
+    5: "DEFROST",
+    6: "OFF",
+    7: "FROST",
+    8: "STBY-FROST",
+    9: "Not used",
+    10: "SUMMER",
+    11: "HOLIDAY",
+    12: "ERROR",
+    13: "WARNING",
+    14: "INFO-MESSAGE",
+    15: "TIME-BLOCK",
+    16: "RELEASE-BLOCK",
+    17: "MINTEMP-BLOCK",
+    18: "FIRMWARE-DOWNLOAD",
 }
 
 HP_REQUEST_TYPE = {
-    0: "No Request",
-    1: "Flow Pump Circulation",
-    2: "Central Heating",
-    3: "Central Cooling",
-    4: "Domestic Hot Water",
+    0: "NO REQUEST",
+    1: "FLOW PUMP CIRCULATION",
+    2: "CENTRAL HEATING",
+    3: "CENTRAL COOLING",
+    4: "DOMESTIC HOT WATER",
 }
 
 # Boiler States
@@ -53,12 +69,19 @@ BOIL_CIRCULATION_PUMP_STATE = {
 }
 
 BOIL_OPERATING_STATE = {
-    0: "Off",
-    1: "Standby",
-    2: "Starting",
-    3: "Running",
-    4: "Stopping",
-    5: "Error",
+    0: "STBY",
+    1: "DHW",
+    2: "LEGIO",
+    3: "SUMMER",
+    4: "FROST",
+    5: "HOLIDAY",
+    6: "PRIO-STOP",
+    7: "ERROR",
+    8: "OFF",
+    9: "PROMPT-DHW",
+    10: "TRAILING-STOP",
+    11: "TEMP-LOCK",
+    12: "STBY-FROST",
 }
 
 # Heating Circuit States
@@ -87,9 +110,9 @@ HC_OPERATING_STATE = {
 }
 
 HC_OPERATING_MODE = {
-    0: "Off",
-    1: "Manual",
-    2: "Automatik",
+    0: "OFF",
+    1: "MANUAL",
+    2: "AUTOMATIK",
     3: "AUTO-HEATING",
     4: "AUTO-COOLING",
     5: "FROST",
@@ -100,25 +123,33 @@ HC_OPERATING_MODE = {
 
 # Buffer States
 BUFF_OPERATING_STATE = {
-    0: "Off",
-    1: "Standby",
-    2: "Starting",
-    3: "Running",
-    4: "Stopping",
-    5: "Error",
+    0: "STBY",
+    1: "HEATING",
+    2: "COOLING",
+    3: "SUMMER",
+    4: "FROST",
+    5: "HOLIDAY",
+    6: "PRIO-STOP",
+    7: "ERROR",
+    8: "OFF",
+    9: "STBY-FROST",
 }
 
 BUFF_REQUEST_TYPE = {
-    0: "None",
-    1: "Heating",
-    2: "Cooling",
-    3: "DHW",
-    4: "Error",
+    -1: "INVALID REQUEST",
+    0: "NO REQUEST",
+    1: "FLOW PUMP CIRCULATION",
+    2: "CENTRAL HEATING",
+    3: "CENTRAL COOLING",
 }
 
 # Solar States
-
-SOL_OPERATING_STATE = {0: "STBY", 1: "HEATING", 2: "ERROR", 3: "OFF"}
+SOL_OPERATING_STATE = {
+    0: "STBY",
+    1: "HEATING",
+    2: "ERROR",
+    3: "OFF",
+}
 
 # Circulation Pump States
 MAIN_CIRCULATION_PUMP_STATE = {
@@ -129,21 +160,18 @@ MAIN_CIRCULATION_PUMP_STATE = {
 
 # Ambient States
 MAIN_AMBIENT_OPERATING_STATE = {
-    0: "Off",
-    1: "Standby",
-    2: "Starting",
-    3: "Running",
-    4: "Stopping",
-    5: "Error",
+    0: "OFF",
+    1: "AUTOMATIK",
+    2: "MANUAL",
+    3: "ERROR",
 }
 
 # E-Manager States
 MAIN_EMGR_OPERATING_STATE = {
-    0: "Off",
-    1: "Standby",
-    2: "Starting",
-    3: "Running",
-    4: "Stopping",
-    5: "Error",
+    0: "OFF",
+    1: "AUTOMATIK",
+    2: "MANUAL",
+    3: "ERROR",
+    4: "OFFLINE",
 } 
 
