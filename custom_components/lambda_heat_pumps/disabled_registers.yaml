@@ -10,3 +10,5 @@ disabled_registers:
   - 2005  # boil1_actual_circulation_pump_state 
   - 5007
   - 2099
+  - 999
+  

@@ -270,8 +270,8 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
             if self._device_type and self._device_type.upper() in base_name:
                 # Remove prefix and index (e.g. "HP1 " or "BOIL2 ")
                 base_name = ' '.join(base_name.split()[1:])
-            
-            mapping_name = f"{self._device_type.upper()}_{base_name.upper().replace(' ', '_')}"
+            # Ersetze auch Bindestriche durch Unterstriche
+            mapping_name = f"{self._device_type.upper()}_{base_name.upper().replace(' ', '_').replace('-', '_')}"
             try:
                 state_mapping = globals().get(mapping_name)
                 if state_mapping is not None:
