@@ -121,9 +121,15 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         if self.client is None:
             from pymodbus.client import ModbusTcpClient
             self.client = ModbusTcpClient(self.host, port=self.port)
-            connected = await self.hass.async_add_executor_job(self.client.connect)
-            if not connected:
-                raise ConnectionError(f"Could not connect to Modbus TCP at {self.host}:{self.port}")
+            try:
+                connected = await self.hass.async_add_executor_job(self.client.connect)
+                if not connected:
+                    raise ConnectionError(f"Could not connect to Modbus TCP at {self.host}:{self.port}")
+            except Exception as ex:
+                _LOGGER.error("Failed to connect to Modbus TCP: %s", ex)
+                self.client = None
+                raise UpdateFailed(f"Failed to connect to Modbus TCP: {ex}")
+
         try:
             # Get device counts from config
             num_hps = self.entry.data.get("num_hps", 1)
@@ -132,17 +138,32 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             num_sol = self.entry.data.get("num_sol", 0)    # Default to 0 if not configured
             num_hc = self.entry.data.get("num_hc", 1)
 
+            _LOGGER.debug(
+                "Reading data for devices: %d HPs, %d boilers, %d buffers, %d solar, %d heating circuits",
+                num_hps, num_boil, num_buff, num_sol, num_hc
+            )
+
             # Initialize data dictionary
             data = {}
+
+            # Check if client is still connected
+            if not self.client.connected:
+                _LOGGER.warning("Modbus client disconnected, attempting to reconnect")
+                connected = await self.hass.async_add_executor_job(self.client.connect)
+                if not connected:
+                    raise ConnectionError("Failed to reconnect to Modbus TCP")
 
             # Heat Pump data
             for hp_idx in range(1, num_hps + 1):
                 base_address = generate_base_addresses('hp', num_hps)[hp_idx]
+                _LOGGER.debug("Reading Heat Pump %d data from base address %d", hp_idx, base_address)
                 for sensor_id, sensor_info in HP_SENSOR_TEMPLATES.items():
                     address = base_address + sensor_info["relative_address"]
                     if is_register_disabled(address, self.disabled_registers):
+                        _LOGGER.debug("Register %d is disabled, skipping", address)
                         continue
                     try:
+                        _LOGGER.debug("Reading register %d for sensor %s", address, sensor_id)
                         result = await self.hass.async_add_executor_job(
                             self.client.read_holding_registers,
                             address,
@@ -150,8 +171,18 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             self.entry.data.get("slave_id", 1)
                         )
                         if hasattr(result, "isError") and result.isError():
+                            error_msg = f"Modbus error {result.exception_code}: {result.message}"
                             _LOGGER.error(
                                 "Error reading register %d: %s",
+                                address,
+                                error_msg,
+                            )
+                            if result.exception_code == 1:  # Illegal Function
+                                raise UpdateFailed(f"Modbus error: {error_msg}")
+                            continue
+                        if not hasattr(result, "registers") or not result.registers:
+                            _LOGGER.error(
+                                "Invalid response for register %d: %s",
                                 address,
                                 result,
                             )
@@ -160,12 +191,17 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
                         data[f"hp{hp_idx}_{sensor_id}"] = value
+                        _LOGGER.debug("Successfully read register %d: %s", address, value)
                     except Exception as ex:
                         _LOGGER.error(
                             "Error reading register %d: %s",
                             address,
                             ex,
                         )
+                        # If we get a connection error, try to reconnect
+                        if isinstance(ex, (ConnectionError, TimeoutError)):
+                            self.client = None
+                            raise UpdateFailed(f"Connection error: {ex}")
 
             # Boiler data
             for boil_idx in range(1, num_boil + 1):

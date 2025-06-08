@@ -24,10 +24,8 @@ from .const import (
     HC_SENSOR_TEMPLATES,
     BUFFER_SENSOR_TEMPLATES,
     SOLAR_SENSOR_TEMPLATES,
-    SOLAR_OPERATION_STATE,
-    BUFFER_OPERATION_STATE,
-    BUFFER_REQUEST_TYPE,
 )
+from .const_mapping import *  # Import all state mappings
 from .coordinator import LambdaDataUpdateCoordinator
 from .utils import get_compatible_sensors, build_device_info, generate_base_addresses
 
@@ -297,79 +295,34 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
             return None
 
         if self._is_state_sensor:
-            from .const import (
-                AMBIENT_OPERATING_STATE,
-                EMGR_OPERATING_STATE,
-                HP_ERROR_STATE,
-                HP_STATE,
-                HP_OPERATING_STATE,
-                BOIL_OPERATING_STATE,
-                HC_OPERATING_STATE,
-                HC_OPERATING_MODE,
-                CIRCULATION_PUMP_STATE,
-                SOLAR_OPERATION_STATE,
-                BUFFER_OPERATION_STATE,
-                BUFFER_REQUEST_TYPE,
-            )
-
             try:
                 numeric_value = int(float(value))
             except (ValueError, TypeError):
                 return f"Unknown state ({value})"
 
-            # Hole die Sensor-Info aus dem entsprechenden Template
-            device_type = self._sensor_id.split('_')[0][:-1]  # z.B. "hp" aus "hp1_..."
-            sensor_key = self._sensor_id.split('_', 1)[1]  # z.B. "error_state" aus "hp1_error_state"
+            # Mapping von Sensor-Namen zu den entsprechenden State-Mappings
+            state_mappings = {
+                "Error State": HP_ERROR_STATE,
+                "State": HP_STATE,
+                "Operating State": HP_OPERATING_STATE,
+                "Relais State 2nd Heating Stage": CIRCULATION_PUMP_STATE,
+                "Boil Operating State": BOIL_OPERATING_STATE,
+                "Heating Circuit Operating State": HC_OPERATING_STATE,
+                "Heating Circuit Operating Mode": HC_OPERATING_MODE,
+                "Buffer Operating State": BUFF_OPERATION_STATE,
+                "Solar Operating State": SOL_OPERATION_STATE,
+                "Ambient Operating State": AMBIENT_OPERATING_STATE,
+                "E-Manager Operating State": EMGR_OPERATING_STATE,
+            }
             
-            if device_type == "hp":
-                sensor_info = HP_SENSOR_TEMPLATES.get(sensor_key, {})
-            elif device_type == "boil":
-                sensor_info = BOIL_SENSOR_TEMPLATES.get(sensor_key, {})
-            elif device_type == "buff":
-                sensor_info = BUFFER_SENSOR_TEMPLATES.get(sensor_key, {})
-            elif device_type == "sol":
-                sensor_info = SOLAR_SENSOR_TEMPLATES.get(sensor_key, {})
-            elif device_type == "hc":
-                sensor_info = HC_SENSOR_TEMPLATES.get(sensor_key, {})
-            else:
-                sensor_info = SENSOR_TYPES.get(sensor_key, {})
-
-            # Konstruiere den Namen des Mapping-Dictionaries
-            mapping_name = f"{sensor_info.get('device_type', '').upper()}_{self._attr_name.upper().replace(' ', '_')}"
-            
-            # Mapping basierend auf dem Namen zuordnen
-            state_mapping = None
-            if mapping_name == "HP_ERROR_STATE":
-                state_mapping = HP_ERROR_STATE
-            elif mapping_name == "HP_STATE":
-                state_mapping = HP_STATE
-            elif mapping_name == "HP_OPERATING_STATE":
-                state_mapping = HP_OPERATING_STATE
-            elif mapping_name == "HP_RELAIS_STATE_2ND_HEATING_STAGE":
-                state_mapping = CIRCULATION_PUMP_STATE
-            elif mapping_name == "BOIL_OPERATING_STATE":
-                state_mapping = BOIL_OPERATING_STATE
-            elif mapping_name == "HEATING_CIRCUIT_OPERATING_STATE":
-                state_mapping = HC_OPERATING_STATE
-            elif mapping_name == "HEATING_CIRCUIT_OPERATING_MODE":
-                state_mapping = HC_OPERATING_MODE
-            elif mapping_name == "BUFF_OPERATING_STATE":
-                state_mapping = BUFFER_OPERATION_STATE
-            elif mapping_name == "SOL_OPERATING_STATE":
-                state_mapping = SOLAR_OPERATION_STATE
-            elif mapping_name == "MAIN_AMBIENT_OPERATING_STATE":
-                state_mapping = AMBIENT_OPERATING_STATE
-            elif mapping_name == "MAIN_EMGR_OPERATING_STATE":
-                state_mapping = EMGR_OPERATING_STATE
-            
+            state_mapping = state_mappings.get(self._attr_name)
             if state_mapping is not None:
                 return state_mapping.get(numeric_value, f"Unknown state ({numeric_value})")
             
             # Warnung ausgeben, wenn kein Mapping gefunden wurde
             _LOGGER.warning(
-                "No state mapping found for sensor '%s' (tried mapping name: %s) with value %s. This sensor is marked as state sensor (txt_mapping=True) but no corresponding mapping dictionary was found.",
+                "No state mapping found for sensor '%s' with value %s. This sensor is marked as state sensor (txt_mapping=True) but no corresponding mapping dictionary was found.",
                 self._attr_name,
-                mapping_name,
                 numeric_value
             )
             return f"Unknown mapping for state ({numeric_value})"
