@@ -55,143 +55,42 @@ async def async_setup_entry(
     num_sol = entry.data.get("num_sol", 0)
     num_hc = entry.data.get("num_hc", 1)
 
-    # Create sensors for each device type
+    # Create sensors for each device type using a generic loop
     sensors = []
 
-    # Heat Pump sensors
-    for hp_idx in range(1, num_hps + 1):
-        base_address = generate_base_addresses('hp', num_hps)[hp_idx]
-        for sensor_id, sensor_info in HP_SENSOR_TEMPLATES.items():
-            # Set default device class based on unit if not specified
-            device_class = sensor_info.get("device_class")
-            if not device_class and sensor_info.get("unit") == "°C":
-                device_class = SensorDeviceClass.TEMPERATURE
-            elif not device_class and sensor_info.get("unit") == "W":
-                device_class = SensorDeviceClass.POWER
-            elif not device_class and sensor_info.get("unit") == "Wh":
-                device_class = SensorDeviceClass.ENERGY
+    TEMPLATES = [
+        ("hp", num_hps, HP_SENSOR_TEMPLATES),
+        ("boil", num_boil, BOIL_SENSOR_TEMPLATES),
+        ("buff", num_buff, BUFFER_SENSOR_TEMPLATES),
+        ("sol", num_sol, SOLAR_SENSOR_TEMPLATES),
+        ("hc", num_hc, HC_SENSOR_TEMPLATES),
+    ]
 
-            sensors.append(
-                LambdaSensor(
-                    coordinator=coordinator,
-                    entry=entry,
-                    sensor_id=f"hp{hp_idx}_{sensor_id}",
-                    name=sensor_info["name"].format(hp_idx),
-                    unit=sensor_info.get("unit", ""),
-                    address=base_address + sensor_info["relative_address"],
-                    scale=sensor_info.get("scale", 1.0),
-                    state_class=sensor_info.get("state_class", ""),
-                    device_class=device_class,
+    for prefix, count, template in TEMPLATES:
+        for idx in range(1, count + 1):
+            base_address = generate_base_addresses(prefix, count)[idx]
+            for sensor_id, sensor_info in template.items():
+                device_class = sensor_info.get("device_class")
+                if not device_class and sensor_info.get("unit") == "°C":
+                    device_class = SensorDeviceClass.TEMPERATURE
+                elif not device_class and sensor_info.get("unit") == "W":
+                    device_class = SensorDeviceClass.POWER
+                elif not device_class and sensor_info.get("unit") == "Wh":
+                    device_class = SensorDeviceClass.ENERGY
+
+                sensors.append(
+                    LambdaSensor(
+                        coordinator=coordinator,
+                        entry=entry,
+                        sensor_id=f"{prefix}{idx}_{sensor_id}",
+                        name=sensor_info["name"].format(idx),
+                        unit=sensor_info.get("unit", ""),
+                        address=base_address + sensor_info["relative_address"],
+                        scale=sensor_info.get("scale", 1.0),
+                        state_class=sensor_info.get("state_class", ""),
+                        device_class=device_class,
+                    )
                 )
-            )
-
-    # Boiler sensors
-    for boil_idx in range(1, num_boil + 1):
-        base_address = generate_base_addresses('boil', num_boil)[boil_idx]
-        for sensor_id, sensor_info in BOIL_SENSOR_TEMPLATES.items():
-            # Set default device class based on unit if not specified
-            device_class = sensor_info.get("device_class")
-            if not device_class and sensor_info.get("unit") == "°C":
-                device_class = SensorDeviceClass.TEMPERATURE
-            elif not device_class and sensor_info.get("unit") == "W":
-                device_class = SensorDeviceClass.POWER
-            elif not device_class and sensor_info.get("unit") == "Wh":
-                device_class = SensorDeviceClass.ENERGY
-
-            sensors.append(
-                LambdaSensor(
-                    coordinator=coordinator,
-                    entry=entry,
-                    sensor_id=f"boil{boil_idx}_{sensor_id}",
-                    name=sensor_info["name"].format(boil_idx),
-                    unit=sensor_info.get("unit", ""),
-                    address=base_address + sensor_info["relative_address"],
-                    scale=sensor_info.get("scale", 1.0),
-                    state_class=sensor_info.get("state_class", ""),
-                    device_class=device_class,
-                )
-            )
-
-    # Buffer sensors
-    for buff_idx in range(1, num_buff + 1):
-        base_address = generate_base_addresses('buff', num_buff)[buff_idx]
-        for sensor_id, sensor_info in BUFFER_SENSOR_TEMPLATES.items():
-            # Set default device class based on unit if not specified
-            device_class = sensor_info.get("device_class")
-            if not device_class and sensor_info.get("unit") == "°C":
-                device_class = SensorDeviceClass.TEMPERATURE
-            elif not device_class and sensor_info.get("unit") == "W":
-                device_class = SensorDeviceClass.POWER
-            elif not device_class and sensor_info.get("unit") == "Wh":
-                device_class = SensorDeviceClass.ENERGY
-
-            sensors.append(
-                LambdaSensor(
-                    coordinator=coordinator,
-                    entry=entry,
-                    sensor_id=f"buff{buff_idx}_{sensor_id}",
-                    name=sensor_info["name"].format(buff_idx),
-                    unit=sensor_info.get("unit", ""),
-                    address=base_address + sensor_info["relative_address"],
-                    scale=sensor_info.get("scale", 1.0),
-                    state_class=sensor_info.get("state_class", ""),
-                    device_class=device_class,
-                )
-            )
-
-    # Solar sensors
-    for sol_idx in range(1, num_sol + 1):
-        base_address = generate_base_addresses('sol', num_sol)[sol_idx]
-        for sensor_id, sensor_info in SOLAR_SENSOR_TEMPLATES.items():
-            # Set default device class based on unit if not specified
-            device_class = sensor_info.get("device_class")
-            if not device_class and sensor_info.get("unit") == "°C":
-                device_class = SensorDeviceClass.TEMPERATURE
-            elif not device_class and sensor_info.get("unit") == "W":
-                device_class = SensorDeviceClass.POWER
-            elif not device_class and sensor_info.get("unit") == "Wh":
-                device_class = SensorDeviceClass.ENERGY
-
-            sensors.append(
-                LambdaSensor(
-                    coordinator=coordinator,
-                    entry=entry,
-                    sensor_id=f"sol{sol_idx}_{sensor_id}",
-                    name=sensor_info["name"].format(sol_idx),
-                    unit=sensor_info.get("unit", ""),
-                    address=base_address + sensor_info["relative_address"],
-                    scale=sensor_info.get("scale", 1.0),
-                    state_class=sensor_info.get("state_class", ""),
-                    device_class=device_class,
-                )
-            )
-
-    # Heating Circuit sensors
-    for hc_idx in range(1, num_hc + 1):
-        base_address = generate_base_addresses('hc', num_hc)[hc_idx]
-        for sensor_id, sensor_info in HC_SENSOR_TEMPLATES.items():
-            # Set default device class based on unit if not specified
-            device_class = sensor_info.get("device_class")
-            if not device_class and sensor_info.get("unit") == "°C":
-                device_class = SensorDeviceClass.TEMPERATURE
-            elif not device_class and sensor_info.get("unit") == "W":
-                device_class = SensorDeviceClass.POWER
-            elif not device_class and sensor_info.get("unit") == "Wh":
-                device_class = SensorDeviceClass.ENERGY
-
-            sensors.append(
-                LambdaSensor(
-                    coordinator=coordinator,
-                    entry=entry,
-                    sensor_id=f"hc{hc_idx}_{sensor_id}",
-                    name=sensor_info["name"].format(hc_idx),
-                    unit=sensor_info.get("unit", ""),
-                    address=base_address + sensor_info["relative_address"],
-                    scale=sensor_info.get("scale", 1.0),
-                    state_class=sensor_info.get("state_class", ""),
-                    device_class=device_class,
-                )
-            )
 
     _LOGGER.debug("Created %d sensors", len(sensors))
     async_add_entities(sensors)
