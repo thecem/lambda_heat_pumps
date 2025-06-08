@@ -55,6 +55,10 @@ async def async_setup_entry(
     num_sol = entry.data.get("num_sol", 0)
     num_hc = entry.data.get("num_hc", 1)
 
+    # Hole den Legacy-Modbus-Namen-Switch aus der Config
+    use_legacy_modbus_names = entry.data.get("use_legacy_modbus_names", False)
+    name_prefix = entry.data.get("name", "").lower().replace(" ", "")
+
     # Create sensors for each device type using a generic loop
     sensors = []
 
@@ -87,9 +91,14 @@ async def async_setup_entry(
                 if prefix == "hc" and sensor_info.get("device_type") == "Climate":
                     # Climate sensors keep original name format
                     name = sensor_info["name"].format(idx)
+                    entity_id = f"sensor.{prefix}{idx}_{sensor_id}"
                 else:
                     # Other sensors include prefix in name
                     name = f"{prefix_upper}{idx} {sensor_info['name']}"
+                    if use_legacy_modbus_names:
+                        entity_id = f"sensor.{name_prefix}_{prefix}{idx}_{sensor_id}"
+                    else:
+                        entity_id = f"sensor.{prefix}{idx}_{sensor_id}"
 
                 # Ensure correct device_type based on prefix
                 device_type = prefix.upper() if prefix in ["hp", "boil", "hc", "buff", "sol"] else sensor_info.get("device_type", "main")
@@ -110,8 +119,50 @@ async def async_setup_entry(
                         device_type=device_type,
                         txt_mapping=sensor_info.get("txt_mapping", False),
                         precision=sensor_info.get("precision", None),
+                        entity_id=entity_id,
                     )
                 )
+
+    # General Sensors (SENSOR_TYPES)
+    for sensor_id, sensor_info in SENSOR_TYPES.items():
+        address = sensor_info["address"]
+        if coordinator.is_register_disabled(address):
+            _LOGGER.debug("Skipping general sensor %s (address %d) because register is disabled", sensor_id, address)
+            continue
+        device_class = sensor_info.get("device_class")
+        if not device_class and sensor_info.get("unit") == "°C":
+            device_class = SensorDeviceClass.TEMPERATURE
+        elif not device_class and sensor_info.get("unit") == "W":
+            device_class = SensorDeviceClass.POWER
+        elif not device_class and sensor_info.get("unit") == "Wh":
+            device_class = SensorDeviceClass.ENERGY
+
+        # Name und Entity-ID
+        name = sensor_info["name"]
+        if use_legacy_modbus_names:
+            entity_id = f"sensor.{name_prefix}_{sensor_id}"
+        else:
+            entity_id = f"sensor.{sensor_id}"
+
+        sensors.append(
+            LambdaSensor(
+                coordinator=coordinator,
+                entry=entry,
+                sensor_id=sensor_id,
+                name=name,
+                unit=sensor_info.get("unit", ""),
+                address=address,
+                scale=sensor_info.get("scale", 1.0),
+                state_class=sensor_info.get("state_class", ""),
+                device_class=device_class,
+                relative_address=sensor_info.get("address", 0),
+                data_type=sensor_info.get("data_type", None),
+                device_type=sensor_info.get("device_type", None),
+                txt_mapping=sensor_info.get("txt_mapping", False),
+                precision=sensor_info.get("precision", None),
+                entity_id=entity_id,
+            )
+        )
 
     _LOGGER.debug("Created %d sensors", len(sensors))
     async_add_entities(sensors)
@@ -139,13 +190,14 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
         device_type: str,
         txt_mapping: bool = False,
         precision: int | float | None = None,
+        entity_id: str | None = None,
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._sensor_id = sensor_id
         self._attr_name = name
         self._attr_unique_id = sensor_id
-        self.entity_id = f"sensor.{sensor_id}"
+        self.entity_id = entity_id or f"sensor.{sensor_id}"
         self._unit = unit
         self._address = address
         self._scale = scale

@@ -275,6 +275,10 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                                 mode=selector.SelectSelectorMode.DROPDOWN,
                             )
                         ),
+                        vol.Optional(
+                            "use_legacy_modbus_names",
+                            default=0,
+                        ): selector.BooleanSelector(),
                     }
                 ),
                 errors=errors,
@@ -531,6 +535,10 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
+                    vol.Optional(
+                        "use_legacy_modbus_names",
+                        default=0,
+                    ): selector.BooleanSelector(),
                 }
             ),
             errors=errors,

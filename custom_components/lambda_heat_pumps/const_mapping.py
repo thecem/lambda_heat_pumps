@@ -63,21 +63,39 @@ BOIL_OPERATING_STATE = {
 
 # Heating Circuit States
 HC_OPERATING_STATE = {
-    0: "Off",
-    1: "Standby",
-    2: "Starting",
-    3: "Running",
-    4: "Stopping",
-    5: "Error",
+    0: "HEATING",
+    1: "ECO",
+    2: "COOLING",
+    3: "FLOORDRY",
+    4: "FROST",
+    5: "MAX-TEMP",
+    6: "ERROR",
+    7: "SERVICE",
+    8: "HOLIDAY",
+    9: "CH-SUMMER",
+    10: "CC-WINTER",
+    11: "PRIO-STOP",
+    12: "OFF",
+    13: "RELEASE-OFF",
+    14: "TIME-OFF",
+    15: "STBY",
+    16: "STBY-HEATING",
+    17: "STBY-ECO",
+    18: "STBY-COOLING",
+    19: "STBY-FROST",
+    20: "STBY-FLOORDRY",
 }
 
 HC_OPERATING_MODE = {
     0: "Off",
-    1: "Auto",
-    2: "Manual",
-    3: "Party",
-    4: "Holiday",
-    5: "Error",
+    1: "Manual",
+    2: "Automatik",
+    3: "AUTO-HEATING",
+    4: "AUTO-COOLING",
+    5: "FROST",
+    6: "SUMMER",
+    7: "FLOOR-DRY",
+    65535: "Unknown",
 }
 
 # Buffer States

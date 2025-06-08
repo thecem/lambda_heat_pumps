@@ -67,5 +67,6 @@
     "error_set_temp_failed": "Failed to set target temperature."
   },
   "room_thermostat_control": "Room Thermostat Control",
-  "room_thermostat_control_tooltip": "This enables room thermostat control for the Lambda heat pump. Please refer to the help if needed."
+  "room_thermostat_control_tooltip": "This enables room thermostat control for the Lambda heat pump. Please refer to the help if needed.",
+  "use_legacy_modbus_names": "Use legacy Modbus names"
 }

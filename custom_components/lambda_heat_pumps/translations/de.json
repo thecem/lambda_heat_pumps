@@ -67,5 +67,6 @@
     "error_set_temp_failed": "Setzen der Zieltemperatur fehlgeschlagen."
   },
   "room_thermostat_control": "Raumthermostat-Steuerung",
-  "room_thermostat_control_tooltip": "Hiermit wird die Raumthermostat-Steuerung für die Lambda Wärmepumpe aktiviert. Bitte ggf. in der Hilfe nachsehen."
+  "room_thermostat_control_tooltip": "Hiermit wird die Raumthermostat-Steuerung für die Lambda Wärmepumpe aktiviert. Bitte ggf. in der Hilfe nachsehen.",
+  "use_legacy_modbus_names": "Alte Modbus-Namen verwenden"
 }
