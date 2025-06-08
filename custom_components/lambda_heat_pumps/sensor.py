@@ -27,7 +27,6 @@ from .const import (
     SOLAR_OPERATION_STATE,
     BUFFER_OPERATION_STATE,
     BUFFER_REQUEST_TYPE,
-    STATE_SENSOR_PATTERNS,  # <--- NEU
 )
 from .coordinator import LambdaDataUpdateCoordinator
 from .utils import get_compatible_sensors, build_device_info, generate_base_addresses
@@ -239,10 +238,25 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
             },
         )
 
+        # Hole die Sensor-Info aus dem entsprechenden Template
+        device_type = sensor_id.split('_')[0][:-1]  # z.B. "hp" aus "hp1_..."
+        sensor_key = sensor_id.split('_', 1)[1]  # z.B. "error_state" aus "hp1_error_state"
+        
+        if device_type == "hp":
+            sensor_info = HP_SENSOR_TEMPLATES.get(sensor_key, {})
+        elif device_type == "boil":
+            sensor_info = BOIL_SENSOR_TEMPLATES.get(sensor_key, {})
+        elif device_type == "buff":
+            sensor_info = BUFFER_SENSOR_TEMPLATES.get(sensor_key, {})
+        elif device_type == "sol":
+            sensor_info = SOLAR_SENSOR_TEMPLATES.get(sensor_key, {})
+        elif device_type == "hc":
+            sensor_info = HC_SENSOR_TEMPLATES.get(sensor_key, {})
+        else:
+            sensor_info = SENSOR_TYPES.get(sensor_key, {})
+
         # Bestimme, ob es sich um einen Status-/Mode-Sensor handelt
-        self._is_state_sensor = any(
-            pattern in sensor_id for pattern in STATE_SENSOR_PATTERNS
-        )
+        self._is_state_sensor = sensor_info.get("txt_mapping", False)
 
         if self._is_state_sensor:
             # Für Status-/Mode-Sensoren: Keine Metadaten setzen
@@ -253,22 +267,8 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
         else:
             # Für numerische Sensoren: Metadaten aus der Konfiguration übernehmen
             self._attr_native_unit_of_measurement = unit
-            if "precision" in {
-                "name": name,
-                "unit": unit,
-                "address": address,
-                "scale": scale,
-                "state_class": state_class,
-                "device_class": device_class,
-            }:
-                self._attr_suggested_display_precision = {
-                    "name": name,
-                    "unit": unit,
-                    "address": address,
-                    "scale": scale,
-                    "state_class": state_class,
-                    "device_class": device_class,
-                }["precision"]
+            if "precision" in sensor_info:
+                self._attr_suggested_display_precision = sensor_info["precision"]
 
             if unit == "°C":
                 self._attr_device_class = SensorDeviceClass.TEMPERATURE
@@ -355,6 +355,13 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
 
             if state_mapping is not None:
                 return state_mapping.get(numeric_value, f"Unknown state ({numeric_value})")
+            
+            # Warnung ausgeben, wenn kein Mapping gefunden wurde
+            _LOGGER.warning(
+                "No state mapping found for sensor %s with value %s. This sensor is marked as state sensor (txt_mapping=True) but no corresponding mapping dictionary was found.",
+                self._sensor_id,
+                numeric_value
+            )
             return f"Unknown mapping for state ({numeric_value})"
 
         # Für numerische Sensoren: Float zurückgeben
