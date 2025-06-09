@@ -86,27 +86,26 @@ async def async_setup_entry(
                 elif not device_class and sensor_info.get("unit") == "Wh":
                     device_class = SensorDeviceClass.ENERGY
 
-                # Override-Mechanismus für alle Sensoren
-                if use_legacy_modbus_names and "override_name" in sensor_info:
-                    name = sensor_info["override_name"]
-                    sensor_id_final = sensor_info["override_name"]
-                    _LOGGER.info(f"Override name for sensor '{prefix}{idx}_{sensor_id}': '{name}' wird als Name und sensor_id verwendet.")
+                # Prüfe auf Override-Name
+                override_name = None
+                if use_legacy_modbus_names and hasattr(coordinator, "sensor_overrides"):
+                    override_name = coordinator.sensor_overrides.get(f"{prefix}{idx}_{sensor_id}")
+                if override_name:
+                    name = override_name
+                    sensor_id_final = override_name
+                    entity_id = f"sensor.{name_prefix}_{override_name}"
+                    unique_id = f"{name_prefix}_{override_name}"
                 else:
                     prefix_upper = prefix.upper()
                     if prefix == "hc" and sensor_info.get("device_type") == "Climate":
-                        # Climate sensors keep original name format
                         name = sensor_info["name"].format(idx)
                         sensor_id_final = f"{prefix}{idx}_{sensor_id}"
                     else:
                         name = f"{prefix_upper}{idx} {sensor_info['name']}"
                         sensor_id_final = f"{prefix}{idx}_{sensor_id}"
-
-                if use_legacy_modbus_names:
-                    entity_id = f"sensor.{name_prefix}_{sensor_id_final}"
-                else:
                     entity_id = f"sensor.{sensor_id_final}"
+                    unique_id = sensor_id_final
 
-                # Ensure correct device_type based on prefix
                 device_type = prefix.upper() if prefix in ["hp", "boil", "hc", "buff", "sol"] else sensor_info.get("device_type", "main")
 
                 sensors.append(
@@ -126,6 +125,7 @@ async def async_setup_entry(
                         txt_mapping=sensor_info.get("txt_mapping", False),
                         precision=sensor_info.get("precision", None),
                         entity_id=entity_id,
+                        unique_id=unique_id,
                     )
                 )
 
@@ -204,12 +204,13 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
         txt_mapping: bool = False,
         precision: int | float | None = None,
         entity_id: str | None = None,
+        unique_id: str | None = None,
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
         self._sensor_id = sensor_id
         self._attr_name = name
-        self._attr_unique_id = sensor_id
+        self._attr_unique_id = unique_id or sensor_id
         self.entity_id = entity_id or f"sensor.{sensor_id}"
         self._unit = unit
         self._address = address
@@ -272,6 +273,9 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
         if use_legacy_modbus_names and hasattr(self.coordinator, "sensor_overrides"):
             override_name = self.coordinator.sensor_overrides.get(self._sensor_id)
             if override_name:
+                # Verwende den Override-Namen als sensor_id
+                _LOGGER.debug("Overriding sensor_id from %s to %s", self._sensor_id, override_name)
+                self._sensor_id = override_name
                 return override_name
         return self._attr_name
 

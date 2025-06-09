@@ -181,7 +181,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             value = to_signed_16bit(value)
                     if "scale" in sensor_info:
                         value = value * sensor_info["scale"]
-                    data[sensor_id] = value
+                    # Prüfe auf Override-Name
+                    override_name = None
+                    if hasattr(self, "sensor_overrides"):
+                        override_name = self.sensor_overrides.get(f"{sensor_id}")
+                    key = override_name if override_name else f"{sensor_id}"
+                    data[key] = value
                 except Exception as ex:
                     _LOGGER.error("Error reading register %d: %s", address, ex)
 
@@ -229,13 +234,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                 value = to_signed_16bit(value)
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
-                        # override_name-Mechanismus
-                        use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
-                        if use_legacy_modbus_names and "override_name" in sensor_info:
-                            sensor_id_final = sensor_info["override_name"]
-                        else:
-                            sensor_id_final = f"hp{hp_idx}_{sensor_id}"
-                        data[sensor_id_final] = value
+                        # Prüfe auf Override-Name
+                        override_name = None
+                        if hasattr(self, "sensor_overrides"):
+                            override_name = self.sensor_overrides.get(f"hp{hp_idx}_{sensor_id}")
+                        key = override_name if override_name else f"hp{hp_idx}_{sensor_id}"
+                        data[key] = value
                         _LOGGER.debug("Successfully read register %d: %s", address, value)
                     except Exception as ex:
                         _LOGGER.error(
@@ -280,12 +284,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                 value = to_signed_16bit(value)
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
-                        use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
-                        if use_legacy_modbus_names and "override_name" in sensor_info:
-                            sensor_id_final = sensor_info["override_name"]
-                        else:
-                            sensor_id_final = f"boil{boil_idx}_{sensor_id}"
-                        data[sensor_id_final] = value
+                        # Prüfe auf Override-Name
+                        override_name = None
+                        if hasattr(self, "sensor_overrides"):
+                            override_name = self.sensor_overrides.get(f"boil{boil_idx}_{sensor_id}")
+                        key = override_name if override_name else f"boil{boil_idx}_{sensor_id}"
+                        data[key] = value
                     except Exception as ex:
                         _LOGGER.error(
                             "Error reading register %d: %s",
@@ -326,12 +330,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                     value = to_signed_16bit(value)
                             if "scale" in sensor_info:
                                 value = value * sensor_info["scale"]
-                            use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
-                            if use_legacy_modbus_names and "override_name" in sensor_info:
-                                sensor_id_final = sensor_info["override_name"]
-                            else:
-                                sensor_id_final = f"buff{buff_idx}_{sensor_id}"
-                            data[sensor_id_final] = value
+                            # Prüfe auf Override-Name
+                            override_name = None
+                            if hasattr(self, "sensor_overrides"):
+                                override_name = self.sensor_overrides.get(f"buff{buff_idx}_{sensor_id}")
+                            key = override_name if override_name else f"buff{buff_idx}_{sensor_id}"
+                            data[key] = value
                         except Exception as ex:
                             _LOGGER.error(
                                 "Error reading register %d: %s",
@@ -372,12 +376,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                     value = to_signed_16bit(value)
                             if "scale" in sensor_info:
                                 value = value * sensor_info["scale"]
-                            use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
-                            if use_legacy_modbus_names and "override_name" in sensor_info:
-                                sensor_id_final = sensor_info["override_name"]
-                            else:
-                                sensor_id_final = f"sol{sol_idx}_{sensor_id}"
-                            data[sensor_id_final] = value
+                            # Prüfe auf Override-Name
+                            override_name = None
+                            if hasattr(self, "sensor_overrides"):
+                                override_name = self.sensor_overrides.get(f"sol{sol_idx}_{sensor_id}")
+                            key = override_name if override_name else f"sol{sol_idx}_{sensor_id}"
+                            data[key] = value
                         except Exception as ex:
                             _LOGGER.error(
                                 "Error reading register %d: %s",
@@ -417,12 +421,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                 value = to_signed_16bit(value)
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
-                        use_legacy_modbus_names = self.entry.data.get("use_legacy_modbus_names", False)
-                        if use_legacy_modbus_names and "override_name" in sensor_info:
-                            sensor_id_final = sensor_info["override_name"]
-                        else:
-                            sensor_id_final = f"hc{hc_idx}_{sensor_id}"
-                        data[sensor_id_final] = value
+                        # Prüfe auf Override-Name
+                        override_name = None
+                        if hasattr(self, "sensor_overrides"):
+                            override_name = self.sensor_overrides.get(f"hc{hc_idx}_{sensor_id}")
+                        key = override_name if override_name else f"hc{hc_idx}_{sensor_id}"
+                        data[key] = value
                     except Exception as ex:
                         _LOGGER.error(
                             "Error reading register %d: %s",
