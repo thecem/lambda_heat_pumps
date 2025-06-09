@@ -18,7 +18,9 @@
 !requirements.txt
 !requirements_test.txt
 !docs/
-!docs/**/*
+!docs/*.md
+!docs/create_sensor_excel.py
+
 
 # GitHub Actions Workflows
 !.github/
