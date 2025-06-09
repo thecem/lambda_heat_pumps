@@ -1,0 +1,48 @@
+update_room_temperature:
+  name: Update Room Temperature
+  description: "Updates the room temperature from a selected sensor to the Lambda heat pump Modbus register."
+  fields:
+    entity_id:
+      name: Entity ID
+      description: Entity ID of the Lambda heat pump. If omitted, all Lambda integrations with room thermostat control enabled will be updated.
+      required: false
+      selector:
+        entity:
+          integration: lambda_heat_pumps
+
+read_modbus_register:
+  name: Read Modbus Register
+  description: Reads a value from a Modbus register of the Lambda heat pump.
+  fields:
+    register_address:
+      name: Register Address
+      description: The Modbus register address to read from.
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 65535
+          mode: box
+
+write_modbus_register:
+  name: Write Modbus Register
+  description: Writes a value to a Modbus register of the Lambda heat pump.
+  fields:
+    register_address:
+      name: Register Address
+      description: The Modbus register address to write to.
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 65535
+          mode: box
+    value:
+      name: Value
+      description: The value to write to the register.
+      required: true
+      selector:
+        number:
+          min: -32768
+          max: 65535
+          mode: box 
