@@ -14,11 +14,9 @@ from .const import (
     BOIL_SENSOR_TEMPLATES,
     BUFF_SENSOR_TEMPLATES,
     SOL_SENSOR_TEMPLATES,
-    FIRMWARE_VERSION,
-    DEFAULT_FIRMWARE,
     HC_SENSOR_TEMPLATES,
 )
-from .utils import get_compatible_sensors, load_disabled_registers, is_register_disabled, generate_base_addresses, to_signed_16bit, to_signed_32bit
+from .utils import load_disabled_registers, is_register_disabled, generate_base_addresses, to_signed_16bit, to_signed_32bit
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=30)

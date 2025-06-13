@@ -14,7 +14,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, CLIMATE_TEMPLATES
 from .utils import generate_base_addresses, build_device_info
-from .coordinator import LambdaDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -11,23 +10,21 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     DOMAIN,
     SENSOR_TYPES,
-    FIRMWARE_VERSION,
     HP_SENSOR_TEMPLATES,
     BOIL_SENSOR_TEMPLATES,
     HC_SENSOR_TEMPLATES,
     BUFF_SENSOR_TEMPLATES,
     SOL_SENSOR_TEMPLATES,
 )
-from .const_mapping import *  # Import all state mappings
 from .coordinator import LambdaDataUpdateCoordinator
-from .utils import get_compatible_sensors, build_device_info, generate_base_addresses
+from .utils import build_device_info, generate_base_addresses
+from .const_mapping import *  # Import all state mappings for state sensors
 
 _LOGGER = logging.getLogger(__name__)
 

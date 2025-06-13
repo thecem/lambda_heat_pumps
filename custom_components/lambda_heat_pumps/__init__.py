@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import timedelta
 import logging
 import asyncio
-from typing import Dict, Any
 import os
 import aiofiles
 
@@ -11,11 +10,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.exceptions import ConfigEntryNotReady
 
 from .const import DOMAIN, DEBUG_PREFIX
 from .coordinator import LambdaDataUpdateCoordinator
-from .services import async_setup_services, async_unload_services
+from .services import async_setup_services
 from .utils import generate_base_addresses
 
 _LOGGER = logging.getLogger(__name__)
