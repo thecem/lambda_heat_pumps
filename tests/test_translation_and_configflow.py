@@ -1,9 +1,16 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import unittest
 import json
 import os
 from custom_components.lambda_heat_pumps import config_flow
 
-TRANSLATION_PATH = os.path.join(os.path.dirname(__file__), '../translations/de.json')
+TRANSLATION_PATH = os.path.join(
+    os.path.dirname(__file__),
+    '../custom_components/lambda_heat_pumps/translations/de.json'
+)
 
 class TestTranslations(unittest.TestCase):
     def test_translation_file_exists(self):
@@ -31,4 +38,4 @@ class TestConfigFlow(unittest.TestCase):
         self.assertTrue(callable(getattr(config_flow, 'LambdaConfigFlow')))
 
 if __name__ == '__main__':
-    unittest.main() 
+    unittest.main()
