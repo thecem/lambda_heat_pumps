@@ -24,7 +24,23 @@ from .const import (
 )
 from .coordinator import LambdaDataUpdateCoordinator
 from .utils import build_device_info, generate_base_addresses
-from .const_mapping import *  # Import all state mappings for state sensors
+from .const_mapping import (
+    HP_ERROR_STATE,
+    HP_STATE,
+    HP_RELAIS_STATE_2ND_HEATING_STAGE,
+    HP_OPERATING_STATE,
+    HP_REQUEST_TYPE,
+    BOIL_CIRCULATION_PUMP_STATE,
+    BOIL_OPERATING_STATE,
+    HC_OPERATING_STATE,
+    HC_OPERATING_MODE,
+    BUFF_OPERATING_STATE,
+    BUFF_REQUEST_TYPE,
+    SOL_OPERATING_STATE,
+    MAIN_CIRCULATION_PUMP_STATE,
+    MAIN_AMBIENT_OPERATING_STATE,
+    MAIN_E_MANAGER_OPERATING_STATE,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
