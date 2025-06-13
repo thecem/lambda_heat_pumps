@@ -100,6 +100,9 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
             dict(current_entries[0].options) if current_entries else {}
         )
 
+        # Die Übersetzungen werden automatisch von Home Assistant übernommen, wenn die Feldnamen korrekt sind
+        # Keine manuelle Übersetzungsabfrage mehr nötig
+
         # Pflichtfelder prüfen
         required_fields = [
             CONF_NAME,
@@ -493,6 +496,7 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                                 ),
                             )
                         ),
+                        description={"label": label_num_buff}
                     ): selector.NumberSelector(
                         selector.NumberSelectorConfig(
                             min=0,
@@ -512,6 +516,7 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                                 ),
                             )
                         ),
+                        description={"label": label_num_sol}
                     ): selector.NumberSelector(
                         selector.NumberSelectorConfig(
                             min=0,
@@ -538,6 +543,7 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Optional(
                         "use_legacy_modbus_names",
                         default=0,
+                        description={"label": label_use_legacy_modbus_names}
                     ): selector.BooleanSelector(),
                 }
             ),
@@ -577,7 +583,8 @@ class LambdaOptionsFlow(OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Manage the options."""
+        # Die Übersetzungen werden automatisch von Home Assistant übernommen, wenn die Feldnamen korrekt sind
+        # Keine manuelle Übersetzungsabfrage mehr nötig
         errors: dict[str, str] = {}
 
         _LOGGER.debug(
@@ -647,7 +654,6 @@ class LambdaOptionsFlow(OptionsFlow):
                 _LOGGER.exception("Unexpected exception: %s", ex)
                 errors["base"] = "unknown"
 
-        # Stelle sicher, dass die Standardwerte korrekt formatiert sind
         options = {
             "hot_water_min_temp": float(
                 self._options.get(
@@ -740,8 +746,8 @@ class LambdaOptionsFlow(OptionsFlow):
                             default=options["heating_circuit_max_temp"],
                         ): selector.NumberSelector(
                             selector.NumberSelectorConfig(
-                                min=10,
-                                max=70,
+                                min=5,
+                                max=50,
                                 step=0.5,
                                 unit_of_measurement="°C",
                                 mode=selector.NumberSelectorMode.BOX,
@@ -761,13 +767,7 @@ class LambdaOptionsFlow(OptionsFlow):
                         ),
                         vol.Optional(
                             "firmware_version",
-                            default=(
-                                self._options.get("firmware_version")
-                                or self._config_entry.data.get(
-                                    "firmware_version"
-                                )
-                                or DEFAULT_FIRMWARE
-                            ),
+                            default=options["firmware_version"],
                         ): selector.SelectSelector(
                             selector.SelectSelectorConfig(
                                 options=list(FIRMWARE_VERSION.keys()),
