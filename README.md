@@ -1,6 +1,5 @@
 # Lambda Wärmepumpe Integration für Home Assistant / Lambda Heat Pump Integration for Home Assistant
 
-
 ---
 
 ## Deutsch
@@ -18,22 +17,46 @@ Diese benutzerdefinierte Integration ermöglicht die Einbindung von Lambda Wärm
 - **Debug-Logging beim Speichern der Konfiguration/Optionen**
 - Konfiguration vollständig über die Home Assistant UI (Integrations)
 
-**Installation:**
+**manuelle Installation:**
 1. Kopieren Sie den gesamten Ordner `custom_components/lambda_heat_pumps` in Ihren `custom_components` Ordner innerhalb Ihres Home Assistant Konfigurationsverzeichnisses.
-Alle anderen Ordner müssen  nicht übernommen werden.
-Der Ordner "docs" enthält die Dokumentation, er muss nicht auf das Home Assistant System übernommen werden. Er enthällt weietrführende Dokumentation.
-
 2. Starten Sie Home Assistant neu.
 
 Eine weitergehende Beschreibung der Installation und Konfiguration ist hier zu finden: https://homeassistant.com.de/homeassistant/lambda-waermepumpe-integration-fuer-home-assistant/
 
 
 **Konfiguration:**
-- Integration über die Home Assistant UI hinzufügen (`Einstellungen` → `Geräte & Dienste` → `Integration hinzufügen` → "Lambda WP")
+- Integration über die Home Assistant UI hinzufügen (`Einstellungen` → `Geräte & Dienste` → `Integration hinzufügen` → "Lambda Heat Pumps")
 - Geben Sie Name, Host, Port, Slave ID, Firmware-Version und die Anzahl der Wärmepumpen, Boiler, Heizkreise, Pufferspeicher und Solarmodule an
-- **Für alle Gerätetypen (Wärmepumpe, Boiler, Heizkreis, Puffer, Solar) kann die Anzahl flexibel zwischen 0 und 5 gewählt werden.**
+- **Für Wärmepumpen kann die Anzahl flexibel zwischen 1 und 3 gewählt werden.**
+- **Für Boiler zwischen 0 und 5, für Heizkreise zwischen 0 und 12, für Puffer zwischen 0 und 5, für Solarmodule zwischen 0 und 2.**
 - Optional: Aktivieren Sie die Raumthermostatsteuerung, um externe Temperatursensoren für jeden Heizkreis zu verwenden
+- Die Option **"Modbus-Namen verwenden"** (`use_legacy_modbus_names`): Wenn aktiviert, werden die originalen Modbus-Namen für Sensoren und Entitäten verwendet. Dies ist nützlich, wenn Sie eigene Namenszuweisungen in der `lambda_wp_config.yaml` nutzen möchten oder Kompatibilität zu älteren Setups benötigen. Ist die Option deaktiviert, werden die standardisierten Namen der Integration verwendet. Die alte Lösung und Beispiele finden Sie unter: https://github.com/GuidoJeuken-6512/HomeAssistant/tree/main
+- **Wichtig:** Wenn Sie zuvor die alte Lösung genutzt haben und Ihre historischen Werte (Entity-IDs) behalten möchten, müssen Sie diese Option aktivieren, damit die alten Namen weiterverwendet werden und Ihre Daten erhalten bleiben.
 - Nach der Einrichtung können Temperaturbereiche, Firmware-Version und Update-Intervall **jederzeit** über die Optionen angepasst werden
+
+**Hinweis zu Temperatur-Min/Max-Werten und Schritten:**
+Die Minimal- und Maximalwerte für Warmwasser und Heizkreis sowie die Schrittweite werden direkt im Options-Dialog der Integration (über die Home Assistant UI) gesetzt. Diese Werte sind **nicht** in der `lambda_wp_config.yaml` zu konfigurieren, sondern werden im Dialog der Integration (config_flow) gepflegt und können dort jederzeit geändert werden.
+
+**Deaktivierte Register (ab Version 2025.x):**
+
+Das gezielte Deaktivieren von Modbus-Registern erfolgt jetzt komfortabel über die Datei `lambda_wp_config.yaml` im Home Assistant Konfigurationsverzeichnis. Dies ist nützlich, wenn bestimmte Sensoren in Ihrer Wärmepumpen-Konfiguration nicht vorhanden sind oder Fehler verursachen.
+
+**Vorgehen:**
+1. Beobachten Sie die Home Assistant Logs auf Modbus-Fehler (z.B. "Modbus error for ... (address: 1234)")
+2. Öffnen Sie die Datei `lambda_wp_config.yaml` (wird beim ersten Start der Integration automatisch angelegt)
+3. Tragen Sie die zu deaktivierenden Register-Adressen in die Liste `disabled_registers` ein:
+
+```yaml
+disabled_registers:
+  - 1234  # sensor_name
+  - 1235  # another_sensor_name
+```
+
+4. Speichern Sie die Datei und starten Sie Home Assistant neu.
+
+**Hinweis:**
+- Die Datei kann auch genutzt werden, um Sensor-Namen gezielt zu überschreiben (siehe Kommentare in der Datei).
+
 
 **Raumthermostatsteuerung & Modbus-Schreibvorgang (Kurzfassung):**
 - Externe Temperatursensoren können für jeden Heizkreis ausgewählt werden (Dropdown, nur Fremdsensoren mit device_class 'temperature').
@@ -63,31 +86,6 @@ Eine weitergehende Beschreibung der Installation und Konfiguration ist hier zu f
 
 Die Nutzung dieser Software erfolgt auf eigene Gefahr. Es wird keine Haftung für Schäden, Datenverluste oder sonstige Folgen übernommen, die durch die Verwendung der Software entstehen. Jeglicher Regressanspruch ist ausgeschlossen.
 
-## Deaktivierte Register
-
-Die Integration bietet die Möglichkeit, bestimmte Modbus-Register zu deaktivieren, die in Ihrer spezifischen Konfiguration nicht vorhanden sind oder Fehler verursachen. Dies ist besonders nützlich, wenn:
-
-- Bestimmte Sensoren in Ihrer Wärmepumpen-Konfiguration nicht vorhanden sind
-- Modbus-Fehler für bestimmte Register auftreten
-- Sie die Anzahl der Modbus-Anfragen reduzieren möchten
-
-### Konfiguration
-
-1. Aktivieren Sie den Debug-Modus in den Integrationseinstellungen
-2. Beobachten Sie die Logs für Modbus-Fehler
-3. Notieren Sie die Register-Adressen aus den Fehlermeldungen (z.B. "Modbus error for sensor_name (address: 1234)")
-4. Tragen Sie die Adressen in die `disabled_registers.yaml` ein:
-
-```yaml
-disabled_registers:
-  - 1234  # sensor_name
-  - 1235  # another_sensor_name
-```
-
-5. Starten Sie Home Assistant neu
-
-Die deaktivierten Register werden dann nicht mehr abgefragt, was die Fehlermeldungen beseitigt und die Performance verbessert.
-
 ---
 
 ## English
@@ -106,18 +104,43 @@ This custom integration allows you to connect Lambda heat pumps to Home Assistan
 - Configuration fully via the Home Assistant UI (Integrations)
 
 **Installation:**
-1. Copy the entire `lambda` folder into your `custom_components` directory inside your Home Assistant configuration folder.
-However, all folders that are not required do not interfere with the integration.
-
+1. Copy the entire `custom_components/lambda_heat_pumps` folder into your `custom_components` directory inside your Home Assistant configuration folder.
 2. Restart Home Assistant.
 A more detailed description of the installation and configuration can be found here: https://homeassistant.com.de/homeassistant/lambda-waermepumpe-integration-fuer-home-assistant/
 
 **Configuration:**
 - Add the integration via the Home Assistant UI (`Settings` → `Devices & Services` → `Add Integration` → "Lambda WP")
 - Enter name, host, port, slave ID, firmware version, and the number of heat pumps, boilers, heating circuits, buffer tanks, and solar modules
-- **For all device types (heat pump, boiler, heating circuit, buffer, solar) the number can be flexibly set between 0 and 5 per type.**
+- **For heat pumps, the number can be set flexibly between 1 and 3.**
+- **For boilers between 0 and 5, for heating circuits between 0 and 12, for buffers between 0 and 5, and for solar modules between 0 and 2.**
 - Optional: Enable room thermostat control to use external temperature sensors for each heating circuit
+- The option **"Use legacy Modbus names"** (`use_legacy_modbus_names`): If enabled, the original Modbus names are used for sensors and entities. This is useful if you want to use your own name assignments in `lambda_wp_config.yaml` or need compatibility with older setups. If disabled, the integration's standardized names are used. The old solution and examples can be found at: https://github.com/GuidoJeuken-6512/HomeAssistant/tree/main
+- **Important:** If you previously used the old solution and want to keep your historical values (entity IDs), you must enable this option so that the old names are used and your data is preserved.
 - After setup, temperature ranges, firmware version and update interval can be **changed at any time** via the options
+
+**Note on temperature min/max values and steps:**
+The minimum and maximum values for hot water and heating circuit, as well as the step size, are set directly in the options dialog of the integration (via the Home Assistant UI). These values are **not** to be configured in the `lambda_wp_config.yaml`, but are maintained in the integration dialog (config_flow) and can be changed there at any time.
+
+**Disabled Registers (since version 2025.x):**
+
+You can now conveniently disable specific Modbus registers via the `lambda_wp_config.yaml` file in your Home Assistant configuration directory. This is useful if certain sensors are not present in your heat pump configuration or cause errors.
+
+**How to:**
+1. Watch the Home Assistant logs for Modbus errors (e.g. "Modbus error for ... (address: 1234)")
+2. Open the file `lambda_wp_config.yaml` (it is created automatically on first start of the integration)
+3. Add the register addresses to be disabled to the `disabled_registers` list:
+
+```yaml
+disabled_registers:
+  - 1234  # sensor_name
+  - 1235  # another_sensor_name
+```
+
+4. Save the file and restart Home Assistant.
+
+**Note:**
+- The file can also be used to override sensor names (see comments in the file).
+- The old method with a separate `disabled_registers.yaml` is deprecated and no longer supported.
 
 **Room thermostat control & Modbus write process (short version):**
 - External temperature sensors can be selected for each heating circuit (dropdown, only non-integration sensors with device_class 'temperature').
