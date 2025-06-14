@@ -3,13 +3,13 @@ from __future__ import annotations
 
 # Integration Constants
 DOMAIN = "lambda_heat_pumps"
-## disable this for production
+# disable this for production
 DEFAULT_NAME = "EU08L"
-DEFAULT_HOST = "192.168.178.194"
-##DEFAULT_PORT = 502
-## enable this for production
-## DEFAULT_HOST = "IP_ADDRESS or hostname"
-DEFAULT_PORT = 5020
+DEFAULT_HOST = "192.168.178.125"
+# DEFAULT_PORT = 502
+# enable this for production
+# DEFAULT_HOST = "IP_ADDRESS or hostname"
+DEFAULT_PORT = 502
 DEFAULT_SLAVE_ID = 1
 DEFAULT_FIRMWARE = "V0.0.3-3K"
 DEFAULT_ROOM_THERMOSTAT_CONTROL = False
@@ -60,10 +60,6 @@ FIRMWARE_VERSION = {
 # State Mappings
 # are outsourced to const_mapping.py
 #######################
-
-
-
-
 
 #######################
 # Sensor Templates
@@ -930,12 +926,12 @@ CLIMATE_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "boil",
         "writeable": True,
-        "hvac_mode": {"heat"}, 
+        "hvac_mode": {"heat"},
         "state_class": "measurement",
     },
     "heating_circuit": {
-        "relative_address": 4, ## room_device_temperature
-        "relative_set_address": 51, ## target_room_temperature
+        "relative_address": 4,  # room_device_temperature
+        "relative_set_address": 51,  # target_room_temperature
         "name": "Heating Circuit",
         "unit": "°C",
         "scale": 0.1,
@@ -944,12 +940,10 @@ CLIMATE_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "hc",
         "writeable": True,
-        "hvac_mode": {"heat"}, 
+        "hvac_mode": {"heat"},
         "state_class": "measurement",
     },
 }
-
-
 
 # Room Temperature Settings
 # Register offset for room temperature within a HC
@@ -961,7 +955,6 @@ DEFAULT_HEATING_CIRCUIT_MIN_TEMP = 15
 DEFAULT_HEATING_CIRCUIT_MAX_TEMP = 35
 DEFAULT_HEATING_CIRCUIT_TEMP_STEP = 0.5
 
-
 # Base addresses for all device types
 BASE_ADDRESSES = {
         'hp': 1000,    # Heat pumps start at 1000
@@ -970,4 +963,3 @@ BASE_ADDRESSES = {
         'sol': 4000,   # Solar starts at 4000
         'hc': 5000     # Heating circuits start at 5000
 }
-  

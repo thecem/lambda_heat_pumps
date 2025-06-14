@@ -118,7 +118,7 @@ HC_OPERATING_MODE = {
     5: "FROST",
     6: "SUMMER",
     7: "FLOOR-DRY",
-    65535: "Unknown",
+    -1: "Unknown",
 }
 
 # Buffer States
@@ -173,5 +173,4 @@ MAIN_E_MANAGER_OPERATING_STATE = {
     2: "MANUAL",
     3: "ERROR",
     4: "OFFLINE",
-} 
-
+}
