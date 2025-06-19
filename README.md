@@ -52,7 +52,7 @@ disabled_registers:
   - 1235  # another_sensor_name
 ```
 
-4. Speichern Sie die Datei und starten Sie Home Assistant neu.
+4. Speichern Sie die Datei und starten Sie Home Assistant neu, oder laden Sie die Integration neu.
 
 **Hinweis:**
 - Die Datei kann auch genutzt werden, um Sensor-Namen gezielt zu überschreiben (siehe Kommentare in der Datei).
@@ -136,7 +136,7 @@ disabled_registers:
   - 1235  # another_sensor_name
 ```
 
-4. Save the file and restart Home Assistant.
+4. Save the file and restart Home Assistant or reload the integration.
 
 **Note:**
 - The file can also be used to override sensor names (see comments in the file).

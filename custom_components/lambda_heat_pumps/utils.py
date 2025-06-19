@@ -1,4 +1,5 @@
 """Utility functions for Lambda Heat Pumps integration."""
+
 import logging
 import os
 import yaml
@@ -13,11 +14,11 @@ _LOGGER = logging.getLogger(__name__)
 
 def get_compatible_sensors(sensor_templates: dict, fw_version: int) -> dict:
     """Return only sensors compatible with the given firmware version.
-     Args:
-        sensor_templates: Dictionary of sensor templates
-        fw_version: The firmware version to check against
-     Returns:
-        Filtered dictionary of compatible sensors
+    Args:
+       sensor_templates: Dictionary of sensor templates
+       fw_version: The firmware version to check against
+    Returns:
+       Filtered dictionary of compatible sensors
     """
     return {
         k: v
@@ -31,7 +32,7 @@ def build_device_info(entry, device_type, idx=None, sensor_id=None):
     Build device_info dict for Home Assistant device registry.
     device_type: wird ignoriert, alle Entities gehören zum Main-Device
     """
-    DOMAIN = entry.domain if hasattr(entry, 'domain') else 'lambda_heat_pumps'
+    DOMAIN = entry.domain if hasattr(entry, "domain") else "lambda_heat_pumps"
     entry_id = entry.entry_id
     fw_version = entry.data.get("firmware_version", "unknown")
     host = entry.data.get("host")
