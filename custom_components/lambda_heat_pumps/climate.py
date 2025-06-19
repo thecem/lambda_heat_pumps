@@ -40,7 +40,9 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
         # Temperaturbereich und Schrittweite
         self._attr_min_temp = 40 if device_type == "hot_water" else 20
         self._attr_max_temp = 60 if device_type == "hot_water" else 45
-        self._attr_target_temperature_step = self._template.get("precision", 0.5)
+        self._attr_target_temperature_step = self._template.get(
+            "precision", 0.5
+        )
         self._attr_temperature_unit = self._template.get("unit", "°C")
         self._attr_hvac_modes = [HVACMode.HEAT]
         self._attr_hvac_mode = HVACMode.HEAT
@@ -79,8 +81,12 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
         scale = self._template["scale"]
         raw_value = int(temperature / scale)
         _LOGGER.debug(
-            "[Climate] Write target temperature: entity=%s, address=%s, value(raw)=%s, value(temp)=%s",
-            self.entity_id, reg_addr, raw_value, temperature
+            "[Climate] Write target temperature: entity=%s, address=%s, "
+            "value(raw)=%s, value(temp)=%s",
+            self.entity_id,
+            reg_addr,
+            raw_value,
+            temperature
         )
         result = await self.hass.async_add_executor_job(
             self.coordinator.client.write_registers,
@@ -102,10 +108,14 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up the Lambda Heat Pumps climate entities (template-basiert)."""
-    _LOGGER.debug("Setting up Lambda climate entities for entry %s", entry.entry_id)
+    _LOGGER.debug(
+        "Setting up Lambda climate entities for entry %s", entry.entry_id
+    )
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     num_boil = entry.data.get("num_boil", 1)
     num_hc = entry.data.get("num_hc", 1)
@@ -130,8 +140,10 @@ async def async_setup_entry(
         entity_key = f"room_temperature_entity_{idx}"
         if not entry.options.get(entity_key):
             _LOGGER.debug(
-                "No room temperature entity configured for heating circuit %s in entry %s, skipping entity creation.",
-                idx, entry.entry_id
+                "No room temperature entity configured for heating circuit %s "
+                "in entry %s, skipping entity creation.",
+                idx,
+                entry.entry_id
             )
             continue
         entities.append(

@@ -173,5 +173,4 @@ MAIN_E_MANAGER_OPERATING_STATE = {
     2: "MANUAL",
     3: "ERROR",
     4: "OFFLINE",
-} 
-
+}
