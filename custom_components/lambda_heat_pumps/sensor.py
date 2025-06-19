@@ -24,25 +24,24 @@ from .const import (
 )
 from .coordinator import LambdaDataUpdateCoordinator
 from .utils import build_device_info, generate_base_addresses
-from .const_mapping import (
-    HP_ERROR_STATE,
-    HP_STATE,
-    HP_RELAIS_STATE_2ND_HEATING_STAGE,
-    HP_OPERATING_STATE,
-    HP_REQUEST_TYPE,
-    BOIL_CIRCULATION_PUMP_STATE,
-    BOIL_OPERATING_STATE,
-    HC_OPERATING_STATE,
-    HC_OPERATING_MODE,
-    BUFF_OPERATING_STATE,
-    BUFF_REQUEST_TYPE,
-    SOL_OPERATING_STATE,
-    MAIN_CIRCULATION_PUMP_STATE,
-    MAIN_AMBIENT_OPERATING_STATE,
-    MAIN_E_MANAGER_OPERATING_STATE,
-)
+from .const_mapping import HP_ERROR_STATE  # noqa: F401
+from .const_mapping import HP_STATE  # noqa: F401
+from .const_mapping import HP_RELAIS_STATE_2ND_HEATING_STAGE  # noqa: F401
+from .const_mapping import HP_OPERATING_STATE  # noqa: F401
+from .const_mapping import HP_REQUEST_TYPE  # noqa: F401
+from .const_mapping import BOIL_CIRCULATION_PUMP_STATE  # noqa: F401
+from .const_mapping import BOIL_OPERATING_STATE  # noqa: F401
+from .const_mapping import HC_OPERATING_STATE  # noqa: F401
+from .const_mapping import HC_OPERATING_MODE  # noqa: F401
+from .const_mapping import BUFF_OPERATING_STATE  # noqa: F401
+from .const_mapping import BUFF_REQUEST_TYPE  # noqa: F401
+from .const_mapping import SOL_OPERATING_STATE  # noqa: F401
+from .const_mapping import MAIN_CIRCULATION_PUMP_STATE  # noqa: F401
+from .const_mapping import MAIN_AMBIENT_OPERATING_STATE  # noqa: F401
+from .const_mapping import MAIN_E_MANAGER_OPERATING_STATE  # noqa: F401
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -51,13 +50,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Lambda Heat Pumps sensors."""
     _LOGGER.debug("Setting up Lambda sensors for entry %s", entry.entry_id)
-    
+
     # Get coordinator from hass.data
     coordinator_data = hass.data[DOMAIN][entry.entry_id]
     if not coordinator_data or "coordinator" not in coordinator_data:
         _LOGGER.error("No coordinator found for entry %s", entry.entry_id)
         return
-        
+
     coordinator = coordinator_data["coordinator"]
     _LOGGER.debug("Found coordinator: %s", coordinator)
 
@@ -89,7 +88,12 @@ async def async_setup_entry(
             for sensor_id, sensor_info in template.items():
                 address = base_address + sensor_info["relative_address"]
                 if coordinator.is_register_disabled(address):
-                    _LOGGER.debug("Skipping sensor %s (address %d) because register is disabled", f"{prefix}{idx}_{sensor_id}", address)
+                    _LOGGER.debug(
+                        "Skipping sensor %s (address %d) because register is "
+                        "disabled",
+                        f"{prefix}{idx}_{sensor_id}",
+                        address,
+                    )
                     continue
                 device_class = sensor_info.get("device_class")
                 if not device_class and sensor_info.get("unit") == "°C":
@@ -101,25 +105,48 @@ async def async_setup_entry(
 
                 # Prüfe auf Override-Name
                 override_name = None
-                if use_legacy_modbus_names and hasattr(coordinator, "sensor_overrides"):
-                    override_name = coordinator.sensor_overrides.get(f"{prefix}{idx}_{sensor_id}")
+                if (
+                    use_legacy_modbus_names and
+                    hasattr(coordinator, "sensor_overrides")
+                ):
+                    override_name = coordinator.sensor_overrides.get(
+                        f"{prefix}{idx}_{sensor_id}"
+                    )
                 if override_name:
                     name = override_name
                     sensor_id_final = override_name
-                    entity_id = f"sensor.{name_prefix}_{override_name}"
+                    entity_id = (
+                        f"sensor.{name_prefix}_{override_name}"
+                    )
                     unique_id = f"{name_prefix}_{override_name}"
                 else:
                     prefix_upper = prefix.upper()
-                    if prefix == "hc" and sensor_info.get("device_type") == "Climate":
-                        name = sensor_info["name"].format(idx)
+                    if (
+                        prefix == "hc" and
+                        sensor_info.get("device_type") == "Climate"
+                    ):
+                        name = (
+                            sensor_info["name"].format(idx)
+                        )
                         sensor_id_final = f"{prefix}{idx}_{sensor_id}"
                     else:
-                        name = f"{prefix_upper}{idx} {sensor_info['name']}"
+                        name = (
+                            f"{prefix_upper}{idx} {sensor_info['name']}"
+                        )
                         sensor_id_final = f"{prefix}{idx}_{sensor_id}"
                     entity_id = f"sensor.{sensor_id_final}"
                     unique_id = sensor_id_final
 
-                device_type = prefix.upper() if prefix in ["hp", "boil", "hc", "buff", "sol"] else sensor_info.get("device_type", "main")
+                device_type = (
+                    prefix.upper() if prefix in [
+                        "hp",
+                        "boil",
+                        "hc",
+                        "buff",
+                        "sol",
+                    ]
+                    else sensor_info.get("device_type", "main")
+                )
 
                 sensors.append(
                     LambdaSensor(
@@ -132,7 +159,9 @@ async def async_setup_entry(
                         scale=sensor_info.get("scale", 1.0),
                         state_class=sensor_info.get("state_class", ""),
                         device_class=device_class,
-                        relative_address=sensor_info.get("relative_address", 0),
+                        relative_address=sensor_info.get(
+                            "relative_address", 0
+                        ),
                         data_type=sensor_info.get("data_type", None),
                         device_type=device_type,
                         txt_mapping=sensor_info.get("txt_mapping", False),
@@ -146,7 +175,12 @@ async def async_setup_entry(
     for sensor_id, sensor_info in SENSOR_TYPES.items():
         address = sensor_info["address"]
         if coordinator.is_register_disabled(address):
-            _LOGGER.debug("Skipping general sensor %s (address %d) because register is disabled", sensor_id, address)
+            _LOGGER.debug(
+                "Skipping general sensor %s (address %d) because register is "
+                "disabled",
+                sensor_id,
+                address,
+            )
             continue
         device_class = sensor_info.get("device_class")
         if not device_class and sensor_info.get("unit") == "°C":
@@ -160,7 +194,10 @@ async def async_setup_entry(
         if use_legacy_modbus_names and "override_name" in sensor_info:
             name = sensor_info["override_name"]
             sensor_id_final = sensor_info["override_name"]
-            _LOGGER.info(f"Override name for sensor '{sensor_id}': '{name}' wird als Name und sensor_id verwendet.")
+            _LOGGER.info(
+                f"Override name for sensor '{sensor_id}': '{name}' "
+                f"wird als Name und sensor_id verwendet."
+            )
         else:
             name = sensor_info["name"]
             sensor_id_final = sensor_id
@@ -190,7 +227,10 @@ async def async_setup_entry(
             )
         )
 
-    _LOGGER.debug("Created %d sensors", len(sensors))
+    _LOGGER.debug(
+        "Created %d sensors",
+        len(sensors),
+    )
     async_add_entities(sensors)
 
 
@@ -282,12 +322,23 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
     @property
     def name(self) -> str:
         """Return the name of the sensor."""
-        use_legacy_modbus_names = self.coordinator.entry.data.get("use_legacy_modbus_names", False)
-        if use_legacy_modbus_names and hasattr(self.coordinator, "sensor_overrides"):
-            override_name = self.coordinator.sensor_overrides.get(self._sensor_id)
+        use_legacy_modbus_names = self.coordinator.entry.data.get(
+            "use_legacy_modbus_names", False
+        )
+        if (
+            use_legacy_modbus_names and
+            hasattr(self.coordinator, "sensor_overrides")
+        ):
+            override_name = self.coordinator.sensor_overrides.get(
+                self._sensor_id
+            )
             if override_name:
                 # Verwende den Override-Namen als sensor_id
-                _LOGGER.debug("Overriding sensor_id from %s to %s", self._sensor_id, override_name)
+                _LOGGER.debug(
+                    "Overriding sensor_id from %s to %s",
+                    self._sensor_id,
+                    override_name,
+                )
                 self._sensor_id = override_name
                 return override_name
         return self._attr_name
@@ -304,32 +355,44 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
                 numeric_value = int(float(value))
             except (ValueError, TypeError):
                 return f"Unknown state ({value})"
-            
-            # Extract base name without index (e.g. "HP1 Operating State" -> "Operating State")
+
+            # Extract base name without index
+            # (e.g. "HP1 Operating State" -> "Operating State")
             base_name = self._attr_name
             if self._device_type and self._device_type.upper() in base_name:
                 # Remove prefix and index (e.g. "HP1 " or "BOIL2 ")
                 base_name = ' '.join(base_name.split()[1:])
             # Ersetze auch Bindestriche durch Unterstriche
-            mapping_name = f"{self._device_type.upper()}_{base_name.upper().replace(' ', '_').replace('-', '_')}"
+            mapping_name = (
+                f"{self._device_type.upper()}_"
+                f"{base_name.upper().replace(' ', '_').replace('-', '_')}"
+            )
             try:
                 state_mapping = globals().get(mapping_name)
                 if state_mapping is not None:
-                    return state_mapping.get(numeric_value, f"Unknown state ({numeric_value})")
+                    return state_mapping.get(
+                        numeric_value,
+                        f"Unknown state ({numeric_value})"
+                    )
                 _LOGGER.warning(
-                    "No state mapping found for sensor '%s' (tried mapping name: %s) with value %s. "
-                    "Sensor details: device_type=%s, register=%d, data_type=%s. "
-                    "This sensor is marked as state sensor (txt_mapping=True) but no corresponding mapping dictionary was found.",
+                    "No state mapping found f. sensor '%s' (tried mapping: %s)"
+                    "with value %s. Sensor details: device_type=%s, "
+                    "register=%d, data_type=%s. This sensor is marked as state"
+                    "sensor (txt_mapping=True) but no corresponding mapping "
+                    "dictionary was found.",
                     self._attr_name,
                     mapping_name,
                     numeric_value,
                     self._device_type,
                     self._relative_address,
-                    self._data_type
+                    self._data_type,
                 )
                 return f"Unknown mapping for state ({numeric_value})"
             except Exception as e:
-                _LOGGER.error("Error accessing mapping dictionary: %s", str(e))
+                _LOGGER.error(
+                    "Error accessing mapping dictionary: %s",
+                    str(e),
+                )
                 return f"Error loading mappings ({numeric_value})"
         try:
             return float(value)
@@ -340,8 +403,10 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
     def device_info(self):
         """Return device info for this sensor."""
         # Use device_type from sensor template, defaulting to "main" if not set
-        device_type = self._device_type.lower() if self._device_type else "main"
-        
+        device_type = (
+            self._device_type.lower() if self._device_type else "main"
+        )
+
         # Extract index from sensor_id if it exists
         idx = None
         if self._sensor_id:
@@ -352,5 +417,5 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
                 match = re.search(r'\d+', parts[0])
                 if match:
                     idx = int(match.group())
-        
+
         return build_device_info(self._entry, device_type, idx)
