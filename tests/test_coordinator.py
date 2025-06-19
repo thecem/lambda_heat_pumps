@@ -1,11 +1,15 @@
 import unittest
 from unittest.mock import AsyncMock, patch, MagicMock
-from custom_components.lambda_heat_pumps.coordinator import LambdaDataUpdateCoordinator
-from custom_components.lambda_heat_pumps.const import DOMAIN
+from custom_components.lambda_heat_pumps.coordinator import (
+    LambdaDataUpdateCoordinator,
+)
+
 
 class TestCoordinator(unittest.TestCase):
     def setUp(self):
         self.hass = MagicMock()
+        self.hass.config = MagicMock()
+        self.hass.config.config_dir = "/config"
         self.config = {
             "host": "192.168.1.100",
             "port": 8080,
@@ -26,9 +30,13 @@ class TestCoordinator(unittest.TestCase):
         mock_api_instance.get_data.assert_called_once()
 
     def test_coordinator_initialization(self):
-        with patch("custom_components.lambda_heat_pumps.coordinator.DataUpdateCoordinator") as mock_coordinator:
+        with patch(
+            "custom_components.lambda_heat_pumps.coordinator.DataUpdateCoordinator"
+        ) as mock_coordinator:
             mock_coordinator.return_value = AsyncMock()
             mock_entry = MagicMock()
             mock_entry.options = {"update_interval": 30}
-            coordinator = LambdaDataUpdateCoordinator({}, mock_entry)
+            mock_entry.data = {"host": "192.168.1.100", "port": 502}
+            mock_entry.entry_id = "test"
+            coordinator = LambdaDataUpdateCoordinator(self.hass, mock_entry)
             self.assertIsNotNone(coordinator)
