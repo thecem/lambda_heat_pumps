@@ -1,5 +1,5 @@
 # Workflow für Home Assistant Custom Component mit HACS-Check und Tests
-name: HACS & Test Validation
+name: HACS Validation & Test 
 
 on:
   push: 
