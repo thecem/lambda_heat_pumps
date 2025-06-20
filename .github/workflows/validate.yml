@@ -2,9 +2,9 @@ name: Validate
 
 on:
   push:
-    branches: [ "disabled" ]
+    branches: [main, master]
   pull_request:
-    branches: [ "disabled" ]
+    branches: [main, master]
 
 jobs:
   validate:
