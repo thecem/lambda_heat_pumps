@@ -1,199 +1,302 @@
-# Lambda Wärmepumpe Integration für Home Assistant / Lambda Heat Pump Integration for Home Assistant
+# Lambda Heat Pumps Integration für Home Assistant
 
----
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
+[![maintainer](https://img.shields.io/badge/maintainer-%40GuidoJeuken--6512-blue.svg)](https://github.com/GuidoJeuken-6512)
+[![version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/GuidoJeuken-6512/lambda_wp_hacs)
+[![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## Deutsch
+Eine benutzerdefinierte Home Assistant Integration für Lambda Wärmepumpen über Modbus/TCP Protokoll.
 
-Diese benutzerdefinierte Integration ermöglicht die Einbindung von Lambda Wärmepumpen in Home Assistant über das Modbus/TCP Protokoll. Sie liest Sensordaten aus und ermöglicht die Steuerung von Klima-Entitäten (z.B. Warmwasser, Heizkreis).
+## 📋 Inhaltsverzeichnis
 
-**Features:**
-- Auslesen diverser Sensoren der Wärmepumpe (Temperaturen, Zustände, Energieverbrauch etc.)
-- Steuerung der Zieltemperatur für Warmwasser und Heizkreise über `climate`-Entitäten
-- Dynamische Anpassung der Sensoren und Entitäten basierend auf der Firmware-Version und der konfigurierten Anzahl von Wärmepumpen, Boilern, Heizkreisen, Pufferspeichern und Solarmodulen
-- Zentrale, konsistente Filterung aller Sensoren/Entitäten nach Firmware-Version (utils.py)
-- Raumthermostatsteuerung: Verwendung externer Temperatursensoren für jeden Heizkreis
-- Konfigurierbarer Update-Intervall
-- **Firmware-Version, Temperaturbereiche und Schritte sind jederzeit im Options-Dialog änderbar**
-- **Debug-Logging beim Speichern der Konfiguration/Optionen**
-- Konfiguration vollständig über die Home Assistant UI (Integrations)
+- [Überblick](#überblick)
+- [Features](#features)
+- [Installation](#installation)
+- [Konfiguration](#konfiguration)
+- [Verwendung](#verwendung)
+- [Troubleshooting](#troubleshooting)
+- [Entwicklung](#entwicklung)
+- [Lizenz](#lizenz)
 
-**manuelle Installation:**
-1. Kopieren Sie den gesamten Ordner `custom_components/lambda_heat_pumps` in Ihren `custom_components` Ordner innerhalb Ihres Home Assistant Konfigurationsverzeichnisses.
-2. Starten Sie Home Assistant neu.
+## 🔍 Überblick
 
-Eine weitergehende Beschreibung der Installation und Konfiguration ist hier zu finden: https://homeassistant.com.de/homeassistant/lambda-waermepumpe-integration-fuer-home-assistant/
+Diese Integration ermöglicht die vollständige Einbindung von Lambda Wärmepumpen in Home Assistant. Sie liest Sensordaten aus und ermöglicht die Steuerung von Klima-Entitäten über das Modbus/TCP Protokoll.
 
+### Unterstützte Geräte
 
-**Konfiguration:**
-- Integration über die Home Assistant UI hinzufügen (`Einstellungen` → `Geräte & Dienste` → `Integration hinzufügen` → "Lambda Heat Pumps")
-- Geben Sie Name, Host, Port, Slave ID, Firmware-Version und die Anzahl der Wärmepumpen, Boiler, Heizkreise, Pufferspeicher und Solarmodule an
-- **Für Wärmepumpen kann die Anzahl flexibel zwischen 1 und 3 gewählt werden.**
-- **Für Boiler zwischen 0 und 5, für Heizkreise zwischen 0 und 12, für Puffer zwischen 0 und 5, für Solarmodule zwischen 0 und 2.**
-- Optional: Aktivieren Sie die Raumthermostatsteuerung, um externe Temperatursensoren für jeden Heizkreis zu verwenden
-- Die Option **"Modbus-Namen verwenden"** (`use_legacy_modbus_names`): Wenn aktiviert, werden die originalen Modbus-Namen für Sensoren und Entitäten verwendet. Dies ist nützlich, wenn Sie eigene Namenszuweisungen in der `lambda_wp_config.yaml` nutzen möchten oder Kompatibilität zu älteren Setups benötigen. Ist die Option deaktiviert, werden die standardisierten Namen der Integration verwendet. Die alte Lösung und Beispiele finden Sie unter: https://github.com/GuidoJeuken-6512/HomeAssistant/tree/main
-- **Wichtig:** Wenn Sie zuvor die alte Lösung genutzt haben und Ihre historischen Werte (Entity-IDs) behalten möchten, müssen Sie diese Option aktivieren, damit die alten Namen weiterverwendet werden und Ihre Daten erhalten bleiben.
-- Nach der Einrichtung können Temperaturbereiche, Firmware-Version und Update-Intervall **jederzeit** über die Optionen angepasst werden
+- **Wärmepumpen**: 1-3 Geräte
+- **Boiler**: 0-5 Geräte  
+- **Heizkreise**: 0-12 Kreise
+- **Pufferspeicher**: 0-5 Speicher
+- **Solarmodule**: 0-2 Module
 
-**Hinweis zu Temperatur-Min/Max-Werten und Schritten:**
-Die Minimal- und Maximalwerte für Warmwasser und Heizkreis sowie die Schrittweite werden direkt im Options-Dialog der Integration (über die Home Assistant UI) gesetzt. Diese Werte sind **nicht** in der `lambda_wp_config.yaml` zu konfigurieren, sondern werden im Dialog der Integration (config_flow) gepflegt und können dort jederzeit geändert werden.
+### Firmware-Versionen
 
-**Deaktivierte Register (ab Version 2025.x):**
+- V0.0.3-3K
+- V0.0.4-3K
+- V0.0.5-3K
+- V0.0.6-3K
+- V0.0.7-3K
 
-Das gezielte Deaktivieren von Modbus-Registern erfolgt jetzt komfortabel über die Datei `lambda_wp_config.yaml` im Home Assistant Konfigurationsverzeichnis. Dies ist nützlich, wenn bestimmte Sensoren in Ihrer Wärmepumpen-Konfiguration nicht vorhanden sind oder Fehler verursachen.
+## ✨ Features
 
-**Vorgehen:**
-1. Beobachten Sie die Home Assistant Logs auf Modbus-Fehler (z.B. "Modbus error for ... (address: 1234)")
-2. Öffnen Sie die Datei `lambda_wp_config.yaml` (wird beim ersten Start der Integration automatisch angelegt)
-3. Tragen Sie die zu deaktivierenden Register-Adressen in die Liste `disabled_registers` ein:
+### 🔧 Kernfunktionen
+- **Vollständige Modbus/TCP Integration** für Lambda Wärmepumpen
+- **Dynamische Sensor-Erkennung** basierend auf Firmware-Version
+- **Konfigurierbare Geräteanzahl** für alle Komponenten
+- **Raumthermostat-Steuerung** mit externen Temperatursensoren
+- **Zentrale Firmware-Filterung** aller Sensoren und Entitäten
+
+### 🌡️ Temperatursteuerung
+- **Warmwasser-Steuerung** mit konfigurierbaren Temperaturbereichen
+- **Heizkreis-Steuerung** mit individuellen Einstellungen
+- **Externe Temperatursensoren** für jeden Heizkreis
+- **Automatische Modbus-Schreibvorgänge** für Raumthermostate
+
+### 📊 Monitoring & Daten
+- **Umfassende Sensordaten**: Temperaturen, Zustände, Energieverbrauch
+- **Echtzeit-Updates** mit konfigurierbarem Intervall
+- **Debug-Logging** für Entwickler und Troubleshooting
+- **Historische Daten** für Trend-Analysen
+
+### ⚙️ Konfiguration
+- **Vollständige UI-Integration** über Home Assistant Einstellungen
+- **Dynamische Options-Dialoge** für alle Einstellungen
+- **Legacy-Modus** für Kompatibilität mit bestehenden Setups
+- **Deaktivierung problematischer Register** über YAML-Konfiguration
+
+## 🚀 Installation
+
+### Voraussetzungen
+
+- Home Assistant 2024.4.4 oder höher
+- HACS (Home Assistant Community Store)
+- Modbus/TCP-fähige Lambda Wärmepumpe
+
+### HACS Installation (Empfohlen)
+
+1. **HACS installieren** (falls noch nicht geschehen):
+   ```bash
+   # Über Home Assistant Supervisor → Add-on Store → HACS
+   ```
+
+2. **Repository hinzufügen**:
+   - Öffnen Sie HACS → Integrations
+   - Klicken Sie auf "⋮" → "Custom repositories"
+   - Fügen Sie hinzu: `GuidoJeuken-6512/lambda_wp_hacs`
+   - Kategorie: Integration
+
+3. **Integration installieren**:
+   - Suchen Sie nach "Lambda Heat Pumps"
+   - Klicken Sie auf "Download"
+   - Starten Sie Home Assistant neu
+
+### Manuelle Installation
+
+1. **Repository klonen**:
+   ```bash
+   cd /config/custom_components
+   git clone https://github.com/GuidoJeuken-6512/lambda_wp_hacs.git lambda_heat_pumps
+   ```
+
+2. **Home Assistant neu starten**
+
+## ⚙️ Konfiguration
+
+### Erste Einrichtung
+
+1. **Integration hinzufügen**:
+   - `Einstellungen` → `Geräte & Dienste` → `Integration hinzufügen`
+   - Suchen Sie nach "Lambda Heat Pumps"
+
+2. **Grundkonfiguration**:
+   ```yaml
+   Name: "Meine Lambda WP"
+   Host: "192.168.1.100"  # IP-Adresse Ihrer Wärmepumpe
+   Port: 5020             # Standard Modbus-Port
+   Slave ID: 1            # Modbus Slave-ID
+   Firmware Version: "V0.0.3-3K"
+   ```
+
+3. **Geräteanzahl konfigurieren**:
+   - Wärmepumpen: 1-3
+   - Boiler: 0-5
+   - Heizkreise: 0-12
+   - Pufferspeicher: 0-5
+   - Solarmodule: 0-2
+
+### Erweiterte Einstellungen
+
+#### Raumthermostat-Steuerung
+- Aktivieren Sie "Room thermostat control"
+- Wählen Sie externe Temperatursensoren für jeden Heizkreis
+- Die Integration schreibt automatisch die Werte in die Modbus-Register
+
+#### Legacy-Modus
+- Aktivieren Sie "Use legacy Modbus names" für Kompatibilität
+- Wichtig für bestehende Setups mit historischen Daten
+
+#### Temperaturbereiche
+- Warmwasser: 40-60°C (konfigurierbar)
+- Heizkreise: 15-35°C (konfigurierbar)
+- Schrittweite: 0.5°C (konfigurierbar)
+
+### YAML-Konfiguration
+
+Die Integration erstellt automatisch eine `lambda_wp_config.yaml` Datei:
 
 ```yaml
+# Lambda WP configuration
+# Deaktivierung problematischer Register
 disabled_registers:
-  - 1234  # sensor_name
-  - 1235  # another_sensor_name
+  - 2004  # Beispiel: boil1_actual_circulation_temp
+
+# Sensor-Namen überschreiben (nur im Legacy-Modus)
+sensors_names_override:
+  - id: actual_heating_capacity
+    override_name: Hp_QP_heating
 ```
 
-4. Speichern Sie die Datei und starten Sie Home Assistant neu, oder laden Sie die Integration neu.
+## 📱 Verwendung
 
-**Hinweis:**
-- Die Datei kann auch genutzt werden, um Sensor-Namen gezielt zu überschreiben (siehe Kommentare in der Datei).
-
-
-**Raumthermostatsteuerung & Modbus-Schreibvorgang (Kurzfassung):**
-- Externe Temperatursensoren können für jeden Heizkreis ausgewählt werden (Dropdown, nur Fremdsensoren mit device_class 'temperature').
-- Die Integration schreibt die gemessenen Werte automatisch und regelmäßig in die Modbus-Register der Heizkreise.
-- Das Schreiben erfolgt über die Service-Funktion in `services.py` und kann auch manuell per Service-Aufruf ausgelöst werden.
-
-**Firmware- und Sensor-Handling:**
-- Die Firmware-Version kann nachträglich im Options-Dialog geändert werden und triggert ein vollständiges Reload (inkl. Filterung der Sensoren)
-- Sensoren und Entitäten werden **zentral** nach Firmware gefiltert (siehe `utils.py`)
-- Initialwerte für Sensoren (z.B. Dummy) können in const.py gesetzt werden
-
-**Hinweise für Home Assistant 2025.3:**
-- Diese Integration ist vollständig kompatibel mit Home Assistant 2025.3 ff
-- Verwendet den neuen DataUpdateCoordinator für optimale Leistung
-- Typisierung und async/await nach den neuesten Standards
-- Verbesserte Fehlerbehandlung und Logging
-- Moderne Konfigurations- und Options-Flows
-
-**Debugging:**
-- Im Debug-Mode werden die geschriebenen Werte im Home Assistant Log (DEBUG) ausgegeben
-
-**Bekannte Probleme:**
-- Die Übersetzung in andere Sprachen (außer Deutsch und Englisch)
-- Die Zuordnung von Sensoren zu Firmware-Ständen ist nicht korrekt
-
-**Haftungsausschluss/Disclaimer:**
-
-Die Nutzung dieser Software erfolgt auf eigene Gefahr. Es wird keine Haftung für Schäden, Datenverluste oder sonstige Folgen übernommen, die durch die Verwendung der Software entstehen. Jeglicher Regressanspruch ist ausgeschlossen.
-
----
-
-## English
-
-This custom integration allows you to connect Lambda heat pumps to Home Assistant via the Modbus/TCP protocol. It reads sensor data and enables control of climate entities (e.g., hot water, heating circuit).
-
-**Features:**
-- Reads various heat pump sensors (temperatures, states, energy consumption, etc.)
-- Control of target temperature for hot water and heating circuits via `climate` entities
-- Dynamic adaptation of sensors and entities based on firmware version and configured number of heat pumps, boilers, heating circuits, buffer tanks, and solar modules
-- Central, consistent filtering of all sensors/entities by firmware version (utils.py)
-- Room thermostat control: Use external temperature sensors for each heating circuit
-- Configurable update interval
-- **Firmware version, temperature ranges and steps can be changed at any time in the options dialog**
-- **Debug logging when saving configuration/options**
-- Configuration fully via the Home Assistant UI (Integrations)
-
-**Installation:**
-1. Copy the entire `custom_components/lambda_heat_pumps` folder into your `custom_components` directory inside your Home Assistant configuration folder.
-2. Restart Home Assistant.
-A more detailed description of the installation and configuration can be found here: https://homeassistant.com.de/homeassistant/lambda-waermepumpe-integration-fuer-home-assistant/
-
-**Configuration:**
-- Add the integration via the Home Assistant UI (`Settings` → `Devices & Services` → `Add Integration` → "Lambda WP")
-- Enter name, host, port, slave ID, firmware version, and the number of heat pumps, boilers, heating circuits, buffer tanks, and solar modules
-- **For heat pumps, the number can be set flexibly between 1 and 3.**
-- **For boilers between 0 and 5, for heating circuits between 0 and 12, for buffers between 0 and 5, and for solar modules between 0 and 2.**
-- Optional: Enable room thermostat control to use external temperature sensors for each heating circuit
-- The option **"Use legacy Modbus names"** (`use_legacy_modbus_names`): If enabled, the original Modbus names are used for sensors and entities. This is useful if you want to use your own name assignments in `lambda_wp_config.yaml` or need compatibility with older setups. If disabled, the integration's standardized names are used. The old solution and examples can be found at: https://github.com/GuidoJeuken-6512/HomeAssistant/tree/main
-- **Important:** If you previously used the old solution and want to keep your historical values (entity IDs), you must enable this option so that the old names are used and your data is preserved.
-- After setup, temperature ranges, firmware version and update interval can be **changed at any time** via the options
-
-**Note on temperature min/max values and steps:**
-The minimum and maximum values for hot water and heating circuit, as well as the step size, are set directly in the options dialog of the integration (via the Home Assistant UI). These values are **not** to be configured in the `lambda_wp_config.yaml`, but are maintained in the integration dialog (config_flow) and can be changed there at any time.
-
-**Disabled Registers (since version 2025.x):**
-
-You can now conveniently disable specific Modbus registers via the `lambda_wp_config.yaml` file in your Home Assistant configuration directory. This is useful if certain sensors are not present in your heat pump configuration or cause errors.
-
-**How to:**
-1. Watch the Home Assistant logs for Modbus errors (e.g. "Modbus error for ... (address: 1234)")
-2. Open the file `lambda_wp_config.yaml` (it is created automatically on first start of the integration)
-3. Add the register addresses to be disabled to the `disabled_registers` list:
+### Automatisierungen
 
 ```yaml
-disabled_registers:
-  - 1234  # sensor_name
-  - 1235  # another_sensor_name
+# Beispiel: Warmwasser-Temperatur basierend auf Tageszeit
+automation:
+  - alias: "Warmwasser Nachtmodus"
+    trigger:
+      platform: time
+      at: "22:00:00"
+    action:
+      service: climate.set_temperature
+      target:
+        entity_id: climate.lambda_wp_hot_water_1
+      data:
+        temperature: 45
 ```
 
-4. Save the file and restart Home Assistant or reload the integration.
+### Services
 
-**Note:**
-- The file can also be used to override sensor names (see comments in the file).
-- The old method with a separate `disabled_registers.yaml` is deprecated and no longer supported.
+```yaml
+# Manueller Service-Aufruf für Raumthermostat
+service: lambda_heat_pumps.write_room_temperature
+data:
+  heating_circuit: 1
+  temperature: 22.5
+```
 
-**Room thermostat control & Modbus write process (short version):**
-- External temperature sensors can be selected for each heating circuit (dropdown, only non-integration sensors with device_class 'temperature').
-- The integration automatically and regularly writes the measured values to the Modbus registers of the heating circuits.
-- Writing is handled by the service function in `services.py` and can also be triggered manually via a service call.
+### Lovelace Dashboard
 
-**Firmware and Sensor Handling:**
-- The firmware version can be changed later in the options dialog and triggers a full reload (including filtering of sensors)
-- Sensors and entities are **centrally** filtered by firmware (see `utils.py`)
-- Initial values for sensors (e.g. dummy) can be set in const.py
+```yaml
+# Beispiel-Card für Wärmepumpe
+type: vertical-stack
+cards:
+  - type: entities
+    title: Lambda Wärmepumpe
+    entities:
+      - entity: sensor.lambda_wp_hp1_flow_line_temperature
+      - entity: sensor.lambda_wp_hp1_state
+      - entity: climate.lambda_wp_hot_water_1
+      - entity: climate.lambda_wp_heating_circuit_1
+```
 
-**Notes for Home Assistant 2025.3:**
-- This integration is fully compatible with Home Assistant 2025.3 ff
-- Uses the new DataUpdateCoordinator for optimal performance
-- Typing and async/await according to the latest standards
-- Improved error handling and logging
-- Modern configuration and options flows
+## 🔧 Troubleshooting
 
-**Debugging:**
-- in debug mode the written values are output to the Home Assistant log (DEBUG)
+### Häufige Probleme
 
-**Known Issues:**
-- Translation to other languages (besides German and English)
-- the assignment of sensors to firmware stands is not correct
+#### Verbindungsfehler
+```yaml
+# Prüfen Sie:
+- IP-Adresse und Port der Wärmepumpe
+- Netzwerkverbindung
+- Firewall-Einstellungen
+- Modbus Slave-ID
+```
+
+#### Fehlende Sensoren
+```yaml
+# Lösung:
+1. Firmware-Version in den Optionen prüfen
+2. Register in lambda_wp_config.yaml deaktivieren
+3. Integration neu laden
+```
+
+#### Debug-Logging aktivieren
+
+```yaml
+# In configuration.yaml
+logger:
+  default: info
+  logs:
+    custom_components.lambda_heat_pumps: debug
+```
+
+### Log-Analyse
+
+Suchen Sie nach diesen Log-Einträgen:
+- `Modbus error for ... (address: 1234)` → Register deaktivieren
+- `Failed to connect` → Netzwerk/Modbus-Konfiguration prüfen
+- `Firmware version mismatch` → Firmware-Version anpassen
+
+## 🛠️ Entwicklung
+
+### Projektstruktur
+
+```
+lambda_heat_pumps/
+├── __init__.py          # Hauptintegration
+├── config_flow.py       # Konfigurations-UI
+├── const.py            # Konstanten und Sensor-Definitionen
+├── coordinator.py      # Datenkoordination
+├── sensor.py          # Sensor-Entitäten
+├── climate.py         # Klima-Entitäten
+├── services.py        # Service-Funktionen
+├── utils.py           # Hilfsfunktionen
+├── const_mapping.py   # Zustands-Mappings
+├── translations/      # Übersetzungen
+└── manifest.json      # HACS-Manifest
+```
+
+### Modbus-Test-Tools
+
+Für Entwicklung und Testing steht ein separates Repository zur Verfügung:
+
+**GitHub:** [modbus_tools](https://github.com/GuidoJeuken-6512/modbus_tools)
+
+Enthält:
+- Modbus TCP Server zum Mocken der Wärmepumpe
+- Grafischer Modbus TCP Client für Debugging
+
+### Beitragen
+
+1. Fork des Repositories
+2. Feature-Branch erstellen
+3. Änderungen committen
+4. Pull Request erstellen
+
+## 📄 Lizenz
+
+Diese Software wird unter der MIT-Lizenz veröffentlicht. Siehe [LICENSE](LICENSE) für Details.
+
+## ⚠️ Haftungsausschluss
+
+Die Nutzung dieser Software erfolgt auf eigene Gefahr. Es wird keine Haftung für Schäden, Datenverluste oder sonstige Folgen übernommen, die durch die Verwendung der Software entstehen.
 
 ---
 
-*Diese Integration wird nicht offiziell von Lambda unterstützt. / This integration is not officially supported by Lambda.*
+## 🌍 International
+
+### English
+
+This integration provides full Lambda heat pump integration for Home Assistant via Modbus/TCP protocol. For English documentation, please refer to the [English README](README_EN.md).
+
+### Support
+
+- **GitHub Issues:** [Report a Bug](https://github.com/GuidoJeuken-6512/lambda_wp_hacs/issues)
+- **Community:** [Home Assistant Community](https://community.home-assistant.io/)
+- **Documentation:** [Detailed Guide](https://homeassistant.com.de/homeassistant/lambda-waermepumpe-integration-fuer-home-assistant/)
 
 ---
 
-## Modbus Test-Tools (Server & Client)
-
-Für Entwicklung und Test der Integration steht ein separates Repository mit Modbus-Testtools zur Verfügung:
-
-**GitHub:** [https://github.com/GuidoJeuken-6512/modbus_tools](https://github.com/GuidoJeuken-6512/modbus_tools)
-
-**Enthalten:**
-- Ein einfacher Modbus TCP Server (`server.py`), der Register aus einer YAML-Datei bereitstellt (ideal zum Mocken der Wärmepumpe)
-- Ein grafischer Modbus TCP Client (`modbus_client.py`) zum Testen und Debuggen von Registerzugriffen
-
-**Kurzanleitung:**
-1. Repository klonen: `git clone https://github.com/GuidoJeuken-6512/modbus_tools`
-2. In das Verzeichnis wechseln: `cd modbus_tools`
-3. Server starten: `python server.py` (Register werden aus `config/registers.yaml` geladen)
-4. Client starten: `python modbus_client.py` (GUI zum Lesen/Schreiben von Registern)
-
-Weitere Details und Konfigurationsmöglichkeiten finden sich im README des Repositories und in den jeweiligen Python-Dateien.
-
----
-
-**Haftungsausschluss/Disclaimer:**
-
-Use of this software is at your own risk. No liability is accepted for any damages, data loss, or other consequences resulting from the use of this software. Any claims for compensation are excluded.
-
----
+**Entwickelt mit ❤️ für die Home Assistant Community**
