@@ -20,7 +20,7 @@ Damit dein PR schnell akzeptiert wird, halte dich an folgende Vorgaben:
 - [brands-Repo (Logo)](https://github.com/home-assistant/brands)
 - [HACS Integration Repo](https://github.com/hacs/integration)
 
----
+--- 
 
 # Schritt-für-Schritt-Anleitung: Integration in den offiziellen HACS Store
 
