@@ -78,11 +78,6 @@ If you do not use HACS, you can install the integration manually:
 2. **If you have terminal access to your Home Assistant server:**
    ```bash
    cd /config/custom_components
-   # Clone the repository
-   git clone https://github.com/GuidoJeuken-6512/lambda_wp_hacs.git lambda_heat_pumps
-   ```
-
-3. **If you do not have terminal access:**
    - Download the integration from:  
      https://github.com/GuidoJeuken-6512/lambda_wp_hacs
    - Copy the entire folder `lambda_heat_pumps` into `/config/custom_components/` on your Home Assistant server.
