@@ -1,10 +1,8 @@
-name: Validate
+name: Validate with hassfest
 
 on:
   push:
-    branches: [ "disabled" ]
   pull_request:
-    branches: [ "disabled" ]
 
 jobs:
   validate:
