@@ -136,7 +136,7 @@ Beispiele:
 
 Wichtig: In der Benutzeroberfläche werden die Geräte mit 1-basierten Indizes angezeigt (HP1, HC1), während die Register-Adressen 0-basierte Indizes verwenden!
 
-Wenn Sie problematische Register in `disabled_registers.yaml` deaktivieren, achten Sie darauf, die korrekte Register-Adresse zu verwenden.
+Wenn Sie problematische Register in `lambda_wp_config.yaml` deaktivieren, achten Sie darauf, die korrekte Register-Adresse zu verwenden.
 
 ## Troubleshooting / Fehlerbehebung
 

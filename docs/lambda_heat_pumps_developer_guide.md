@@ -13,7 +13,6 @@ lambda_heat_pumps/
 ├── config_flow.py       # Configuration flow UI
 ├── const.py             # Constants and configuration
 ├── coordinator.py       # Data update coordinator
-├── disabled_registers.yaml # List of disabled registers
 ├── manifest.json        # Integration manifest
 ├── sensor.py            # Sensor implementation
 ├── services.py          # Custom services
