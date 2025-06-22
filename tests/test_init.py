@@ -56,13 +56,18 @@ async def test_async_setup_entry(mock_hass: HomeAssistant, mock_config_entry):
         "custom_components.lambda_heat_pumps.utils.load_disabled_registers"
     ) as mock_load_disabled, patch(
         "aiofiles.open"
-    ) as mock_file_open:
+    ) as mock_file_open, patch(
+        "custom_components.lambda_heat_pumps.services.async_setup_services"
+    ) as mock_setup_services:
         coordinator = AsyncMock()
         coordinator.async_refresh = AsyncMock()
+        coordinator.async_init = AsyncMock()
+        coordinator.data = {"test": "data"}  # Mock data
         mock_coordinator.return_value = coordinator
         mock_load_disabled.return_value = set()
         mock_file_open.return_value.__aenter__ = AsyncMock()
         mock_file_open.return_value.__aexit__ = AsyncMock()
+        mock_setup_services.return_value = None
         # Modbus-Read-Mock
         modbus_result = MagicMock()
         modbus_result.isError.return_value = False

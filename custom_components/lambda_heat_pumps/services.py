@@ -13,7 +13,8 @@ from homeassistant.helpers.event import async_track_time_interval
 from .const import (
     DOMAIN,
     CONF_ROOM_TEMPERATURE_ENTITY,
-    ROOM_TEMPERATURE_UPDATE_INTERVAL,
+    DEFAULT_WRITE_INTERVAL,
+    CONF_PV_POWER_SENSOR_ENTITY,
 )
 
 # Konstanten für Zustandsarten definieren
@@ -274,7 +275,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         lambda_entries = hass.data.get(DOMAIN, {})
         if not lambda_entries:
             _LOGGER.error(
-                "No Lambda WP integrations found",
+                "No Lambda WP integrations found. Please configure the integration first.",
             )
             return
 
@@ -315,68 +316,97 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     ex,
                 )
 
+    async def async_write_room_and_pv(call: ServiceCall = None) -> None:
+        """Write room temperature and PV surplus to Modbus registers for all entries."""
+        lambda_entries = hass.data.get(DOMAIN, {})
+        if not lambda_entries:
+            _LOGGER.debug("No Lambda WP integrations found yet, skipping write operation")
+            return
+
+        for entry_id, entry_data in lambda_entries.items():
+            config_entry = hass.config_entries.async_get_entry(entry_id)
+            if not config_entry or not config_entry.options:
+                continue
+            coordinator = entry_data.get("coordinator")
+            if not coordinator or not coordinator.client:
+                _LOGGER.error("Coordinator or Modbus client not available for entry_id %s", entry_id)
+                continue
+
+            # Raumthermostat schreiben
+            if config_entry.options.get("room_thermostat_control", False):
+                num_hc = config_entry.data.get("num_hc", 1)
+                for hc_idx in range(1, num_hc + 1):
+                    entity_key = CONF_ROOM_TEMPERATURE_ENTITY.format(hc_idx)
+                    room_temp_entity_id = config_entry.options.get(entity_key)
+                    if not room_temp_entity_id:
+                        continue
+                    state = hass.states.get(room_temp_entity_id)
+                    if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN, ""):
+                        continue
+                    try:
+                        temperature = float(state.state)
+                        unit = state.attributes.get("unit_of_measurement")
+                        if unit == "°C":
+                            temperature += 273.15  # in K
+                        from .utils import clamp_to_int16
+                        raw_value = clamp_to_int16(temperature, "temperature")
+                        register_address = 5004 + (hc_idx - 1) * 100
+                        result = await hass.async_add_executor_job(
+                            coordinator.client.write_registers,
+                            register_address,
+                            [raw_value],
+                            config_entry.data.get("slave_id", 1),
+                        )
+                        if result.isError():
+                            _LOGGER.error("Failed to write room temperature for HC %d: %s", hc_idx, result)
+                    except Exception as ex:
+                        _LOGGER.error("Error writing room temperature for HC %d: %s", hc_idx, ex)
+
+            # PV-Überschuss schreiben
+            if config_entry.options.get("pv_surplus", False):
+                entity_id = config_entry.options.get(CONF_PV_POWER_SENSOR_ENTITY)
+                if not entity_id:
+                    continue
+                state = hass.states.get(entity_id)
+                if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN, ""):
+                    continue
+                try:
+                    power_value = float(state.state)
+                    unit = state.attributes.get("unit_of_measurement")
+                    if unit == "kW":
+                        power_value *= 1000
+                    from .utils import clamp_to_int16
+                    raw_value = clamp_to_int16(power_value, "power")
+                    register_address = 102
+                    result = await hass.async_add_executor_job(
+                        coordinator.client.write_registers,
+                        register_address,
+                        [raw_value],
+                        config_entry.data.get("slave_id", 1),
+                    )
+                    if result.isError():
+                        _LOGGER.error("Failed to write PV surplus: %s", result)
+                except Exception as ex:
+                    _LOGGER.error("Error writing PV surplus: %s", ex)
+
     # Setup regelmäßige Aktualisierungen für alle Entries
     @callback
     def setup_scheduled_updates() -> None:
         """Set up scheduled updates for all entries."""
-        # No arguments, no change needed
-        # Bestehende Unsubscriber entfernen
         for unsub in unsub_update_callbacks.values():
             unsub()
         unsub_update_callbacks.clear()
 
-        # Für jede Konfiguration einen Timer einrichten,
-        # wenn Raumthermostat aktiv ist
-        for entry_id in hass.data.get(DOMAIN, {}):
-            config_entry = hass.config_entries.async_get_entry(entry_id)
-            if not config_entry or not config_entry.options:
-                continue
-
-            # Prüfe, ob Raumthermostat aktiviert ist
-            if not config_entry.options.get("room_thermostat_control", False):
-                continue
-
-            # Prüfe, ob mindestens ein Heizkreis einen Sensor hat
-            num_hc = config_entry.data.get("num_hc", 1)
-            has_sensor = False
-
-            for hc_idx in range(1, num_hc + 1):
-                entity_key = CONF_ROOM_TEMPERATURE_ENTITY.format(hc_idx)
-                if config_entry.options.get(entity_key):
-                    has_sensor = True
-                    break
-
-            if not has_sensor:
-                _LOGGER.debug(
-                    "No room temperature sensors configured for entry_id %s",
-                    entry_id,
-                )
-                continue
-
-            # Update-Intervall aus der Konstante
-            update_interval = timedelta(
-                minutes=ROOM_TEMPERATURE_UPDATE_INTERVAL)
-
-            # Erstelle ServiceCall-Daten für den spezifischen Entry
-            service_data = {ATTR_ENTITY_ID: entry_id}
-
-            # Timer einrichten
-            async def scheduled_update_callback(_):
-                """Scheduled update callback."""
-                # _ argument is unused, kept for interface compatibility
-                await async_update_room_temperature(
-                    ServiceCall(
-                        DOMAIN, "update_room_temperature", service_data)
-                )
-
-            unsub = async_track_time_interval(
-                hass,
-                scheduled_update_callback,
-                update_interval,
-            )
-
-            # Speichere Unsubscribe-Funktion
-            unsub_update_callbacks[entry_id] = unsub
+        # Gemeinsamer Timer für beide Schreibvorgänge
+        update_interval = timedelta(seconds=DEFAULT_WRITE_INTERVAL)
+        async def scheduled_update_callback(_):
+            await async_write_room_and_pv()
+        unsub = async_track_time_interval(
+            hass,
+            scheduled_update_callback,
+            update_interval,
+        )
+        unsub_update_callbacks["write_room_and_pv"] = unsub
 
     # Bei Änderungen in der Konfiguration die Timers neu einrichten
     @callback

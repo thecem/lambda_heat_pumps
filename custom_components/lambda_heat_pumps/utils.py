@@ -124,3 +124,30 @@ def to_signed_16bit(val):
 def to_signed_32bit(val):
     """Wandelt einen 32-Bit-Wert in signed um."""
     return val - 0x100000000 if val >= 0x80000000 else val
+
+
+def clamp_to_int16(value: float, context: str = "value") -> int:
+    """Clamp a value to int16 range (-32768 to 32767).
+    
+    Args:
+        value: The value to clamp
+        context: Context string for logging (e.g., "temperature", "power")
+        
+    Returns:
+        int: The clamped value in int16 range
+    """
+    raw_value = int(value)
+    if raw_value < -32768:
+        _LOGGER.warning(
+            "%s value %d is below int16 minimum (-32768), clamping to -32768",
+            context.capitalize(), raw_value
+        )
+        return -32768
+    elif raw_value > 32767:
+        _LOGGER.warning(
+            "%s value %d is above int16 maximum (32767), clamping to 32767",
+            context.capitalize(), raw_value
+        )
+        return 32767
+    else:
+        return raw_value
