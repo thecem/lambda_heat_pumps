@@ -16,6 +16,7 @@
 2. Add this repo as a custom repository: `GuidoJeuken-6512/lambda_wp_hacs` (category: Integration)
 3. Search for "Lambda Heat Pumps" in HACS, install, and restart Home Assistant
 4. Add the integration via Settings → Devices & Services
+5. Configure options (e.g. room thermostat, PV surplus control)
 
 **Features:**
 - Full Modbus/TCP support for Lambda heat pumps
@@ -50,6 +51,8 @@
    - Home Assistant neu starten
 4. **Integration einrichten:**
    - Einstellungen → Geräte & Dienste → Integration hinzufügen → „Lambda Heat Pumps“
+5. **Optionen konfigurieren:**
+   - Raumthermostat-Steuerung oder PV-Überschuss-Steuerung in den Optionen der Integration aktivieren und konfigurieren
 
 ---
 
