@@ -572,45 +572,45 @@ class LambdaOptionsFlow(OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step."""
+        """Handle the initial step of the options flow."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            try:
-                # Store the initial options
-                self._options.update(user_input)
+            # Validierung der Temperaturwerte
+            min_temp = user_input.get(
+                "hot_water_min_temp", DEFAULT_HOT_WATER_MIN_TEMP
+            )
+            max_temp = user_input.get(
+                "hot_water_max_temp", DEFAULT_HOT_WATER_MAX_TEMP
+            )
+            if min_temp >= max_temp:
+                errors["hot_water_min_temp"] = "min_temp_higher"
 
-                # Clean up configurations when options are disabled
+            hc_min_temp = user_input.get(
+                "heating_circuit_min_temp",
+                DEFAULT_HEATING_CIRCUIT_MIN_TEMP,
+            )
+            hc_max_temp = user_input.get(
+                "heating_circuit_max_temp",
+                DEFAULT_HEATING_CIRCUIT_MAX_TEMP,
+            )
+            if hc_min_temp >= hc_max_temp:
+                errors["heating_circuit_min_temp"] = "min_temp_higher"
+
+            if not errors:
+                # Store the updated options
+                self._options.update(user_input)
                 self._cleanup_disabled_options()
 
-                # Validate temperature ranges
-                min_temp = user_input.get(
-                    "hot_water_min_temp", DEFAULT_HOT_WATER_MIN_TEMP
-                )
-                max_temp = user_input.get(
-                    "hot_water_max_temp", DEFAULT_HOT_WATER_MAX_TEMP
-                )
-                if min_temp >= max_temp:
-                    errors["hot_water_min_temp"] = "min_temp_higher"
-                    errors["hot_water_max_temp"] = "max_temp_lower"
-                    # Reshow the form with errors
-                    return await self._show_init_form(errors)
-
-                # Decide next step based on user selection
-                if user_input.get("room_thermostat_control"):
+                # Entscheiden, welcher Schritt als nächstes kommt
+                if self._options.get("room_thermostat_control"):
                     return await self.async_step_thermostat_sensor()
-                if user_input.get("pv_surplus"):
+                if self._options.get("pv_surplus"):
                     return await self.async_step_pv_sensor()
 
-                # No extra steps, create entry
-                return self.async_create_entry(title="", data=self._options)
-
-            except ValueError as ex:
-                _LOGGER.error("Value error in options: %s", ex)
-                errors["base"] = "invalid_temperature"
-            except Exception as ex:
-                _LOGGER.exception("Unexpected exception in options init: %s", ex)
-                errors["base"] = "unknown"
+                return self.async_create_entry(
+                    title="", data=self._options
+                )
 
         return await self._show_init_form(errors)
 
@@ -729,64 +729,28 @@ class LambdaOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the thermostat sensor selection step."""
-        num_hc = self._config_entry.data.get("num_hc", 1)
-
         if user_input is not None:
-            # Store thermostat sensor selections
-            has_selected_sensor = False
-            for hc_idx in range(1, num_hc + 1):
-                entity_key = CONF_ROOM_TEMPERATURE_ENTITY.format(hc_idx)
-                if entity_key in user_input and user_input[entity_key]:
-                    self._options[entity_key] = user_input[entity_key]
-                    has_selected_sensor = True
-                elif entity_key in self._options:
-                    del self._options[entity_key]
-            
-            # Update control option based on selection
-            self._options["room_thermostat_control"] = has_selected_sensor
-
-            # Clean up configurations when options are disabled
-            self._cleanup_disabled_options()
-
-            # Always proceed to PV sensor step if pv_surplus is enabled
+            self._options.update(user_input)
+            # Decide if we need to show the PV sensor step
             if self._options.get("pv_surplus"):
                 return await self.async_step_pv_sensor()
-
-            # Otherwise, create the entry
             return self.async_create_entry(title="", data=self._options)
 
-        # Prepare form
-        temp_entities = await self._get_entities("temperature")
-        if not temp_entities:
-            # No temperature sensors available
-            self._options["room_thermostat_control"] = False
-            # Clear any existing thermostat sensor configurations
-            for hc_idx in range(1, num_hc + 1):
-                entity_key = CONF_ROOM_TEMPERATURE_ENTITY.format(hc_idx)
-                if entity_key in self._options:
-                    del self._options[entity_key]
-            
-            # If pv_surplus is enabled, proceed to that step
-            if self._options.get("pv_surplus"):
-                return await self.async_step_pv_sensor()
-            
-            # Otherwise, create the entry
-            return self.async_create_entry(title="", data=self._options)
-        
+        # Dynamically build schema for thermostat sensors
+        num_hc = self._config_entry.data.get("num_hc", 0)
+        temperature_sensors = await self._get_entities("temperature")
         schema = {}
-        for hc_idx in range(1, num_hc + 1):
-            entity_key = CONF_ROOM_TEMPERATURE_ENTITY.format(hc_idx)
+
+        for i in range(1, num_hc + 1):
+            entity_key = CONF_ROOM_TEMPERATURE_ENTITY.format(i)
             schema[
                 vol.Optional(
-                    entity_key, default=self._options.get(entity_key)
+                    entity_key,
+                    description={"suggested_value": self._options.get(entity_key)},
                 )
-            ] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=[
-                        {"value": eid, "label": name}
-                        for eid, name in temp_entities
-                    ],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
+            ] = selector.EntitySelector(
+                selector.EntitySelectorConfig(
+                    include_entities=temperature_sensors
                 )
             )
         
@@ -797,38 +761,24 @@ class LambdaOptionsFlow(OptionsFlow):
     async def async_step_pv_sensor(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the PV surplus sensor selection step."""
+        """Handle the PV sensor selection step."""
         if user_input is not None:
-            entity_key = CONF_PV_POWER_SENSOR_ENTITY
-            if entity_key in user_input and user_input[entity_key]:
-                self._options[entity_key] = user_input[entity_key]
-            elif entity_key in self._options:
-                del self._options[entity_key]
-
-            # Clean up configurations when options are disabled
-            self._cleanup_disabled_options()
-
+            self._options.update(user_input)
             return self.async_create_entry(title="", data=self._options)
 
-        # Prepare form
-        power_entities = await self._get_entities("power")
-        if not power_entities:
-            # If no power sensors are found, we just create the entry.
-            # The user might add them later.
-            return self.async_create_entry(title="", data=self._options)
+        # Logik zur Abfrage der Entitäten
+        power_sensors = await self._get_entities("power")
 
         schema = {
             vol.Optional(
-                CONF_PV_POWER_SENSOR_ENTITY, 
-                default=self._options.get(CONF_PV_POWER_SENSOR_ENTITY)
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=[
-                        {"value": eid, "label": name}
-                        for eid, name in power_entities
-                    ],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                )
+                "pv_power_sensor_entity",
+                description={
+                    "suggested_value": self._options.get(
+                        "pv_power_sensor_entity"
+                    )
+                },
+            ): selector.EntitySelector(
+                selector.EntitySelectorConfig(include_entities=power_sensors)
             )
         }
 
@@ -836,49 +786,46 @@ class LambdaOptionsFlow(OptionsFlow):
             step_id="pv_sensor", data_schema=vol.Schema(schema)
         )
 
-    async def _get_entities(
-        self, device_class: str
-    ) -> list[tuple[str, str]]:
-        """Fetch entities of a specific device class."""
+    async def _get_entities(self, device_class: str) -> list[str]:
+        """Get a list of external entities with a specific device class."""
         from homeassistant.helpers.entity_registry import async_get
 
         registry = async_get(self.hass)
-        entities = []
-        
-        # Get entities belonging to this integration to exclude them
-        own_entities = {
-            e.entity_id
-            for e in registry.entities.values()
-            if e.config_entry_id == self._config_entry.entry_id
+        own_entity_ids = {
+            entity.entity_id
+            for entity in registry.entities.values()
+            if entity.config_entry_id == self._config_entry.entry_id
         }
 
-        for entity_id in self.hass.states.async_entity_ids():
-            if entity_id in own_entities:
-                continue
-            
-            state = self.hass.states.get(entity_id)
-            if not state:
+        entities = []
+        for entity in self.hass.states.async_all():
+            if entity.entity_id in own_entity_ids:
                 continue
 
-            attributes = state.attributes
+            if entity.domain != "sensor":
+                continue
+
+            attributes = entity.attributes
             is_match = False
             if device_class == "temperature":
                 if attributes.get("device_class") == "temperature":
                     is_match = True
             elif device_class == "power":
-                unit = attributes.get("unit_of_measurement")
-                if unit in ("W", "kW"):
+                if attributes.get("device_class") == "power" or attributes.get(
+                    "unit_of_measurement"
+                ) in ("W", "kW"):
                     is_match = True
 
             if is_match:
-                friendly_name = attributes.get("friendly_name", entity_id)
-                entities.append((entity_id, friendly_name))
+                entities.append(entity.entity_id)
 
-        entities.sort(key=lambda x: x[1].lower())
+        # Sort by friendly name
+        entities.sort(key=lambda eid: self.hass.states.get(eid).name.lower())
+
         return entities
 
     async def _test_connection(self, user_input: dict[str, Any]) -> None:
-        """Test the connection to the Lambda device."""
+        """Test the connection to the Modbus device."""
         # user_input argument is unused, kept for interface compatibility
         pass
 
