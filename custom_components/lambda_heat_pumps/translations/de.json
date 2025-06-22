@@ -17,10 +17,8 @@
           "num_sol": "Anzahl Solarmodule",
           "use_legacy_modbus_names": "Legacy Modbus-Namen"
         }
-      }
-    },
-    "options": {
-      "step": {
+      },
+      "options": {
         "init": {
           "title": "Optionen",
           "data": {
@@ -58,6 +56,8 @@
     "error": {
       "cannot_connect": "Verbindungsfehler",
       "invalid_temperature": "Ungültige Temperatur",
+      "min_temp_higher": "Min-Temp muss kleiner als Max-Temp sein",
+      "max_temp_lower": "Max-Temp muss größer als Min-Temp sein",
       "unknown": "Unbekannter Fehler"
     }
   }
