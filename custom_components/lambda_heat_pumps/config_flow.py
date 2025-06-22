@@ -626,7 +626,10 @@ class LambdaOptionsFlow(OptionsFlow):
                 ),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=20, max=80, step=1, unit_of_measurement="°C"
+                    min=30,
+                    max=70,
+                    step=1,
+                    mode=selector.NumberSelectorMode.BOX,
                 )
             ),
             vol.Optional(
@@ -636,7 +639,10 @@ class LambdaOptionsFlow(OptionsFlow):
                 ),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=20, max=80, step=1, unit_of_measurement="°C"
+                    min=30,
+                    max=70,
+                    step=1,
+                    mode=selector.NumberSelectorMode.BOX,
                 )
             ),
             vol.Optional(
@@ -647,7 +653,10 @@ class LambdaOptionsFlow(OptionsFlow):
                 ),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=5, max=50, step=0.5, unit_of_measurement="°C"
+                    min=10,
+                    max=40,
+                    step=1,
+                    mode=selector.NumberSelectorMode.BOX,
                 )
             ),
             vol.Optional(
@@ -658,7 +667,10 @@ class LambdaOptionsFlow(OptionsFlow):
                 ),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=5, max=50, step=0.5, unit_of_measurement="°C"
+                    min=10,
+                    max=40,
+                    step=1,
+                    mode=selector.NumberSelectorMode.BOX,
                 )
             ),
             vol.Optional(
@@ -669,7 +681,10 @@ class LambdaOptionsFlow(OptionsFlow):
                 ),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=0.1, max=5, step=0.1, unit_of_measurement="°C"
+                    min=0.1,
+                    max=2.0,
+                    step=0.1,
+                    mode=selector.NumberSelectorMode.BOX,
                 )
             ),
             vol.Optional(
@@ -696,7 +711,10 @@ class LambdaOptionsFlow(OptionsFlow):
                 default=self._options.get("update_interval", DEFAULT_UPDATE_INTERVAL),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=10, max=300, step=5, unit_of_measurement="s"
+                    min=5,
+                    max=300,
+                    step=1,
+                    mode=selector.NumberSelectorMode.BOX,
                 )
             ),
         }
