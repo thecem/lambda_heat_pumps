@@ -86,4 +86,4 @@ Damit dein PR schnell akzeptiert wird, halte dich an folgende Vorgaben:
 **Tipp:**
 Halte dich genau an die Formatvorgaben und Guidelines von HACS und brands, damit dein PR schnell akzeptiert wird.
 
-Wenn du Hilfe bei einzelnen Schritten brauchst (z.B. Logo, manifest.json), schau in die Doku oder frage gezielt nach!
+
