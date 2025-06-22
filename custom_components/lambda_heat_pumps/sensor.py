@@ -114,7 +114,7 @@ async def async_setup_entry(
                     )
                 if override_name:
                     name = override_name
-                    sensor_id_final = override_name
+                    sensor_id_final = f"{prefix}{idx}_{sensor_id}"  # Data key (original format)
                     entity_id = (
                         f"sensor.{name_prefix}_{override_name}"
                     )
@@ -128,14 +128,23 @@ async def async_setup_entry(
                         name = (
                             sensor_info["name"].format(idx)
                         )
-                        sensor_id_final = f"{prefix}{idx}_{sensor_id}"
+                        if use_legacy_modbus_names:
+                            sensor_id_final = f"{prefix}{idx}_{sensor_id}"  # Data key
+                            entity_id = f"sensor.{name_prefix}_{prefix}{idx}_{sensor_id}"  # Entity ID
+                        else:
+                            sensor_id_final = f"{prefix}{idx}_{sensor_id}"
+                            entity_id = f"sensor.{sensor_id_final}"
                     else:
                         name = (
                             f"{prefix_upper}{idx} {sensor_info['name']}"
                         )
-                        sensor_id_final = f"{prefix}{idx}_{sensor_id}"
-                    entity_id = f"sensor.{sensor_id_final}"
-                    unique_id = sensor_id_final
+                        if use_legacy_modbus_names:
+                            sensor_id_final = f"{prefix}{idx}_{sensor_id}"  # Data key
+                            entity_id = f"sensor.{name_prefix}_{prefix}{idx}_{sensor_id}"  # Entity ID
+                        else:
+                            sensor_id_final = f"{prefix}{idx}_{sensor_id}"
+                            entity_id = f"sensor.{sensor_id_final}"
+                    unique_id = entity_id.replace("sensor.", "")
 
                 device_type = (
                     prefix.upper() if prefix in [
