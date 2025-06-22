@@ -17,39 +17,50 @@
           "num_sol": "Number of solar modules",
           "use_legacy_modbus_names": "Use legacy Modbus names"
         }
-      },
-      "room_sensor": {
-        "title": "Room Temperature Sensors",
-        "description": "Select temperature sensors for heating circuits",
-        "data": {
-          "room_temperature_entity_1": "Sensor for HC1",
-          "room_temperature_entity_2": "Sensor for HC2",
-          "room_temperature_entity_3": "Sensor for HC3",
-          "room_temperature_entity_4": "Sensor for HC4",
-          "room_temperature_entity_5": "Sensor for HC5"
-        }
-      }
-    },
-    "options": {
-      "step": {
-        "init": {
-          "title": "Options",
-          "data": {
-            "hot_water_min_temp": "Hot water min temp",
-            "hot_water_max_temp": "Hot water max temp",
-            "heating_circuit_min_temp": "HC min temp",
-            "heating_circuit_max_temp": "HC max temp",
-            "heating_circuit_temp_step": "HC temp step",
-            "firmware_version": "Firmware version",
-            "room_thermostat_control": "Room thermostat control"
-          }
-        }
       }
     },
     "error": {
       "cannot_connect": "Failed to connect",
       "invalid_temperature": "Invalid temperature range",
+      "min_temp_higher": "Min temp must be lower than max temp",
+      "max_temp_lower": "Max temp must be higher than min temp",
       "unknown": "Unknown error"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "data": {
+          "hot_water_min_temp": "Hot water min temp",
+          "hot_water_max_temp": "Hot water max temp",
+          "heating_circuit_min_temp": "HC min temp",
+          "heating_circuit_max_temp": "HC max temp",
+          "heating_circuit_temp_step": "HC temp step",
+          "firmware_version": "Firmware version",
+          "room_thermostat_control": "Room thermostat control",
+          "pv_surplus": "PV Surplus",
+          "update_interval": "Update Interval"
+        }
+      },
+      "thermostat_sensor": {
+        "title": "Room Thermostat Sensors",
+        "description": "Select the temperature sensors for the heating circuits.<br/>This will be used for the room temperature control of the Lambda.<br/><br/>**Note:** Only external sensors with the device class `temperature` that do not originate from this integration are displayed.",
+        "data": {
+          "room_temperature_entity_1": "Temperature Sensor HC1",
+          "room_temperature_entity_2": "Temperature Sensor HC2",
+          "room_temperature_entity_3": "Temperature Sensor HC3",
+          "room_temperature_entity_4": "Temperature Sensor HC4",
+          "room_temperature_entity_5": "Temperature Sensor HC5"
+        }
+      },
+      "pv_sensor": {
+        "title": "PV Surplus Sensor",
+        "description": "Select the PV power sensor.",
+        "data": {
+          "pv_power_sensor_entity": "PV Power Sensor"
+        }
+      }
     }
   }
 }

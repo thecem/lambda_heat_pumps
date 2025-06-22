@@ -17,39 +17,50 @@
           "num_sol": "Anzahl Solarmodule",
           "use_legacy_modbus_names": "Legacy Modbus-Namen"
         }
-      },
-      "room_sensor": {
-        "title": "Raumtemperatursensoren",
-        "description": "Sensoren auswählen",
-        "data": {
-          "room_temperature_entity_1": "Sensor für HK1",
-          "room_temperature_entity_2": "Sensor für HK2",
-          "room_temperature_entity_3": "Sensor für HK3",
-          "room_temperature_entity_4": "Sensor für HK4",
-          "room_temperature_entity_5": "Sensor für HK5"
-        }
-      }
-    },
-    "options": {
-      "step": {
-        "init": {
-          "title": "Optionen",
-          "data": {
-            "hot_water_min_temp": "WW Min-Temp",
-            "hot_water_max_temp": "WW Max-Temp",
-            "heating_circuit_min_temp": "HK Min-Temp",
-            "heating_circuit_max_temp": "HK Max-Temp",
-            "heating_circuit_temp_step": "HK Temp-Schritt",
-            "firmware_version": "Firmware Version",
-            "room_thermostat_control": "Raumthermostat-Steuerung"
-          }
-        }
       }
     },
     "error": {
       "cannot_connect": "Verbindungsfehler",
       "invalid_temperature": "Ungültige Temperatur",
+      "min_temp_higher": "Min-Temp muss kleiner als Max-Temp sein",
+      "max_temp_lower": "Max-Temp muss größer als Min-Temp sein",
       "unknown": "Unbekannter Fehler"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Optionen",
+        "data": {
+          "hot_water_min_temp": "WW Min-Temp",
+          "hot_water_max_temp": "WW Max-Temp",
+          "heating_circuit_min_temp": "HK Min-Temp",
+          "heating_circuit_max_temp": "HK Max-Temp",
+          "heating_circuit_temp_step": "HK Temp-Schritt",
+          "firmware_version": "Firmware Version",
+          "room_thermostat_control": "Raumthermostat-Steuerung",
+          "pv_surplus": "PV-Überschuss",
+          "update_interval": "Update-Intervall"
+        }
+      },
+      "thermostat_sensor": {
+        "title": "Raumthermostat-Sensoren",
+        "description": "Wählen Sie die Temperatursensoren für die Heizkreise aus.<br/>Dieser wird für die Raumtemperatursteuerung der Lambda verwendet.<br/><br/>**Hinweis:** Es werden nur externe Sensoren mit der Geräteklasse `temperature` angezeigt, die nicht von dieser Integration stammen.",
+        "data": {
+          "room_temperature_entity_1": "Temperatursensor HK1",
+          "room_temperature_entity_2": "Temperatursensor HK2",
+          "room_temperature_entity_3": "Temperatursensor HK3",
+          "room_temperature_entity_4": "Temperatursensor HK4",
+          "room_temperature_entity_5": "Temperatursensor HK5"
+        }
+      },
+      "pv_sensor": {
+        "title": "PV-Überschuss Sensor",
+        "description": "Wählen Sie den PV-Leistungssensor aus.\nDieser wird für die PV-Überschusssteuerung der Lambda verwendet.\n\n**Hinweis:** Es werden nur externe Sensoren mit der Geräteklasse `power` oder der Einheit `W` oder `kW` angezeigt, die nicht von dieser Integration stammen.",
+        "data": {
+          "pv_power_sensor_entity": "PV-Leistungssensor"
+        }
+      }
     }
   }
 }

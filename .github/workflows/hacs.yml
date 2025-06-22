@@ -2,11 +2,15 @@
 name: HACS Validation & Test 
 
 on:
-  push: 
-  pull_request: 
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  test:
+  unittest:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

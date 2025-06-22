@@ -19,6 +19,9 @@ from .const import (
     BUFF_SENSOR_TEMPLATES,
     SOL_SENSOR_TEMPLATES,
     HC_SENSOR_TEMPLATES,
+    CONF_ROOM_TEMPERATURE_ENTITY,
+    CONF_PV_POWER_SENSOR_ENTITY,
+    DEFAULT_UPDATE_INTERVAL,
 )
 from .utils import (
     load_disabled_registers,
@@ -26,6 +29,7 @@ from .utils import (
     generate_base_addresses,
     to_signed_16bit,
     to_signed_32bit,
+    clamp_to_int16,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -38,7 +42,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         """Initialize."""
         # Lese update_interval aus den Optionen, falls vorhanden
-        update_interval = entry.options.get("update_interval", 30)
+        update_interval = entry.options.get("update_interval", DEFAULT_UPDATE_INTERVAL)
         _LOGGER.debug(
             "Update interval from options: %s seconds", update_interval
         )
@@ -86,6 +90,14 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             self.sensor_overrides = await self._load_sensor_overrides()
             _LOGGER.debug(
                 "Loaded sensor name overrides: %s", self.sensor_overrides
+            )
+
+            # Initialize HA started flag
+            self._ha_started = False
+
+            # Register event listener for Home Assistant started
+            self.hass.bus.async_listen_once(
+                "homeassistant_started", self._on_ha_started
             )
 
             if not self.disabled_registers:
@@ -150,66 +162,21 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Fetch data from Lambda device."""
-        # Ensure Modbus client is initialized
-        if self.client is None:
-            from pymodbus.client import ModbusTcpClient
-
-            self.client = ModbusTcpClient(self.host, port=self.port)
-            try:
-                connected = await self.hass.async_add_executor_job(
-                    self.client.connect
-                )
-                if not connected:
-                    raise ConnectionError(
-                        "Could not connect to Modbus TCP at "
-                        f"{self.host}:{self.port}"
-                    )
-            except Exception as ex:
-                _LOGGER.error("Failed to connect to Modbus TCP: %s", ex)
-                self.client = None
-                raise UpdateFailed(f"Failed to connect to Modbus TCP: {ex}")
-
         try:
-            # Get device counts from config
-            num_hps = self.entry.data.get("num_hps", 1)
-            num_boil = self.entry.data.get("num_boil", 1)
-            # Default to 0 if not configured
-            num_buff = self.entry.data.get("num_buff", 0)
-            # Default to 0 if not configured
-            num_sol = self.entry.data.get("num_sol", 0)
-            num_hc = self.entry.data.get("num_hc", 1)
+            if not self.client:
+                await self._connect()
 
-            _LOGGER.debug(
-                "Reading data for devices: %d HPs, %d boilers, %d buffers, "
-                "%d solar, %d heating circuits",
-                num_hps,
-                num_boil,
-                num_buff,
-                num_sol,
-                num_hc,
-            )
-
-            # Initialize data dictionary
             data = {}
 
-            # Check if client is still connected
-            if not self.client.connected:
-                _LOGGER.warning(
-                    "Modbus client disconnected, attempting to reconnect"
-                )
-                connected = await self.hass.async_add_executor_job(
-                    self.client.connect
-                )
-                if not connected:
-                    raise ConnectionError("Failed to reconnect to Modbus TCP")
-
-            # General/Ambient data
+            # Read general sensors
             for sensor_id, sensor_info in SENSOR_TYPES.items():
-                address = sensor_info["address"]
-                if is_register_disabled(address, self.disabled_registers):
+                if self.is_register_disabled(sensor_info["address"]):
                     continue
                 try:
-                    count = 2 if sensor_info.get("data_type") == "int32" else 1
+                    address = sensor_info["address"]
+                    count = (
+                        2 if sensor_info.get("data_type") == "int32" else 1
+                    )
                     result = await self.hass.async_add_executor_job(
                         self.client.read_holding_registers,
                         address,
@@ -218,23 +185,15 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     )
                     if hasattr(result, "isError") and result.isError():
                         _LOGGER.error(
-                            "Error reading register %d: %s", address, result
-                        )
-                        continue
-                    if (
-                        not hasattr(result, "registers")
-                        or not result.registers
-                    ):
-                        _LOGGER.error(
-                            "Invalid response for register %d: %s",
+                            "Error reading register %d: %s",
                             address,
                             result,
                         )
                         continue
                     if count == 2:
-                        value = (result.registers[0] << 16) | result.registers[
-                            1
-                        ]
+                        value = (
+                            result.registers[0] << 16
+                        ) | result.registers[1]
                         if sensor_info.get("data_type") == "int32":
                             value = to_signed_32bit(value)
                     else:
@@ -243,33 +202,25 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             value = to_signed_16bit(value)
                     if "scale" in sensor_info:
                         value = value * sensor_info["scale"]
-                    # Prüfe auf Override-Name
-                    override_name = None
-                    if hasattr(self, "sensor_overrides"):
-                        override_name = self.sensor_overrides.get(
-                            f"{sensor_id}"
-                        )
-                    key = override_name if override_name else f"{sensor_id}"
-                    data[key] = value
+                    data[sensor_id] = value
                 except Exception as ex:
-                    _LOGGER.error("Error reading register %d: %s", address, ex)
+                    _LOGGER.error(
+                        "Error reading register %d: %s",
+                        address,
+                        ex,
+                    )
 
-            # Heat Pump data
+            # Read heat pump sensors
+            num_hps = self.entry.data.get("num_hps", 1)
             for hp_idx in range(1, num_hps + 1):
                 base_address = generate_base_addresses("hp", num_hps)[hp_idx]
                 for sensor_id, sensor_info in HP_SENSOR_TEMPLATES.items():
-                    address = base_address + sensor_info["relative_address"]
-                    if is_register_disabled(address, self.disabled_registers):
-                        _LOGGER.debug(
-                            "Register %d is disabled, skipping", address
-                        )
+                    if self.is_register_disabled(
+                        base_address + sensor_info["relative_address"]
+                    ):
                         continue
                     try:
-                        _LOGGER.debug(
-                            "Reading register %d for sensor %s",
-                            address,
-                            sensor_id,
-                        )
+                        address = base_address + sensor_info["relative_address"]
                         count = (
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
@@ -280,26 +231,8 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             self.entry.data.get("slave_id", 1),
                         )
                         if hasattr(result, "isError") and result.isError():
-                            error_msg = (
-                                f"Modbus error {result.exception_code}: "
-                                f"{result.message}"
-                            )
                             _LOGGER.error(
                                 "Error reading register %d: %s",
-                                address,
-                                error_msg,
-                            )
-                            if result.exception_code == 1:  # Illegal Function
-                                raise UpdateFailed(
-                                    f"Modbus error: {error_msg}"
-                                )
-                            continue
-                        if (
-                            not hasattr(result, "registers")
-                            or not result.registers
-                        ):
-                            _LOGGER.error(
-                                "Invalid response for register %d: %s",
                                 address,
                                 result,
                             )
@@ -328,30 +261,26 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             else f"hp{hp_idx}_{sensor_id}"
                         )
                         data[key] = value
-                        _LOGGER.debug(
-                            "Successfully read register %d: %s", address, value
-                        )
                     except Exception as ex:
                         _LOGGER.error(
                             "Error reading register %d: %s",
                             address,
                             ex,
                         )
-                        # If we get a connection error, try to reconnect
-                        if isinstance(ex, (ConnectionError, TimeoutError)):
-                            self.client = None
-                            raise UpdateFailed(f"Connection error: {ex}")
 
-            # Boiler data
+            # Read boiler sensors
+            num_boil = self.entry.data.get("num_boil", 1)
             for boil_idx in range(1, num_boil + 1):
                 base_address = generate_base_addresses("boil", num_boil)[
                     boil_idx
                 ]
                 for sensor_id, sensor_info in BOIL_SENSOR_TEMPLATES.items():
-                    address = base_address + sensor_info["relative_address"]
-                    if is_register_disabled(address, self.disabled_registers):
+                    if self.is_register_disabled(
+                        base_address + sensor_info["relative_address"]
+                    ):
                         continue
                     try:
+                        address = base_address + sensor_info["relative_address"]
                         count = (
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
@@ -399,145 +328,135 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             ex,
                         )
 
-            # Buffer data - only if configured
-            if num_buff > 0:
-                for buff_idx in range(1, num_buff + 1):
-                    base_address = generate_base_addresses("buff", num_buff)[
-                        buff_idx
-                    ]
-                    for (
-                        sensor_id,
-                        sensor_info,
-                    ) in BUFF_SENSOR_TEMPLATES.items():
-                        address = (
-                            base_address + sensor_info["relative_address"]
+            # Read buffer sensors
+            num_buff = self.entry.data.get("num_buff", 0)
+            for buff_idx in range(1, num_buff + 1):
+                base_address = generate_base_addresses("buff", num_buff)[
+                    buff_idx
+                ]
+                for sensor_id, sensor_info in BUFF_SENSOR_TEMPLATES.items():
+                    if self.is_register_disabled(
+                        base_address + sensor_info["relative_address"]
+                    ):
+                        continue
+                    try:
+                        address = base_address + sensor_info["relative_address"]
+                        count = (
+                            2 if sensor_info.get("data_type") == "int32" else 1
                         )
-                        if is_register_disabled(
-                            address, self.disabled_registers
-                        ):
-                            continue
-                        try:
-                            count = (
-                                2
-                                if sensor_info.get("data_type") == "int32"
-                                else 1
-                            )
-                            result = await self.hass.async_add_executor_job(
-                                self.client.read_holding_registers,
-                                address,
-                                count,
-                                self.entry.data.get("slave_id", 1),
-                            )
-                            if hasattr(result, "isError") and result.isError():
-                                _LOGGER.error(
-                                    "Error reading register %d: %s",
-                                    address,
-                                    result,
-                                )
-                                continue
-                            if count == 2:
-                                value = (
-                                    result.registers[0] << 16
-                                ) | result.registers[1]
-                                if sensor_info.get("data_type") == "int32":
-                                    value = to_signed_32bit(value)
-                            else:
-                                value = result.registers[0]
-                                if sensor_info.get("data_type") == "int16":
-                                    value = to_signed_16bit(value)
-                            if "scale" in sensor_info:
-                                value = value * sensor_info["scale"]
-                            # Prüfe auf Override-Name
-                            override_name = None
-                            if hasattr(self, "sensor_overrides"):
-                                override_name = self.sensor_overrides.get(
-                                    f"buff{buff_idx}_{sensor_id}"
-                                )
-                            key = (
-                                override_name
-                                if override_name
-                                else f"buff{buff_idx}_{sensor_id}"
-                            )
-                            data[key] = value
-                        except Exception as ex:
+                        result = await self.hass.async_add_executor_job(
+                            self.client.read_holding_registers,
+                            address,
+                            count,
+                            self.entry.data.get("slave_id", 1),
+                        )
+                        if hasattr(result, "isError") and result.isError():
                             _LOGGER.error(
                                 "Error reading register %d: %s",
                                 address,
-                                ex,
+                                result,
                             )
-
-            # Solar data - only if configured
-            if num_sol > 0:
-                for sol_idx in range(1, num_sol + 1):
-                    base_address = generate_base_addresses("sol", num_sol)[
-                        sol_idx
-                    ]
-                    for sensor_id, sensor_info in SOL_SENSOR_TEMPLATES.items():
-                        address = (
-                            base_address + sensor_info["relative_address"]
-                        )
-                        if is_register_disabled(
-                            address, self.disabled_registers
-                        ):
                             continue
-                        try:
-                            count = (
-                                2
-                                if sensor_info.get("data_type") == "int32"
-                                else 1
+                        if count == 2:
+                            value = (
+                                result.registers[0] << 16
+                            ) | result.registers[1]
+                            if sensor_info.get("data_type") == "int32":
+                                value = to_signed_32bit(value)
+                        else:
+                            value = result.registers[0]
+                            if sensor_info.get("data_type") == "int16":
+                                value = to_signed_16bit(value)
+                        if "scale" in sensor_info:
+                            value = value * sensor_info["scale"]
+                        # Prüfe auf Override-Name
+                        override_name = None
+                        if hasattr(self, "sensor_overrides"):
+                            override_name = self.sensor_overrides.get(
+                                f"buff{buff_idx}_{sensor_id}"
                             )
-                            result = await self.hass.async_add_executor_job(
-                                self.client.read_holding_registers,
-                                address,
-                                count,
-                                self.entry.data.get("slave_id", 1),
-                            )
-                            if hasattr(result, "isError") and result.isError():
-                                _LOGGER.error(
-                                    "Error reading register %d: %s",
-                                    address,
-                                    result,
-                                )
-                                continue
-                            if count == 2:
-                                value = (
-                                    result.registers[0] << 16
-                                ) | result.registers[1]
-                                if sensor_info.get("data_type") == "int32":
-                                    value = to_signed_32bit(value)
-                            else:
-                                value = result.registers[0]
-                                if sensor_info.get("data_type") == "int16":
-                                    value = to_signed_16bit(value)
-                            if "scale" in sensor_info:
-                                value = value * sensor_info["scale"]
-                            # Prüfe auf Override-Name
-                            override_name = None
-                            if hasattr(self, "sensor_overrides"):
-                                override_name = self.sensor_overrides.get(
-                                    f"sol{sol_idx}_{sensor_id}"
-                                )
-                            key = (
-                                override_name
-                                if override_name
-                                else f"sol{sol_idx}_{sensor_id}"
-                            )
-                            data[key] = value
-                        except Exception as ex:
+                        key = (
+                            override_name
+                            if override_name
+                            else f"buff{buff_idx}_{sensor_id}"
+                        )
+                        data[key] = value
+                    except Exception as ex:
+                        _LOGGER.error(
+                            "Error reading register %d: %s",
+                            address,
+                            ex,
+                        )
+
+            # Read solar sensors
+            num_sol = self.entry.data.get("num_sol", 0)
+            for sol_idx in range(1, num_sol + 1):
+                base_address = generate_base_addresses("sol", num_sol)[sol_idx]
+                for sensor_id, sensor_info in SOL_SENSOR_TEMPLATES.items():
+                    if self.is_register_disabled(
+                        base_address + sensor_info["relative_address"]
+                    ):
+                        continue
+                    try:
+                        address = base_address + sensor_info["relative_address"]
+                        count = (
+                            2 if sensor_info.get("data_type") == "int32" else 1
+                        )
+                        result = await self.hass.async_add_executor_job(
+                            self.client.read_holding_registers,
+                            address,
+                            count,
+                            self.entry.data.get("slave_id", 1),
+                        )
+                        if hasattr(result, "isError") and result.isError():
                             _LOGGER.error(
                                 "Error reading register %d: %s",
                                 address,
-                                ex,
+                                result,
                             )
+                            continue
+                        if count == 2:
+                            value = (
+                                result.registers[0] << 16
+                            ) | result.registers[1]
+                            if sensor_info.get("data_type") == "int32":
+                                value = to_signed_32bit(value)
+                        else:
+                            value = result.registers[0]
+                            if sensor_info.get("data_type") == "int16":
+                                value = to_signed_16bit(value)
+                        if "scale" in sensor_info:
+                            value = value * sensor_info["scale"]
+                        # Prüfe auf Override-Name
+                        override_name = None
+                        if hasattr(self, "sensor_overrides"):
+                            override_name = self.sensor_overrides.get(
+                                f"sol{sol_idx}_{sensor_id}"
+                            )
+                        key = (
+                            override_name
+                            if override_name
+                            else f"sol{sol_idx}_{sensor_id}"
+                        )
+                        data[key] = value
+                    except Exception as ex:
+                        _LOGGER.error(
+                            "Error reading register %d: %s",
+                            address,
+                            ex,
+                        )
 
-            # Heating Circuit data
+            # Read heating circuit sensors
+            num_hc = self.entry.data.get("num_hc", 1)
             for hc_idx in range(1, num_hc + 1):
                 base_address = generate_base_addresses("hc", num_hc)[hc_idx]
                 for sensor_id, sensor_info in HC_SENSOR_TEMPLATES.items():
-                    address = base_address + sensor_info["relative_address"]
-                    if is_register_disabled(address, self.disabled_registers):
+                    if self.is_register_disabled(
+                        base_address + sensor_info["relative_address"]
+                    ):
                         continue
                     try:
+                        address = base_address + sensor_info["relative_address"]
                         count = (
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
@@ -585,26 +504,52 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             ex,
                         )
 
+            # Update room temperature and PV surplus only after Home Assistant has started
+            # This prevents timing issues with template sensors
+            if hasattr(self, '_ha_started') and self._ha_started:
+                # Note: Writing operations moved to services.py
+                pass
+
             return data
 
         except Exception as ex:
             _LOGGER.error("Error updating data: %s", ex)
-            raise UpdateFailed(f"Error updating data: {ex}")
+            if self.client:
+                self.client.close()
+                self.client = None
+            raise UpdateFailed(f"Error fetching Lambda data: {ex}")
+
+    def _on_ha_started(self, event):
+        """Handle Home Assistant started event."""
+        self._ha_started = True
+        _LOGGER.debug("Home Assistant started - enabling room temperature and PV surplus updates")
+
+    async def _connect(self):
+        """Connect to the Modbus device."""
+        from pymodbus.client import ModbusTcpClient
+
+        self.client = ModbusTcpClient(self.host, port=self.port)
+        try:
+            connected = await self.hass.async_add_executor_job(
+                self.client.connect
+            )
+            if not connected:
+                raise ConnectionError(
+                    "Could not connect to Modbus TCP at "
+                    f"{self.host}:{self.port}"
+                )
+        except Exception as ex:
+            _LOGGER.error("Failed to connect to Modbus TCP: %s", ex)
+            self.client = None
+            raise UpdateFailed(f"Failed to connect to Modbus TCP: {ex}")
 
     async def _load_sensor_overrides(self) -> dict[str, str]:
-        """Lädt die SensorNamenÜberschreibungen aus der lambda_wp_config.yaml,
-        wenn use_legacy_modbus_names True ist."""
-        use_legacy_modbus_names = self.entry.data.get(
-            "use_legacy_modbus_names", False
-        )
-        if not use_legacy_modbus_names:
-            return {}
-        config_dir = self.hass.config.config_dir
-        lambda_config_path = os.path.join(config_dir, "lambda_wp_config.yaml")
-        if not os.path.exists(lambda_config_path):
+        """Load sensor name overrides from YAML config file."""
+        config_path = os.path.join(self._config_dir, "lambda_wp_config.yaml")
+        if not os.path.exists(config_path):
             return {}
         try:
-            async with aiofiles.open(lambda_config_path, "r") as f:
+            async with aiofiles.open(config_path, "r") as f:
                 content = await f.read()
                 config = yaml.safe_load(content) or {}
                 overrides = {}

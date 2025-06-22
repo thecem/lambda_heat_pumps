@@ -9,6 +9,7 @@ DEFAULT_PORT = 502
 DEFAULT_SLAVE_ID = 1
 DEFAULT_FIRMWARE = "V0.0.3-3K"
 DEFAULT_ROOM_THERMOSTAT_CONTROL = False
+DEFAULT_PV_SURPLUS = False
 
 # Default counts for devices
 DEFAULT_NUM_HPS = 1
@@ -31,7 +32,9 @@ DEFAULT_HOT_WATER_MAX_TEMP = 60
 # Configuration Constants
 CONF_SLAVE_ID = "slave_id"
 CONF_ROOM_TEMPERATURE_ENTITY = "room_temperature_entity_{0}"
+CONF_PV_POWER_SENSOR_ENTITY = "pv_power_sensor_entity"
 # Format string for room_temperature_entity_1, _2, etc.
+# Format string for pv_power_sensor_entity_1, _2, etc.
 
 # Debug and Logging
 DEBUG = False
@@ -937,11 +940,11 @@ CLIMATE_TEMPLATES = {
     },
 }
 
-# Room Temperature Settings
-# Register offset for room temperature within a HC
-ROOM_TEMPERATURE_UPDATE_INTERVAL = (
-    1  # Update interval for room temperature (in minutes)
-)
+# Default update interval for Modbus communication (in seconds)
+DEFAULT_UPDATE_INTERVAL = 30
+
+# Default interval for writing room temperature and PV surplus (in seconds)
+DEFAULT_WRITE_INTERVAL = 10
 
 DEFAULT_HEATING_CIRCUIT_MIN_TEMP = 15
 DEFAULT_HEATING_CIRCUIT_MAX_TEMP = 35
