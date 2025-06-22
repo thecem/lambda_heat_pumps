@@ -272,15 +272,20 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def async_write_modbus_register(call: ServiceCall) -> None:
         """Write a value to a Modbus register of the Lambda heat pump."""
-        lambda_entries = hass.data.get(DOMAIN, {})
-        if not lambda_entries:
-            _LOGGER.error(
-                "No Lambda WP integrations found. Please configure the integration first.",
-            )
-            return
-
+        # call argument is used, no change needed
         register_address = call.data.get("register_address")
         value = call.data.get("value")
+
+        _LOGGER.debug(
+            "Service call `write_modbus_register` - Address: %s, Value: %s",
+            register_address,
+            value,
+        )
+
+        lambda_entries = hass.data.get(DOMAIN, {})
+        if not lambda_entries:
+            _LOGGER.error("No Lambda WP integrations found")
+            return
 
         for entry_id, entry_data in lambda_entries.items():
             coordinator = entry_data.get("coordinator")
@@ -345,20 +350,21 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         continue
                     try:
                         temperature = float(state.state)
-                        unit = state.attributes.get("unit_of_measurement")
-                        if unit == "°C":
-                            temperature += 273.15  # in K
-                        from .utils import clamp_to_int16
-                        raw_value = clamp_to_int16(temperature, "temperature")
+                        raw_value = int(temperature * 10)
                         register_address = 5004 + (hc_idx - 1) * 100
-                        result = await hass.async_add_executor_job(
+                        _LOGGER.debug(
+                            "[Scheduled] Writing room temperature to register %s: %s (%s°C) for HC %s",
+                            register_address,
+                            raw_value,
+                            temperature,
+                            hc_idx,
+                        )
+                        await hass.async_add_executor_job(
                             coordinator.client.write_registers,
                             register_address,
                             [raw_value],
                             config_entry.data.get("slave_id", 1),
                         )
-                        if result.isError():
-                            _LOGGER.error("Failed to write room temperature for HC %d: %s", hc_idx, result)
                     except Exception as ex:
                         _LOGGER.error("Error writing room temperature for HC %d: %s", hc_idx, ex)
 
@@ -372,20 +378,25 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     continue
                 try:
                     power_value = float(state.state)
-                    unit = state.attributes.get("unit_of_measurement")
+                    unit = state.attributes.get("unit_of_measurement", "")
                     if unit == "kW":
-                        power_value *= 1000
-                    from .utils import clamp_to_int16
-                    raw_value = clamp_to_int16(power_value, "power")
-                    register_address = 102
-                    result = await hass.async_add_executor_job(
+                        power_value *= 1000  # in W
+                    raw_value = int(power_value)
+
+                    _LOGGER.debug(
+                        "[Scheduled] Writing PV surplus to register %s: %s W (Source: %s %s)",
+                        102,
+                        raw_value,
+                        state.state,
+                        unit,
+                    )
+
+                    await hass.async_add_executor_job(
                         coordinator.client.write_registers,
-                        register_address,
+                        102,  # register_address for PV surplus
                         [raw_value],
                         config_entry.data.get("slave_id", 1),
                     )
-                    if result.isError():
-                        _LOGGER.error("Failed to write PV surplus: %s", result)
                 except Exception as ex:
                     _LOGGER.error("Error writing PV surplus: %s", ex)
 
