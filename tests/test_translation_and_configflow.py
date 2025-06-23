@@ -50,15 +50,16 @@ class TestTranslations(unittest.TestCase):
             'use_legacy_modbus_names',
             data['config']['step']['user']['data']
         )
-        self.assertIn('options', data['config'])
-        self.assertIn('init', data['config']['options']['step'])
+        self.assertIn('options', data)  # options is at root level, not under config
+        self.assertIn('step', data['options'])
+        self.assertIn('init', data['options']['step'])
         self.assertIn(
             'data',
-            data['config']['options']['step']['init']
+            data['options']['step']['init']
         )
         self.assertIn(
             'hot_water_min_temp',
-            data['config']['options']['step']['init']['data']
+            data['options']['step']['init']['data']
         )
 
 

@@ -563,7 +563,7 @@ class LambdaOptionsFlow(OptionsFlow):
                 entity_key = CONF_ROOM_TEMPERATURE_ENTITY.format(hc_idx)
                 if entity_key in self._options:
                     del self._options[entity_key]
-        
+
         # Clean up PV sensor configuration if disabled
         if not self._options.get("pv_surplus", False):
             if CONF_PV_POWER_SENSOR_ENTITY in self._options:
@@ -689,7 +689,10 @@ class LambdaOptionsFlow(OptionsFlow):
             ),
             vol.Optional(
                 "firmware_version",
-                default=self._options.get("firmware_version", DEFAULT_FIRMWARE),
+                default=self._options.get(
+                    "firmware_version",
+                    DEFAULT_FIRMWARE
+                ),
             ): selector.SelectSelector(
                 selector.SelectSelectorConfig(
                     options=list(FIRMWARE_VERSION.keys()),
@@ -699,16 +702,21 @@ class LambdaOptionsFlow(OptionsFlow):
             vol.Optional(
                 "room_thermostat_control",
                 default=self._options.get(
-                    "room_thermostat_control", DEFAULT_ROOM_THERMOSTAT_CONTROL
+                    "room_thermostat_control",
+                    DEFAULT_ROOM_THERMOSTAT_CONTROL
                 ),
-            ): selector.BooleanSelector(),
+            ): (
+                selector.BooleanSelector()
+            ),
             vol.Optional(
                 "pv_surplus",
                 default=self._options.get("pv_surplus", DEFAULT_PV_SURPLUS),
             ): selector.BooleanSelector(),
             vol.Optional(
                 "update_interval",
-                default=self._options.get("update_interval", DEFAULT_UPDATE_INTERVAL),
+                default=self._options.get(
+                    "update_interval", DEFAULT_UPDATE_INTERVAL
+                ),
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
                     min=5,
@@ -746,14 +754,16 @@ class LambdaOptionsFlow(OptionsFlow):
             schema[
                 vol.Optional(
                     entity_key,
-                    description={"suggested_value": self._options.get(entity_key)},
+                    description={
+                        "suggested_value": self._options.get(entity_key)
+                    },
                 )
             ] = selector.EntitySelector(
                 selector.EntitySelectorConfig(
                     include_entities=temperature_sensors
                 )
             )
-        
+
         return self.async_show_form(
             step_id="thermostat_sensor", data_schema=vol.Schema(schema)
         )
@@ -778,7 +788,9 @@ class LambdaOptionsFlow(OptionsFlow):
                     )
                 },
             ): selector.EntitySelector(
-                selector.EntitySelectorConfig(include_entities=power_sensors)
+                selector.EntitySelectorConfig(
+                    include_entities=power_sensors
+                )
             )
         }
 

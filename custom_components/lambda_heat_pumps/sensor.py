@@ -114,7 +114,8 @@ async def async_setup_entry(
                     )
                 if override_name:
                     name = override_name
-                    sensor_id_final = f"{prefix}{idx}_{sensor_id}"  # Data key (original format)
+                    sensor_id_final = f"{prefix}{idx}_{sensor_id}"
+                    # Data key (original format)
                     entity_id = (
                         f"sensor.{name_prefix}_{override_name}"
                     )
@@ -129,8 +130,11 @@ async def async_setup_entry(
                             sensor_info["name"].format(idx)
                         )
                         if use_legacy_modbus_names:
-                            sensor_id_final = f"{prefix}{idx}_{sensor_id}"  # Data key
-                            entity_id = f"sensor.{name_prefix}_{prefix}{idx}_{sensor_id}"  # Entity ID
+                            sensor_id_final = f"{prefix}{idx}_{sensor_id}"
+                            entity_id = (
+                                f"sensor.{name_prefix}_{prefix}{idx}_"
+                                f"{sensor_id}"
+                            )
                         else:
                             sensor_id_final = f"{prefix}{idx}_{sensor_id}"
                             entity_id = f"sensor.{sensor_id_final}"
@@ -139,8 +143,11 @@ async def async_setup_entry(
                             f"{prefix_upper}{idx} {sensor_info['name']}"
                         )
                         if use_legacy_modbus_names:
-                            sensor_id_final = f"{prefix}{idx}_{sensor_id}"  # Data key
-                            entity_id = f"sensor.{name_prefix}_{prefix}{idx}_{sensor_id}"  # Entity ID
+                            sensor_id_final = f"{prefix}{idx}_{sensor_id}"
+                            entity_id = (
+                                f"sensor.{name_prefix}_{prefix}{idx}_"
+                                f"{sensor_id}"
+                            )
                         else:
                             sensor_id_final = f"{prefix}{idx}_{sensor_id}"
                             entity_id = f"sensor.{sensor_id_final}"

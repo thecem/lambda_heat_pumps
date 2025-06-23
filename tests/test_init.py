@@ -44,6 +44,7 @@ def mock_hass():
     hass.async_add_executor_job = AsyncMock()
     hass.bus = MagicMock()
     hass.bus.async_listen = MagicMock()
+    hass.loop = MagicMock()
     return hass
 
 

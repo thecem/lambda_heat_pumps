@@ -128,11 +128,11 @@ def to_signed_32bit(val):
 
 def clamp_to_int16(value: float, context: str = "value") -> int:
     """Clamp a value to int16 range (-32768 to 32767).
-    
+
     Args:
         value: The value to clamp
         context: Context string for logging (e.g., "temperature", "power")
-        
+
     Returns:
         int: The clamped value in int16 range
     """

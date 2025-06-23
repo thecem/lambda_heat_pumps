@@ -19,8 +19,6 @@ from .const import (
     BUFF_SENSOR_TEMPLATES,
     SOL_SENSOR_TEMPLATES,
     HC_SENSOR_TEMPLATES,
-    CONF_ROOM_TEMPERATURE_ENTITY,
-    CONF_PV_POWER_SENSOR_ENTITY,
     DEFAULT_UPDATE_INTERVAL,
 )
 from .utils import (
@@ -29,7 +27,6 @@ from .utils import (
     generate_base_addresses,
     to_signed_16bit,
     to_signed_32bit,
-    clamp_to_int16,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,7 +39,9 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         """Initialize."""
         # Lese update_interval aus den Optionen, falls vorhanden
-        update_interval = entry.options.get("update_interval", DEFAULT_UPDATE_INTERVAL)
+        update_interval = entry.options.get(
+            "update_interval", DEFAULT_UPDATE_INTERVAL
+        )
         _LOGGER.debug(
             "Update interval from options: %s seconds", update_interval
         )
@@ -220,7 +219,9 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     ):
                         continue
                     try:
-                        address = base_address + sensor_info["relative_address"]
+                        address = (
+                            base_address + sensor_info["relative_address"]
+                        )
                         count = (
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
@@ -280,7 +281,9 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     ):
                         continue
                     try:
-                        address = base_address + sensor_info["relative_address"]
+                        address = (
+                            base_address + sensor_info["relative_address"]
+                        )
                         count = (
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
@@ -340,7 +343,9 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     ):
                         continue
                     try:
-                        address = base_address + sensor_info["relative_address"]
+                        address = (
+                            base_address + sensor_info["relative_address"]
+                        )
                         count = (
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
@@ -398,7 +403,9 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     ):
                         continue
                     try:
-                        address = base_address + sensor_info["relative_address"]
+                        address = (
+                            base_address + sensor_info["relative_address"]
+                        )
                         count = (
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
@@ -456,7 +463,9 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     ):
                         continue
                     try:
-                        address = base_address + sensor_info["relative_address"]
+                        address = (
+                            base_address + sensor_info["relative_address"]
+                        )
                         count = (
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
@@ -504,8 +513,8 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             ex,
                         )
 
-            # Update room temperature and PV surplus only after Home Assistant has started
-            # This prevents timing issues with template sensors
+            # Update room temperature and PV surplus only after Home Assistant
+            # has started. This prevents timing issues with template sensors
             if hasattr(self, '_ha_started') and self._ha_started:
                 # Note: Writing operations moved to services.py
                 pass
@@ -522,7 +531,10 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
     def _on_ha_started(self, event):
         """Handle Home Assistant started event."""
         self._ha_started = True
-        _LOGGER.debug("Home Assistant started - enabling room temperature and PV surplus updates")
+        _LOGGER.debug(
+            "Home Assistant started - enabling room temperature and PV "
+            "surplus updates"
+        )
 
     async def _connect(self):
         """Connect to the Modbus device."""

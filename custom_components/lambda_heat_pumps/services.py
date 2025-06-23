@@ -322,10 +322,16 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 )
 
     async def async_write_room_and_pv(call: ServiceCall = None) -> None:
-        """Write room temperature and PV surplus to Modbus registers for all entries."""
+        """
+        Write room temperature and PV surplus to Modbus registers
+        for all entries.
+        """
         lambda_entries = hass.data.get(DOMAIN, {})
         if not lambda_entries:
-            _LOGGER.debug("No Lambda WP integrations found yet, skipping write operation")
+            _LOGGER.debug(
+                "No Lambda WP integrations found yet, "
+                "skipping write operation"
+            )
             return
 
         for entry_id, entry_data in lambda_entries.items():
@@ -334,7 +340,11 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 continue
             coordinator = entry_data.get("coordinator")
             if not coordinator or not coordinator.client:
-                _LOGGER.error("Coordinator or Modbus client not available for entry_id %s", entry_id)
+                _LOGGER.error(
+                    "Coordinator or Modbus client not available for "
+                    "entry_id %s",
+                    entry_id,
+                )
                 continue
 
             # Raumthermostat schreiben
@@ -346,14 +356,17 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     if not room_temp_entity_id:
                         continue
                     state = hass.states.get(room_temp_entity_id)
-                    if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN, ""):
+                    if state is None or state.state in (
+                        STATE_UNAVAILABLE, STATE_UNKNOWN, ""
+                    ):
                         continue
                     try:
                         temperature = float(state.state)
                         raw_value = int(temperature * 10)
                         register_address = 5004 + (hc_idx - 1) * 100
                         _LOGGER.debug(
-                            "[Scheduled] Writing room temperature to register %s: %s (%s°C) for HC %s",
+                            "[Scheduled] Writing room temperature to "
+                            "register %s: %s (%s°C) for HC %s",
                             register_address,
                             raw_value,
                             temperature,
@@ -366,15 +379,24 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                             config_entry.data.get("slave_id", 1),
                         )
                     except Exception as ex:
-                        _LOGGER.error("Error writing room temperature for HC %d: %s", hc_idx, ex)
+                        _LOGGER.error(
+                            "Error writing room temperature for "
+                            "HC %d: %s",
+                            hc_idx,
+                            ex,
+                        )
 
             # PV-Überschuss schreiben
             if config_entry.options.get("pv_surplus", False):
-                entity_id = config_entry.options.get(CONF_PV_POWER_SENSOR_ENTITY)
+                entity_id = config_entry.options.get(
+                    CONF_PV_POWER_SENSOR_ENTITY
+                )
                 if not entity_id:
                     continue
                 state = hass.states.get(entity_id)
-                if state is None or state.state in (STATE_UNAVAILABLE, STATE_UNKNOWN, ""):
+                if state is None or state.state in (
+                    STATE_UNAVAILABLE, STATE_UNKNOWN, ""
+                ):
                     continue
                 try:
                     power_value = float(state.state)
@@ -384,7 +406,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                     raw_value = int(power_value)
 
                     _LOGGER.debug(
-                        "[Scheduled] Writing PV surplus to register %s: %s W (Source: %s %s)",
+                        "[Scheduled] Writing PV surplus to register %s: "
+                        "%s W (Source: %s %s)",
                         102,
                         raw_value,
                         state.state,
@@ -410,8 +433,10 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
         # Gemeinsamer Timer für beide Schreibvorgänge
         update_interval = timedelta(seconds=DEFAULT_WRITE_INTERVAL)
+
         async def scheduled_update_callback(_):
             await async_write_room_and_pv()
+
         unsub = async_track_time_interval(
             hass,
             scheduled_update_callback,
