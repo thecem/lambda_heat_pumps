@@ -15,8 +15,35 @@
 1. Install HACS (if not already done)
 2. Add this repo as a custom repository: `GuidoJeuken-6512/lambda_wp_hacs` (category: Integration)
 3. Search for "Lambda Heat Pumps" in HACS, install, and restart Home Assistant
-4. Add the integration via Settings → Devices & Services
-5. Configure options (e.g. room thermostat, PV surplus control)
+
+
+## Initial Configuration
+
+When setting up the integration, you will need to provide:
+
+- **Name**: A name for your Lambda Heat Pump installation (e.g., "EU08L")
+- **Host**: IP address or hostname of your Lambda controller
+- **Port**: Modbus TCP port (default: 502)
+- **Slave ID**: Modbus Slave ID (default: 1)
+- **Number of devices**: Configure how many of each device type you have:
+  - Heat Pumps (1-3)
+  - Boilers (0-5)
+  - Heating Circuits (0-12)
+  - Buffers (0-5)
+  - Solar Systems (0-2)
+- **Firmware Version**: Select your Lambda controller's firmware version
+
+## Integration Options
+
+After initial setup, you can modify additional settings in the integration options:
+
+1. Go to Configuration → Integrations
+2. Find your Lambda Heat Pump integration and click "Configure"
+3. Here you can adjust:
+   - Hot water temperature range (min/max)
+   - Heating circuit temperature range (min/max)
+   - Temperature step size
+   - Room thermostat control (using external sensors)
 
 **Features:**
 - Full Modbus/TCP support for Lambda heat pumps
@@ -41,6 +68,7 @@
 > Diese Integration verbindet Lambda Wärmepumpen mit Home Assistant via Modbus/TCP.
 
 ### 🚀 Quickstart (HACS)
+#### Installation
 
 1. **HACS installieren** (falls noch nicht geschehen)
 2. **Custom Repository hinzufügen:**
@@ -49,11 +77,34 @@
 3. **Integration suchen & installieren:**
    - „Lambda Heat Pumps“ auswählen und installieren
    - Home Assistant neu starten
-4. **Integration einrichten:**
-   - Einstellungen → Geräte & Dienste → Integration hinzufügen → „Lambda Heat Pumps“
-5. **Optionen konfigurieren:**
-   - Raumthermostat-Steuerung oder PV-Überschuss-Steuerung in den Optionen der Integration aktivieren und konfigurieren
 
+## Initial Configuration
+
+When setting up the integration, you will need to provide:
+
+- **Name**: A name for your Lambda Heat Pump installation (e.g., "Main Heat Pump")
+- **Host**: IP address or hostname of your Lambda controller
+- **Port**: Modbus TCP port (default: 502)
+- **Slave ID**: Modbus Slave ID (default: 1)
+- **Number of devices**: Configure how many of each device type you have:
+  - Heat Pumps (1-3)
+  - Boilers (0-5)
+  - Heating Circuits (0-12)
+  - Buffers (0-5)
+  - Solar Systems (0-2)
+- **Firmware Version**: Select your Lambda controller's firmware version
+
+## Integration Options
+
+After initial setup, you can modify additional settings in the integration options:
+
+1. Go to Configuration → Integrations
+2. Find your Lambda Heat Pump integration and click "Configure"
+3. Here you can adjust:
+   - Hot water temperature range (min/max)
+   - Heating circuit temperature range (min/max)
+   - Temperature step size
+   - Room thermostat control (using external sensors)
 ---
 
 ## ✨ Features
