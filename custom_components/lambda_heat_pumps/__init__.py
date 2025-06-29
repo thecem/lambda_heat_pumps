@@ -59,9 +59,8 @@ sensors_names_override:
 """
 
 
-def setup_debug_logging(hass: HomeAssistant, config: ConfigType) -> None:
+def setup_debug_logging(config: ConfigType) -> None:
     """Set up debug logging for the integration."""
-    # hass argument is unused, kept for interface compatibility
     if config.get("debug", False):
         logging.getLogger(DEBUG_PREFIX).setLevel(logging.DEBUG)
         _LOGGER.info("Debug logging enabled for %s", DEBUG_PREFIX)
@@ -69,7 +68,7 @@ def setup_debug_logging(hass: HomeAssistant, config: ConfigType) -> None:
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Lambda integration."""
-    setup_debug_logging(hass, config)
+    setup_debug_logging(config)
     return True
 
 
