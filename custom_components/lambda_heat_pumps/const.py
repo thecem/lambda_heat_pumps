@@ -383,7 +383,7 @@ BOIL_SENSOR_TEMPLATES = {
         "writeable": True,
         "state_class": "measurement",
     },
-    "actual_circulation_temp": {
+    "actual_circulation_temperature": {
         "relative_address": 4,
         "name": "Actual Circulation Temperature",
         "unit": "°C",
@@ -408,7 +408,7 @@ BOIL_SENSOR_TEMPLATES = {
         "state_class": "total",
         "txt_mapping": True,
     },
-    "maximum_boiler_temp": {
+    "maximum_boiler_temperature": {
         "relative_address": 50,
         "name": "Maximum Temperature",
         "unit": "°C",
@@ -459,7 +459,7 @@ BUFF_SENSOR_TEMPLATES = {
         "writeable": False,
         "txt_mapping": True,
     },
-    "actual_high_temp": {
+    "actual_high_temperature": {
         "relative_address": 2,
         "name": "Actual High Temperature",
         "unit": "°C",
@@ -470,7 +470,7 @@ BUFF_SENSOR_TEMPLATES = {
         "device_type": "buff",
         "writeable": False,
     },
-    "actual_low_temp": {
+    "actual_low_temperature": {
         "relative_address": 3,
         "name": "Actual Low Temperature",
         "unit": "°C",
@@ -481,16 +481,16 @@ BUFF_SENSOR_TEMPLATES = {
         "device_type": "buff",
         "writeable": False,
     },
-    "modbus_buffer_temp_high": {
+    "buffer_temperature_high_setpoint": {
         "relative_address": 4,
-        "name": "High Temperature (Modbus)",
+        "name": "Buffer High Temperature Setpoint",
         "unit": "°C",
         "scale": 0.1,
         "precision": 1,
         "data_type": "int16",
         "firmware_version": 1,
         "device_type": "buff",
-        "writeable": False,
+        "writeable": True,
     },
     "request_type": {
         "relative_address": 5,

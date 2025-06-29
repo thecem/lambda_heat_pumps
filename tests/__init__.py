@@ -1,1 +1,2 @@
-"""Test package for Lambda Heat Pumps integration.""" 
+"""Test package for Lambda Heat Pumps integration."""
+

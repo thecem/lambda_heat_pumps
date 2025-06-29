@@ -1,11 +1,9 @@
 """Pytest configuration file."""
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from unittest.mock import MagicMock
 
 from custom_components.lambda_heat_pumps.const import DOMAIN
 
@@ -53,4 +51,5 @@ def hass():
 def mock_hass(hass: HomeAssistant, mock_coordinator):
     """Create a mock hass instance with coordinator."""
     hass.data = {DOMAIN: {"test": {"coordinator": mock_coordinator}}}
-    return hass 
+    return hass
+

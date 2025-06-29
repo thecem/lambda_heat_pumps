@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements_test.txt
+      
+      - name: Run tests
+        run: |
+          pytest tests/ -v --cov=custom_components/lambda_heat_pumps --cov-report=xml
+      
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref_name }}
+          body: |
+            ## 🚀 Lambda Heat Pumps Integration v${{ github.ref_name }}
+            
+            ### ✅ What's included:
+            - Full Modbus/TCP integration for Lambda heat pumps
+            - Dynamic sensor/entity detection based on firmware
+            - Room thermostat control with external sensors
+            - PV surplus control for solar power integration
+            - Comprehensive documentation and translations
+            
+            ### 📋 Installation:
+            1. Install via HACS (recommended)
+            2. Or manual installation from this release
+            
+            ### 🔧 Configuration:
+            - Follow the setup wizard in Home Assistant
+            - Configure your Lambda controller settings
+            - Set up room temperature sensors (optional)
+            - Enable PV surplus control (optional)
+            
+            ### 📚 Documentation:
+            - [Quick Start Guide](https://github.com/GuidoJeuken-6512/lambda_heat_pumps_hacs/blob/main/docs/lambda_heat_pumps_quick_start.md)
+            - [Full Documentation](https://github.com/GuidoJeuken-6512/lambda_heat_pumps_hacs/blob/main/docs/lambda_heat_pumps_en.md)
+            - [FAQ](https://github.com/GuidoJeuken-6512/lambda_heat_pumps_hacs/blob/main/docs/lambda_heat_pumps_faq.md)
+            
+            ### 🐛 Issues:
+            If you encounter any issues, please report them on [GitHub Issues](https://github.com/GuidoJeuken-6512/lambda_heat_pumps_hacs/issues)
+          draft: false
+          prerelease: false
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: release
+          name: codecov-umbrella 
