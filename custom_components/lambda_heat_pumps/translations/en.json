@@ -45,7 +45,7 @@
       },
       "thermostat_sensor": {
         "title": "Room Thermostat Sensors",
-        "description": "Select the temperature sensors for the heating circuits.<br/>This will be used for the room temperature control of the Lambda.<br/><br/>**Note:** Only external sensors with the device class `temperature` that do not originate from this integration are displayed.",
+        "description": "Select the temperature sensors for the heating circuits. This will be used for the room temperature control of the Lambda. Note: Only external sensors with the device class temperature that do not originate from this integration are displayed.",
         "data": {
           "room_temperature_entity_1": "Temperature Sensor HC1",
           "room_temperature_entity_2": "Temperature Sensor HC2",

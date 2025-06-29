@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
+from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN, DEBUG_PREFIX
 from .coordinator import LambdaDataUpdateCoordinator
@@ -31,6 +32,9 @@ PLATFORMS = [
     Platform.SENSOR,
     Platform.CLIMATE,
 ]
+
+# Config schema - nur Config Entry Setup
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 LAMBDA_WP_CONFIG_TEMPLATE = """# Lambda WP configuration
 # This file is used by Lambda WP Integration to define the configuration of
