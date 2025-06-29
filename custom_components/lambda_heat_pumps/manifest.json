@@ -1,7 +1,7 @@
 {
   "domain": "lambda_heat_pumps",
   "name": "Lambda Heat Pumps",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "config_flow": true,
   "documentation": "https://github.com/GuidoJeuken-6512/lambda_wp_hacs",
   "issue_tracker": "https://github.com/GuidoJeuken-6512/lambda_wp_hacs/issues",
