@@ -106,8 +106,8 @@ async def async_setup_entry(
                 # Prüfe auf Override-Name
                 override_name = None
                 if (
-                    use_legacy_modbus_names and
-                    hasattr(coordinator, "sensor_overrides")
+                    use_legacy_modbus_names
+                    and hasattr(coordinator, "sensor_overrides")
                 ):
                     override_name = coordinator.sensor_overrides.get(
                         f"{prefix}{idx}_{sensor_id}"
@@ -123,8 +123,8 @@ async def async_setup_entry(
                 else:
                     prefix_upper = prefix.upper()
                     if (
-                        prefix == "hc" and
-                        sensor_info.get("device_type") == "Climate"
+                        prefix == "hc"
+                        and sensor_info.get("device_type") == "Climate"
                     ):
                         name = (
                             sensor_info["name"].format(idx)
@@ -342,8 +342,8 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
             "use_legacy_modbus_names", False
         )
         if (
-            use_legacy_modbus_names and
-            hasattr(self.coordinator, "sensor_overrides")
+            use_legacy_modbus_names
+            and hasattr(self.coordinator, "sensor_overrides")
         ):
             override_name = self.coordinator.sensor_overrides.get(
                 self._sensor_id

@@ -33,6 +33,10 @@ DEFAULT_HOT_WATER_MAX_TEMP = 60
 CONF_SLAVE_ID = "slave_id"
 CONF_ROOM_TEMPERATURE_ENTITY = "room_temperature_entity_{0}"
 CONF_PV_POWER_SENSOR_ENTITY = "pv_power_sensor_entity"
+CONF_FIRMWARE_VERSION = "firmware_version"
+CONF_HOST = "host"
+CONF_NAME = "name"
+CONF_PORT = "port"
 # Format string for room_temperature_entity_1, _2, etc.
 # Format string for pv_power_sensor_entity_1, _2, etc.
 
@@ -957,4 +961,26 @@ BASE_ADDRESSES = {
     'buff': 3000,  # Buffers start at 3000
     'sol': 4000,   # Solar starts at 4000
     'hc': 5000     # Heating circuits start at 5000
+}
+
+# Calculated Sensor Templates
+CALCULATED_SENSOR_TEMPLATES = {
+    "cop_calc": {
+        "name": "COP Calculated",
+        "unit": None,
+        "precision": 2,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "measurement",
+        "device_class": None,
+        "template": (
+            "{{ (states('sensor.{device_prefix}_"
+            "compressor_thermal_energy_output_accumulated') | float(0) / "
+            "states('sensor.{device_prefix}_"
+            "compressor_power_consumption_accumulated') | float(1)) "
+            "| round(2) }}"
+        ),
+    }
 }

@@ -113,7 +113,7 @@ def generate_base_addresses(device_type: str, count: int) -> dict:
     if start_address == 0:
         return {}
 
-    return {i: start_address + (i-1) * 100 for i in range(1, count + 1)}
+    return {i: start_address + (i - 1) * 100 for i in range(1, count + 1)}
 
 
 def to_signed_16bit(val):
