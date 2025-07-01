@@ -15,6 +15,7 @@ from custom_components.lambda_heat_pumps.const import (BOIL_SENSOR_TEMPLATES,
                                                        SENSOR_TYPES,
                                                        SOL_SENSOR_TEMPLATES)
 from custom_components.lambda_heat_pumps.sensor import (LambdaSensor,
+                                                        LambdaTemplateSensor,
                                                         async_setup_entry)
 
 
@@ -501,3 +502,438 @@ def test_lambda_sensor_has_entity_name(mock_entry, mock_coordinator):
     )
     
     assert sensor.has_entity_name is True
+
+
+# Template Sensor Tests
+def test_lambda_template_sensor_init(mock_entry, mock_coordinator):
+    """Test LambdaTemplateSensor initialization."""
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit=None,
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    assert sensor.coordinator == mock_coordinator
+    assert sensor._entry == mock_entry
+    assert sensor._sensor_id == "hp1_cop_calc"
+    assert sensor._name == "HP1 COP Calculated"
+    assert sensor._unit is None
+    assert sensor._state_class == "measurement"
+    assert sensor._device_class is None
+    assert sensor._device_type == "HP"
+    assert sensor._precision == 2
+    assert sensor._entity_id == "sensor.hp1_cop_calc"
+    assert sensor._unique_id == "hp1_cop_calc"
+    assert sensor._template_str == "{{ states('sensor.hp1_cop') | float(0) }}"
+    assert sensor._state is None
+
+
+def test_lambda_template_sensor_name_property(mock_entry, mock_coordinator):
+    """Test LambdaTemplateSensor name property."""
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit=None,
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    assert sensor.name == "HP1 COP Calculated"
+
+
+def test_lambda_template_sensor_unique_id_property(mock_entry, mock_coordinator):
+    """Test LambdaTemplateSensor unique_id property."""
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit=None,
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    assert sensor.unique_id == "hp1_cop_calc"
+
+
+def test_lambda_template_sensor_native_value_property(mock_entry, mock_coordinator):
+    """Test LambdaTemplateSensor native_value property."""
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit=None,
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    # Initially should be None
+    assert sensor.native_value is None
+    
+    # Set a value
+    sensor._state = 3.5
+    assert sensor.native_value == 3.5
+
+
+def test_lambda_template_sensor_native_unit_of_measurement_property(mock_entry, mock_coordinator):
+    """Test LambdaTemplateSensor native_unit_of_measurement property."""
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit="°C",
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    assert sensor.native_unit_of_measurement == "°C"
+
+
+def test_lambda_template_sensor_state_class_property(mock_entry, mock_coordinator):
+    """Test LambdaTemplateSensor state_class property."""
+    # Test measurement state class
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit=None,
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    from homeassistant.components.sensor import SensorStateClass
+    assert sensor.state_class == SensorStateClass.MEASUREMENT
+    
+    # Test total state class
+    sensor._state_class = "total"
+    assert sensor.state_class == SensorStateClass.TOTAL
+    
+    # Test total_increasing state class
+    sensor._state_class = "total_increasing"
+    assert sensor.state_class == SensorStateClass.TOTAL_INCREASING
+    
+    # Test unknown state class
+    sensor._state_class = "unknown"
+    assert sensor.state_class is None
+
+
+def test_lambda_template_sensor_device_class_property(mock_entry, mock_coordinator):
+    """Test LambdaTemplateSensor device_class property."""
+    from homeassistant.components.sensor import SensorDeviceClass
+    
+    # Test temperature device class
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_temp_diff",
+        name="HP1 Temperature Difference",
+        unit="°C",
+        state_class="measurement",
+        device_class="temperature",
+        device_type="HP",
+        precision=1,
+        entity_id="sensor.hp1_temp_diff",
+        unique_id="hp1_temp_diff",
+        template_str="{{ states('sensor.hp1_flow_temp') | float(0) - states('sensor.hp1_return_temp') | float(0) }}"
+    )
+    
+    assert sensor.device_class == SensorDeviceClass.TEMPERATURE
+    
+    # Test power device class
+    sensor._device_class = "power"
+    assert sensor.device_class == SensorDeviceClass.POWER
+    
+    # Test energy device class
+    sensor._device_class = "energy"
+    assert sensor.device_class == SensorDeviceClass.ENERGY
+    
+    # Test None device class
+    sensor._device_class = None
+    assert sensor.device_class is None
+
+
+def test_lambda_template_sensor_should_poll(mock_entry, mock_coordinator):
+    """Test LambdaTemplateSensor should_poll property."""
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit=None,
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    assert sensor._attr_should_poll is False
+
+
+def test_lambda_template_sensor_has_entity_name(mock_entry, mock_coordinator):
+    """Test LambdaTemplateSensor has_entity_name property."""
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit=None,
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    assert sensor._attr_has_entity_name is True
+
+
+@patch('custom_components.lambda_heat_pumps.sensor.build_device_info')
+def test_lambda_template_sensor_device_info(mock_build_device_info, mock_entry, mock_coordinator):
+    """Test LambdaTemplateSensor device_info property."""
+    mock_device_info = {"test": "device_info"}
+    mock_build_device_info.return_value = mock_device_info
+    
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit=None,
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    device_info = sensor.device_info
+    assert device_info == mock_device_info
+    mock_build_device_info.assert_called_once_with(mock_entry, "HP", "hp1_cop_calc")
+
+
+@pytest.mark.asyncio
+async def test_lambda_template_sensor_async_added_to_hass(mock_entry, mock_coordinator):
+    """Test LambdaTemplateSensor async_added_to_hass method."""
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit=None,
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    # Mock the _handle_coordinator_update method
+    sensor._handle_coordinator_update = Mock()
+    
+    await sensor.async_added_to_hass()
+    
+    # Should call _handle_coordinator_update
+    sensor._handle_coordinator_update.assert_called_once()
+
+
+@patch('homeassistant.helpers.template.Template')
+@patch('homeassistant.helpers.template.TemplateError')
+def test_lambda_template_sensor_handle_coordinator_update_success(
+    mock_template_error, mock_template_class, mock_entry, mock_coordinator
+):
+    """Test LambdaTemplateSensor _handle_coordinator_update with successful template rendering."""
+    # Mock template
+    mock_template = Mock()
+    mock_template.async_render.return_value = "3.5"
+    mock_template_class.return_value = mock_template
+    
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit=None,
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    # Mock hass
+    sensor.hass = Mock()
+    
+    # Mock async_write_ha_state
+    sensor.async_write_ha_state = Mock()
+    
+    sensor._handle_coordinator_update()
+    
+    # Should render template and set state
+    mock_template.async_render.assert_called_once()
+    assert sensor._state == 3.5
+    sensor.async_write_ha_state.assert_called_once()
+
+
+@patch('homeassistant.helpers.template.Template')
+@patch('homeassistant.helpers.template.TemplateError')
+def test_lambda_template_sensor_handle_coordinator_update_template_error(
+    mock_template_error, mock_template_class, mock_entry, mock_coordinator
+):
+    """Test LambdaTemplateSensor _handle_coordinator_update with template error."""
+    # Mock template to raise TemplateError
+    mock_template = Mock()
+    mock_template.async_render.side_effect = mock_template_error("Template error")
+    mock_template_class.return_value = mock_template
+    
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit=None,
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    # Mock hass
+    sensor.hass = Mock()
+    
+    # Mock async_write_ha_state
+    sensor.async_write_ha_state = Mock()
+    
+    sensor._handle_coordinator_update()
+    
+    # Should set state to None on error
+    assert sensor._state is None
+    sensor.async_write_ha_state.assert_called_once()
+
+
+@patch('homeassistant.helpers.template.Template')
+def test_lambda_template_sensor_handle_coordinator_update_with_precision(
+    mock_template_class, mock_entry, mock_coordinator
+):
+    """Test LambdaTemplateSensor _handle_coordinator_update with precision."""
+    # Mock template
+    mock_template = Mock()
+    mock_template.async_render.return_value = "3.567"
+    mock_template_class.return_value = mock_template
+    
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit=None,
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    # Mock hass
+    sensor.hass = Mock()
+    
+    # Mock async_write_ha_state
+    sensor.async_write_ha_state = Mock()
+    
+    sensor._handle_coordinator_update()
+    
+    # Should apply precision
+    assert sensor._state == 3.57
+    sensor.async_write_ha_state.assert_called_once()
+
+
+@patch('homeassistant.helpers.template.Template')
+def test_lambda_template_sensor_handle_coordinator_update_unavailable(
+    mock_template_class, mock_entry, mock_coordinator
+):
+    """Test LambdaTemplateSensor _handle_coordinator_update with unavailable state."""
+    # Mock template
+    mock_template = Mock()
+    mock_template.async_render.return_value = "unavailable"
+    mock_template_class.return_value = mock_template
+    
+    sensor = LambdaTemplateSensor(
+        coordinator=mock_coordinator,
+        entry=mock_entry,
+        sensor_id="hp1_cop_calc",
+        name="HP1 COP Calculated",
+        unit=None,
+        state_class="measurement",
+        device_class=None,
+        device_type="HP",
+        precision=2,
+        entity_id="sensor.hp1_cop_calc",
+        unique_id="hp1_cop_calc",
+        template_str="{{ states('sensor.hp1_cop') | float(0) }}"
+    )
+    
+    # Mock hass
+    sensor.hass = Mock()
+    
+    # Mock async_write_ha_state
+    sensor.async_write_ha_state = Mock()
+    
+    sensor._handle_coordinator_update()
+    
+    # Should keep unavailable state
+    assert sensor._state == "unavailable"
+    sensor.async_write_ha_state.assert_called_once()

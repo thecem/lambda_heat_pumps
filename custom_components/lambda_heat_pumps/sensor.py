@@ -1,6 +1,7 @@
 """Platform for Lambda WP sensor integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from homeassistant.components.sensor import (
@@ -9,9 +10,10 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.template import Template, TemplateError
 
 from .const import (
     DOMAIN,
@@ -21,6 +23,7 @@ from .const import (
     HC_SENSOR_TEMPLATES,
     BUFF_SENSOR_TEMPLATES,
     SOL_SENSOR_TEMPLATES,
+    CALCULATED_SENSOR_TEMPLATES,
 )
 from .coordinator import LambdaDataUpdateCoordinator
 from .utils import build_device_info, generate_base_addresses
@@ -243,11 +246,57 @@ async def async_setup_entry(
             )
         )
 
+    # Create template sensors for each device type
+    template_sensors = []
+
+    # Device type mapping
+    DEVICE_COUNTS = {
+        "hp": num_hps,
+        "boil": num_boil,
+        "buff": num_buff,
+        "sol": num_sol,
+        "hc": num_hc,
+    }
+
+    # Create template sensors for each device type
+    for device_type, count in DEVICE_COUNTS.items():
+        for idx in range(1, count + 1):
+            device_prefix = f"{device_type}{idx}"
+            for sensor_id, sensor_info in CALCULATED_SENSOR_TEMPLATES.items():
+                if sensor_info.get("device_type") == device_type:
+                    # Korrekte Namensgebung
+                    name = f"{device_prefix.upper()} {sensor_info['name']}"
+                    entity_id = f"sensor.{device_prefix}_{sensor_id}"
+                    unique_id = f"{device_prefix}_{sensor_id}"
+                    template_str = sensor_info["template"].format(
+                        device_prefix=f"{name_prefix}_{device_prefix}"
+                    )
+                    template_sensors.append(
+                        LambdaTemplateSensor(
+                            coordinator=coordinator,
+                            entry=entry,
+                            sensor_id=f"{device_prefix}_{sensor_id}",
+                            name=name,
+                            unit=sensor_info.get("unit", ""),
+                            state_class=sensor_info.get("state_class", ""),
+                            device_class=sensor_info.get("device_class"),
+                            device_type=device_type.upper(),
+                            precision=sensor_info.get("precision"),
+                            entity_id=entity_id,
+                            unique_id=unique_id,
+                            template_str=template_str,
+                        )
+                    )
+
+    # Combine regular sensors and template sensors
+    all_sensors = sensors + template_sensors
     _LOGGER.debug(
-        "Created %d sensors",
+        "Erstelle %d normale Sensoren und %d Template-Sensoren (gesamt: %d)",
         len(sensors),
+        len(template_sensors),
+        len(all_sensors),
     )
-    async_add_entities(sensors)
+    async_add_entities(all_sensors)
 
 
 class LambdaSensor(CoordinatorEntity, SensorEntity):
@@ -435,3 +484,147 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
                     idx = int(match.group())
 
         return build_device_info(self._entry, device_type, idx)
+
+
+class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
+    """Representation of a Lambda template sensor."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+
+    def __init__(
+        self,
+        coordinator: LambdaDataUpdateCoordinator,
+        entry: ConfigEntry,
+        sensor_id: str,
+        name: str,
+        unit: str,
+        state_class: str,
+        device_class: SensorDeviceClass,
+        device_type: str,
+        precision: int | float | None = None,
+        entity_id: str | None = None,
+        unique_id: str | None = None,
+        template_str: str = "",
+    ) -> None:
+        """Initialize the template sensor."""
+        super().__init__(coordinator)
+        self._coordinator = coordinator
+        self._entry = entry
+        self._sensor_id = sensor_id
+        self._name = name
+        self._unit = unit
+        self._state_class = state_class
+        self._device_class = device_class
+        self._device_type = device_type
+        self._precision = precision
+        self._entity_id = entity_id
+        self._unique_id = unique_id
+        self._template_str = template_str
+        self._state = None
+        _LOGGER.info(
+            f"Template-Sensor erstellt: {self._name} (ID: {self._sensor_id}) mit Template: {self._template_str}"
+        )
+
+    @property
+    def name(self) -> str:
+        """Return the name of the sensor."""
+        return self._name
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique ID of the sensor."""
+        return self._unique_id
+
+    @property
+    def native_value(self) -> float | str | None:
+        """Return the state of the sensor."""
+        return self._state
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit of measurement of the sensor."""
+        return self._unit
+
+    @property
+    def state_class(self) -> SensorStateClass | None:
+        """Return the state class of the sensor."""
+        if self._state_class == "measurement":
+            return SensorStateClass.MEASUREMENT
+        elif self._state_class == "total":
+            return SensorStateClass.TOTAL
+        elif self._state_class == "total_increasing":
+            return SensorStateClass.TOTAL_INCREASING
+        return None
+
+    @property
+    def device_class(self) -> SensorDeviceClass | None:
+        """Return the device class of the sensor."""
+        if self._device_class == "temperature":
+            return SensorDeviceClass.TEMPERATURE
+        elif self._device_class == "power":
+            return SensorDeviceClass.POWER
+        elif self._device_class == "energy":
+            return SensorDeviceClass.ENERGY
+        return None
+
+    @property
+    def device_info(self):
+        """Return device info."""
+        return build_device_info(
+            self._entry,
+            self._device_type,
+            self._sensor_id,
+        )
+
+    @callback
+    def handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        try:
+            template = Template(self._template_str, self.hass)
+            rendered_value = template.async_render()
+            if rendered_value is None or rendered_value == "unavailable":
+                self._state = None
+                return
+            if isinstance(rendered_value, str) and (
+                rendered_value.startswith("{{") or 
+                "states(" in rendered_value
+            ):
+                _LOGGER.debug(
+                    "Template not yet ready for sensor %s, waiting for dependencies", 
+                    self._sensor_id
+                )
+                self._state = None
+                return
+            try:
+                float_value = float(rendered_value)
+                if self._precision is not None:
+                    self._state = round(float_value, self._precision)
+                else:
+                    self._state = float_value
+                _LOGGER.info(
+                    f"Template-Sensor berechnet: {self._name} (ID: {self._sensor_id}) = {self._state}"
+                )
+            except (ValueError, TypeError):
+                _LOGGER.warning(
+                    "Could not convert template result to float for sensor %s: %s", 
+                    self._sensor_id, rendered_value
+                )
+                self._state = None
+        except TemplateError as err:
+            _LOGGER.warning(
+                "Template error for sensor %s: %s", self._sensor_id, err
+            )
+            self._state = None
+        except Exception as err:
+            _LOGGER.warning(
+                "Error rendering template for sensor %s: %s", 
+                self._sensor_id, err
+            )
+            self._state = None
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """When entity is added to hass."""
+        await super().async_added_to_hass()
+        self.handle_coordinator_update()

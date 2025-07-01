@@ -20,6 +20,7 @@ from .const import (
     SOL_SENSOR_TEMPLATES,
     HC_SENSOR_TEMPLATES,
     DEFAULT_UPDATE_INTERVAL,
+    CALCULATED_SENSOR_TEMPLATES,
 )
 from .utils import (
     load_disabled_registers,
@@ -28,6 +29,7 @@ from .utils import (
     to_signed_16bit,
     to_signed_32bit,
 )
+import time
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=30)
@@ -512,6 +514,30 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             address,
                             ex,
                         )
+
+            # Dummy-Keys für Template-Sensoren einfügen
+            # Erzeuge alle möglichen Template-Sensor-IDs
+            name_prefix = self.entry.data.get("name", "").lower().replace(" ", "")
+            num_hps = self.entry.data.get("num_hps", 1)
+            num_boil = self.entry.data.get("num_boil", 1)
+            num_buff = self.entry.data.get("num_buff", 0)
+            num_sol = self.entry.data.get("num_sol", 0)
+            num_hc = self.entry.data.get("num_hc", 1)
+            DEVICE_COUNTS = {
+                "hp": num_hps,
+                "boil": num_boil,
+                "buff": num_buff,
+                "sol": num_sol,
+                "hc": num_hc,
+            }
+            for device_type, count in DEVICE_COUNTS.items():
+                for idx in range(1, count + 1):
+                    device_prefix = f"{device_type}{idx}"
+                    for sensor_id, sensor_info in CALCULATED_SENSOR_TEMPLATES.items():
+                        if sensor_info.get("device_type") == device_type:
+                            key = f"{device_prefix}_{sensor_id}"
+                            # Setze einen sich ändernden Wert, z.B. Zeitstempel
+                            data[key] = time.time()
 
             # Update room temperature and PV surplus only after Home Assistant
             # has started. This prevents timing issues with template sensors
