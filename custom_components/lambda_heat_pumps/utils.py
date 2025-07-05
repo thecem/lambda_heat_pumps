@@ -151,3 +151,63 @@ def clamp_to_int16(value: float, context: str = "value") -> int:
         return 32767
     else:
         return raw_value
+
+
+def generate_sensor_names(
+    device_prefix: str,
+    sensor_name: str,
+    sensor_id: str,
+    name_prefix: str,
+    use_legacy_modbus_names: bool
+) -> dict:
+    """Generate consistent sensor names, entity IDs, and unique IDs.
+    
+    Args:
+        device_prefix: Device prefix like "hp1", "boil1", etc.
+        sensor_name: Human readable sensor name like "COP Calculated"
+        sensor_id: Sensor identifier like "cop_calc"
+        name_prefix: Name prefix like "eu08l" (used in legacy mode)
+        use_legacy_modbus_names: Whether to use legacy naming convention
+        
+    Returns:
+        dict: Contains 'name', 'entity_id', and 'unique_id'
+    """
+    # Display name logic - identical to sensor.py
+    # Both legacy and standard modes use the same display name format
+    # The name_prefix will be added automatically by Home Assistant's device naming
+    display_name = f"{device_prefix.upper()} {sensor_name}"
+    
+    # Entity ID logic - only this differs between modes
+    if use_legacy_modbus_names:
+        entity_id = f"sensor.{name_prefix}_{device_prefix}_{sensor_id}"
+        unique_id = f"{name_prefix}_{device_prefix}_{sensor_id}"
+    else:
+        entity_id = f"sensor.{device_prefix}_{sensor_id}"
+        unique_id = f"{device_prefix}_{sensor_id}"
+    
+    return {
+        "name": display_name,
+        "entity_id": entity_id,
+        "unique_id": unique_id
+    }
+
+
+def generate_template_entity_prefix(
+    device_prefix: str,
+    name_prefix: str,
+    use_legacy_modbus_names: bool
+) -> str:
+    """Generate entity prefix for templates based on naming mode.
+    
+    Args:
+        device_prefix: Device prefix like "hp1", "boil1", etc.
+        name_prefix: Name prefix like "eu08l" (used in legacy mode)
+        use_legacy_modbus_names: Whether to use legacy naming convention
+        
+    Returns:
+        str: Entity prefix for use in templates
+    """
+    if use_legacy_modbus_names:
+        return f"{name_prefix}_{device_prefix}"
+    else:
+        return device_prefix

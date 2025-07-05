@@ -9,7 +9,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.components.template import Template
+from homeassistant.helpers.template import Template
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant, callback
@@ -22,7 +22,7 @@ from .const import (
     CALCULATED_SENSOR_TEMPLATES,
 )
 from .coordinator import LambdaDataUpdateCoordinator
-from .utils import build_device_info
+from .utils import build_device_info, generate_sensor_names, generate_template_entity_prefix
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -75,22 +75,31 @@ async def async_setup_entry(
             # Filter template sensors for this device type
             for sensor_id, sensor_info in CALCULATED_SENSOR_TEMPLATES.items():
                 if sensor_info.get("device_type") == device_type:
-                    # Create device prefix for template
-                    template_device_prefix = device_prefix
+                    # Generate consistent names using centralized function
+                    naming = generate_sensor_names(
+                        device_prefix=device_prefix,
+                        sensor_name=sensor_info['name'],
+                        sensor_id=sensor_id,
+                        name_prefix=name_prefix,
+                        use_legacy_modbus_names=use_legacy_modbus_names
+                    )
                     
-                    # Handle legacy naming
-                    if use_legacy_modbus_names:
-                        name = f"{name_prefix.upper()}{idx} {sensor_info['name']}"
-                        entity_id = f"sensor.{name_prefix}_{device_prefix}_{sensor_id}"
-                        unique_id = f"{name_prefix}_{device_prefix}_{sensor_id}"
-                    else:
-                        name = f"{device_prefix.upper()} {sensor_info['name']}"
-                        entity_id = f"sensor.{device_prefix}_{sensor_id}"
-                        unique_id = f"{device_prefix}_{sensor_id}"
+                    # Generate entity prefix for template
+                    full_entity_prefix = generate_template_entity_prefix(
+                        device_prefix=device_prefix,
+                        name_prefix=name_prefix,
+                        use_legacy_modbus_names=use_legacy_modbus_names
+                    )
 
-                    # Create template with device prefix
+                    # Create template with full entity prefix
                     template_str = sensor_info["template"].format(
-                        device_prefix=template_device_prefix
+                        full_entity_prefix=full_entity_prefix
+                    )
+                    
+                    _LOGGER.debug(
+                        "Creating template sensor %s with template: %s",
+                        naming["entity_id"],
+                        template_str
                     )
                     
                     template_sensors.append(
@@ -98,14 +107,14 @@ async def async_setup_entry(
                             coordinator=coordinator,
                             entry=entry,
                             sensor_id=f"{device_prefix}_{sensor_id}",
-                            name=name,
+                            name=naming["name"],
                             unit=sensor_info.get("unit", ""),
                             state_class=sensor_info.get("state_class", ""),
                             device_class=sensor_info.get("device_class"),
                             device_type=device_type.upper(),
                             precision=sensor_info.get("precision"),
-                            entity_id=entity_id,
-                            unique_id=unique_id,
+                            entity_id=naming["entity_id"],
+                            unique_id=naming["unique_id"],
                             template_str=template_str,
                         )
                     )
@@ -150,7 +159,7 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
         self._entity_id = entity_id
         self._unique_id = unique_id
         self._template_str = template_str
-        self._template = Template(template_str, self.hass)
+        self._template = None  # Will be set in async_added_to_hass
         self._state = None
 
     @property
@@ -207,9 +216,19 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
+        if self._template is None:
+            return
+            
         try:
             # Render the template
             self._state = self._template.async_render()
+            
+            _LOGGER.debug(
+                "Template sensor %s rendered state: %s (template: %s)",
+                self._sensor_id,
+                self._state,
+                self._template_str
+            )
             
             # Convert to float if possible and apply precision
             if self._state is not None and self._state != "unavailable":
@@ -234,4 +253,8 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
         await super().async_added_to_hass()
+        
+        # Initialize the template now that we have access to hass
+        self._template = Template(self._template_str, self.hass)
+        
         self._handle_coordinator_update() 

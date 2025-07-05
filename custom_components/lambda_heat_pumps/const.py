@@ -976,11 +976,11 @@ CALCULATED_SENSOR_TEMPLATES = {
         "state_class": "measurement",
         "device_class": None,
         "template": (
-            "{{ (states('sensor.{device_prefix}_"
-            "compressor_thermal_energy_output_accumulated') | float(0) / "
-            "states('sensor.{device_prefix}_"
-            "compressor_power_consumption_accumulated') | float(1)) "
-            "| round(2) }}"
+            "{{% set thermal = states('sensor.{full_entity_prefix}_"
+            "compressor_thermal_energy_output_accumulated') | float(0) %}}"
+            "{{% set power = states('sensor.{full_entity_prefix}_"
+            "compressor_power_consumption_accumulated') | float(1) %}}"
+            "{{{{ (thermal / power) | round(2) if power > 0 else 0 }}}}"
         ),
     }
 }

@@ -246,57 +246,18 @@ async def async_setup_entry(
             )
         )
 
-    # Create template sensors for each device type
-    template_sensors = []
-
-    # Device type mapping
-    DEVICE_COUNTS = {
-        "hp": num_hps,
-        "boil": num_boil,
-        "buff": num_buff,
-        "sol": num_sol,
-        "hc": num_hc,
-    }
-
-    # Create template sensors for each device type
-    for device_type, count in DEVICE_COUNTS.items():
-        for idx in range(1, count + 1):
-            device_prefix = f"{device_type}{idx}"
-            for sensor_id, sensor_info in CALCULATED_SENSOR_TEMPLATES.items():
-                if sensor_info.get("device_type") == device_type:
-                    # Korrekte Namensgebung
-                    name = f"{device_prefix.upper()} {sensor_info['name']}"
-                    entity_id = f"sensor.{device_prefix}_{sensor_id}"
-                    unique_id = f"{device_prefix}_{sensor_id}"
-                    template_str = sensor_info["template"].format(
-                        device_prefix=f"{name_prefix}_{device_prefix}"
-                    )
-                    template_sensors.append(
-                        LambdaTemplateSensor(
-                            coordinator=coordinator,
-                            entry=entry,
-                            sensor_id=f"{device_prefix}_{sensor_id}",
-                            name=name,
-                            unit=sensor_info.get("unit", ""),
-                            state_class=sensor_info.get("state_class", ""),
-                            device_class=sensor_info.get("device_class"),
-                            device_type=device_type.upper(),
-                            precision=sensor_info.get("precision"),
-                            entity_id=entity_id,
-                            unique_id=unique_id,
-                            template_str=template_str,
-                        )
-                    )
-
-    # Combine regular sensors and template sensors
-    all_sensors = sensors + template_sensors
     _LOGGER.debug(
-        "Erstelle %d normale Sensoren und %d Template-Sensoren (gesamt: %d)",
+        "Created %d sensors",
         len(sensors),
-        len(template_sensors),
-        len(all_sensors),
     )
-    async_add_entities(all_sensors)
+    async_add_entities(sensors)
+    
+    # Load template sensors from template_sensor.py
+    from .template_sensor import async_setup_entry as setup_template_sensors
+    try:
+        await setup_template_sensors(hass, entry, async_add_entities)
+    except Exception as e:
+        _LOGGER.error("Error setting up template sensors: %s", e)
 
 
 class LambdaSensor(CoordinatorEntity, SensorEntity):
