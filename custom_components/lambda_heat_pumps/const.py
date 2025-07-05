@@ -982,5 +982,190 @@ CALCULATED_SENSOR_TEMPLATES = {
             "compressor_power_consumption_accumulated') | float(1) %}}"
             "{{{{ (thermal / power) | round(2) if power > 0 else 0 }}}}"
         ),
-    }
+    },
+    "heating_cycling_daily": {
+        "name": "Heating Cycling Daily",
+        "unit": "cycles",
+        "precision": 0,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": None,
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') | int(0) %}}"
+            "{{% set last_state = states('sensor.{full_entity_prefix}_heating_cycling_daily') | int(0) %}}"
+            "{{% set now = now() %}}"
+            "{{% set today = now.strftime('%Y-%m-%d') %}}"
+            "{{% set last_update = state_attr('sensor.{full_entity_prefix}_heating_cycling_daily', 'last_updated') %}}"
+            "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
+            "0"
+            "{{% elif operating_state == 1 and last_state == 0 %}}"
+            "{{{{ last_state + 1 }}}}"
+            "{{% else %}}"
+            "{{{{ last_state }}}}"
+            "{{% endif %}}"
+        ),
+    },
+    "heating_cycling_total": {
+        "name": "Heating Cycling Total",
+        "unit": "cycles",
+        "precision": 0,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": None,
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') | int(0) %}}"
+            "{{% set last_state = states('sensor.{full_entity_prefix}_heating_cycling_total') | int(0) %}}"
+            "{{% set offset = {cycling_offset} %}}"
+            "{{% if operating_state == 1 and last_state == offset %}}"
+            "{{{{ last_state + 1 }}}}"
+            "{{% else %}}"
+            "{{{{ last_state }}}}"
+            "{{% endif %}}"
+        ),
+    },
+    "hot_water_cycling_daily": {
+        "name": "Hot Water Cycling Daily",
+        "unit": "cycles",
+        "precision": 0,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": None,
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') | int(0) %}}"
+            "{{% set last_state = states('sensor.{full_entity_prefix}_hot_water_cycling_daily') | int(0) %}}"
+            "{{% set now = now() %}}"
+            "{{% set today = now.strftime('%Y-%m-%d') %}}"
+            "{{% set last_update = state_attr('sensor.{full_entity_prefix}_hot_water_cycling_daily', 'last_updated') %}}"
+            "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
+            "0"
+            "{{% elif operating_state == 2 and last_state == 0 %}}"
+            "{{{{ last_state + 1 }}}}"
+            "{{% else %}}"
+            "{{{{ last_state }}}}"
+            "{{% endif %}}"
+        ),
+    },
+    "hot_water_cycling_total": {
+        "name": "Hot Water Cycling Total",
+        "unit": "cycles",
+        "precision": 0,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": None,
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') | int(0) %}}"
+            "{{% set last_state = states('sensor.{full_entity_prefix}_hot_water_cycling_total') | int(0) %}}"
+            "{{% set offset = {cycling_offset} %}}"
+            "{{% if operating_state == 2 and last_state == offset %}}"
+            "{{{{ last_state + 1 }}}}"
+            "{{% else %}}"
+            "{{{{ last_state }}}}"
+            "{{% endif %}}"
+        ),
+    },
+    "cooling_cycling_daily": {
+        "name": "Cooling Cycling Daily",
+        "unit": "cycles",
+        "precision": 0,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": None,
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') | int(0) %}}"
+            "{{% set last_state = states('sensor.{full_entity_prefix}_cooling_cycling_daily') | int(0) %}}"
+            "{{% set now = now() %}}"
+            "{{% set today = now.strftime('%Y-%m-%d') %}}"
+            "{{% set last_update = state_attr('sensor.{full_entity_prefix}_cooling_cycling_daily', 'last_updated') %}}"
+            "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
+            "0"
+            "{{% elif operating_state == 3 and last_state == 0 %}}"
+            "{{{{ last_state + 1 }}}}"
+            "{{% else %}}"
+            "{{{{ last_state }}}}"
+            "{{% endif %}}"
+        ),
+    },
+    "cooling_cycling_total": {
+        "name": "Cooling Cycling Total",
+        "unit": "cycles",
+        "precision": 0,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": None,
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') | int(0) %}}"
+            "{{% set last_state = states('sensor.{full_entity_prefix}_cooling_cycling_total') | int(0) %}}"
+            "{{% set offset = {cycling_offset} %}}"
+            "{{% if operating_state == 3 and last_state == offset %}}"
+            "{{{{ last_state + 1 }}}}"
+            "{{% else %}}"
+            "{{{{ last_state }}}}"
+            "{{% endif %}}"
+        ),
+    },
 }
+
+# Lambda WP Configuration Template
+LAMBDA_WP_CONFIG_TEMPLATE = """# Lambda WP configuration
+# This file is used by Lambda WP Integration to define the configuration of
+# Lambda WP.
+# The file is created during the installation of the Lambda WP Integration and
+# can then be edited with the file editor or visual studio code.
+
+# Modbus registrations that are not required can be deactivated here.
+# Disabled registrations as an example:
+#disabled_registers:
+# - 2004 # boil1_actual_circulation_temp
+
+# Override sensor names (only works if use_legacy_modbus_names is true)
+# sensors_names_override does only functions if use_legacy_modbus_names is
+# set to true!!!
+#sensors_names_override:
+#- id: name_of_the_sensor_to_override_example
+#  override_name: new_name_of_the_sensor_example
+
+# Cycling counter offsets for total sensors
+# These offsets are added to the calculated cycling counts
+# Useful when replacing heat pumps or resetting counters
+# Example:
+#cycling_offsets:
+#  hp1:
+#    heating_cycling_total: 0      # Offset for HP1 heating total cycles
+#    hot_water_cycling_total: 0    # Offset for HP1 hot water total cycles
+#    cooling_cycling_total: 0      # Offset for HP1 cooling total cycles
+#  hp2:
+#    heating_cycling_total: 1500   # Example: HP2 already had 1500 heating cycles
+#    hot_water_cycling_total: 800  # Example: HP2 already had 800 hot water cycles
+#    cooling_cycling_total: 200    # Example: HP2 already had 200 cooling cycles
+
+disabled_registers:
+ - 100000 # this sensor does not exits, this is just an example
+
+sensors_names_override:
+- id: name_of_the_sensor_to_override_example
+  override_name: new_name_of_the_sensor_example
+
+cycling_offsets:
+  hp1:
+    heating_cycling_total: 0
+    hot_water_cycling_total: 0
+    cooling_cycling_total: 0
+"""

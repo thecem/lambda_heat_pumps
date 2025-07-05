@@ -51,29 +51,212 @@ def build_device_info(entry, device_type, idx=None, sensor_id=None):
     }
 
 
-async def load_disabled_registers(hass: HomeAssistant) -> set[int]:
-    """Load disabled registers from lambda_wp_config in config directory."""
+async def migrate_lambda_config(hass: HomeAssistant) -> bool:
+    """Migrate existing lambda_wp_config.yaml to include cycling_offsets.
+    
+    Returns:
+        bool: True if migration was performed, False otherwise
+    """
     config_dir = hass.config.config_dir
     lambda_config_path = os.path.join(config_dir, "lambda_wp_config.yaml")
+    
     if not os.path.exists(lambda_config_path):
-        return set()
+        _LOGGER.debug("No existing lambda_wp_config.yaml found, no migration needed")
+        return False
+    
+    try:
+        # Read current config
+        async with aiofiles.open(lambda_config_path, "r") as file:
+            content = await file.read()
+            current_config = yaml.safe_load(content)
+        
+        if not current_config:
+            _LOGGER.debug("Empty config file, no migration needed")
+            return False
+        
+        # Check if cycling_offsets already exists
+        if "cycling_offsets" in current_config:
+            _LOGGER.info(
+                "lambda_wp_config.yaml already contains cycling_offsets - "
+                "no migration needed"
+            )
+            return False
+        
+        _LOGGER.info("Migrating lambda_wp_config.yaml to include cycling_offsets")
+        
+        # Create backup
+        backup_path = lambda_config_path + ".backup"
+        async with aiofiles.open(backup_path, "w") as backup_file:
+            await backup_file.write(content)
+        _LOGGER.info("Created backup at %s", backup_path)
+        
+        # Add cycling_offsets section
+        current_config["cycling_offsets"] = {
+            "hp1": {
+                "heating_cycling_total": 0,
+                "hot_water_cycling_total": 0,
+                "cooling_cycling_total": 0
+            }
+        }
+        
+        # Add documentation comment
+        if "# Cycling counter offsets" not in content:
+            # Insert cycling_offsets documentation before the existing sections
+            cycling_docs = """# Cycling counter offsets for total sensors
+# These offsets are added to the calculated cycling counts
+# Useful when replacing heat pumps or resetting counters
+# Example:
+#cycling_offsets:
+#  hp1:
+#    heating_cycling_total: 0      # Offset for HP1 heating total cycles
+#    hot_water_cycling_total: 0    # Offset for HP1 hot water total cycles
+#    cooling_cycling_total: 0      # Offset for HP1 cooling total cycles
+#  hp2:
+#    heating_cycling_total: 1500   # Example: HP2 already had 1500 heating cycles
+#    hot_water_cycling_total: 800  # Example: HP2 already had 800 hot water cycles
+#    cooling_cycling_total: 200    # Example: HP2 already had 200 cooling cycles
+
+"""
+            # Find a good place to insert the documentation
+            lines = content.split('\n')
+            insert_pos = 0
+            for i, line in enumerate(lines):
+                if line.strip().startswith('disabled_registers:'):
+                    insert_pos = i
+                    break
+            
+            lines.insert(insert_pos, cycling_docs.rstrip())
+            content = '\n'.join(lines)
+        
+        # Write updated config
+        async with aiofiles.open(lambda_config_path, "w") as file:
+            await file.write(content)
+        
+        _LOGGER.info(
+            "Successfully migrated lambda_wp_config.yaml to version 1.1.0 - "
+            "Added cycling_offsets section with default values for hp1. "
+            "Backup created at %s.backup", lambda_config_path
+        )
+        return True
+        
+    except Exception as e:
+        _LOGGER.error("Error during config migration: %s", e)
+        return False
+
+
+async def load_lambda_config(hass: HomeAssistant) -> dict:
+    """Load complete Lambda configuration from lambda_wp_config.yaml."""
+    # First, try to migrate if needed
+    await migrate_lambda_config(hass)
+    
+    config_dir = hass.config.config_dir
+    lambda_config_path = os.path.join(config_dir, "lambda_wp_config.yaml")
+    
+    default_config = {
+        "disabled_registers": set(),
+        "sensors_names_override": {},
+        "cycling_offsets": {}
+    }
+    
+    if not os.path.exists(lambda_config_path):
+        _LOGGER.warning(
+            "lambda_wp_config.yaml not found, using default configuration"
+        )
+        return default_config
+    
     try:
         async with aiofiles.open(lambda_config_path, "r") as file:
             content = await file.read()
             config = yaml.safe_load(content)
-            if config and "disabled_registers" in config:
-                disabled_registers = set(
-                    int(x) for x in config["disabled_registers"]
+            
+            if not config:
+                _LOGGER.warning(
+                    "lambda_wp_config.yaml is empty, using default configuration"
                 )
-                return disabled_registers
-            else:
-                return set()
+                return default_config
+            
+            # Load disabled registers
+            disabled_registers = set()
+            if "disabled_registers" in config:
+                try:
+                    disabled_registers = set(int(x) for x in config["disabled_registers"])
+                except (ValueError, TypeError) as e:
+                    _LOGGER.error(
+                        "Invalid disabled_registers format: %s", e
+                    )
+                    disabled_registers = set()
+            
+            # Load sensor overrides
+            sensors_names_override = {}
+            if "sensors_names_override" in config:
+                try:
+                    for override in config["sensors_names_override"]:
+                        if "id" in override and "override_name" in override:
+                            sensors_names_override[override["id"]] = (
+                                override["override_name"]
+                            )
+                except (TypeError, KeyError) as e:
+                    _LOGGER.error(
+                        "Invalid sensors_names_override format: %s", e
+                    )
+                    sensors_names_override = {}
+            
+            # Load cycling offsets
+            cycling_offsets = {}
+            if "cycling_offsets" in config:
+                try:
+                    cycling_offsets = config["cycling_offsets"]
+                    # Validate cycling offsets structure
+                    for device, offsets in cycling_offsets.items():
+                        if not isinstance(offsets, dict):
+                            _LOGGER.warning(
+                                "Invalid cycling_offsets format for device %s", 
+                                device
+                            )
+                            continue
+                        for offset_type, value in offsets.items():
+                            if not isinstance(value, (int, float)):
+                                _LOGGER.warning(
+                                    "Invalid cycling offset value for %s.%s: %s", 
+                                    device, offset_type, value
+                                )
+                                cycling_offsets[device][offset_type] = 0
+                except (TypeError, KeyError) as e:
+                    _LOGGER.error(
+                        "Invalid cycling_offsets format: %s", e
+                    )
+                    cycling_offsets = {}
+            
+            _LOGGER.debug(
+                "Loaded Lambda config: %d disabled registers, %d sensor "
+                "overrides, %d device offsets",
+                len(disabled_registers),
+                len(sensors_names_override),
+                len(cycling_offsets)
+            )
+            
+            return {
+                "disabled_registers": disabled_registers,
+                "sensors_names_override": sensors_names_override,
+                "cycling_offsets": cycling_offsets
+            }
+            
     except Exception as e:
         _LOGGER.error(
-            "Error loading disabled registers from lambda_wp_config.yaml: %s",
+            "Error loading configuration from lambda_wp_config.yaml: %s",
             str(e),
         )
-        return set()
+        return default_config
+
+
+# Keep the old function for backward compatibility
+async def load_disabled_registers(hass: HomeAssistant) -> set[int]:
+    """Load disabled registers from lambda_wp_config in config directory.
+    
+    DEPRECATED: Use load_lambda_config() instead.
+    """
+    config = await load_lambda_config(hass)
+    return config["disabled_registers"]
 
 
 def is_register_disabled(address: int, disabled_registers: set[int]) -> bool:

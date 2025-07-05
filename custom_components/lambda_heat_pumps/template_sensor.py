@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -11,7 +10,6 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.helpers.template import Template
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.template import TemplateError
@@ -22,7 +20,12 @@ from .const import (
     CALCULATED_SENSOR_TEMPLATES,
 )
 from .coordinator import LambdaDataUpdateCoordinator
-from .utils import build_device_info, generate_sensor_names, generate_template_entity_prefix
+from .utils import (
+    build_device_info,
+    generate_sensor_names,
+    generate_template_entity_prefix,
+    load_lambda_config,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +57,10 @@ async def async_setup_entry(
     # Hole den Legacy-Modbus-Namen-Switch aus der Config
     use_legacy_modbus_names = entry.data.get("use_legacy_modbus_names", False)
     name_prefix = entry.data.get("name", "").lower().replace(" ", "")
+
+    # Lade cycling_offsets aus der Konfiguration
+    lambda_config = await load_lambda_config(hass)
+    cycling_offsets = lambda_config.get("cycling_offsets", {})
 
     # Create template sensors for each device type
     template_sensors = []
@@ -91,9 +98,15 @@ async def async_setup_entry(
                         use_legacy_modbus_names=use_legacy_modbus_names
                     )
 
-                    # Create template with full entity prefix
+                    # Offset bestimmen
+                    cycling_offset = 0
+                    if sensor_id.endswith("_cycling_total"):
+                        device_offsets = cycling_offsets.get(device_prefix, {})
+                        cycling_offset = device_offsets.get(sensor_id, 0)
+                    # Template immer mit cycling_offset formatieren
                     template_str = sensor_info["template"].format(
-                        full_entity_prefix=full_entity_prefix
+                        full_entity_prefix=full_entity_prefix,
+                        cycling_offset=cycling_offset
                     )
                     
                     _LOGGER.debug(
