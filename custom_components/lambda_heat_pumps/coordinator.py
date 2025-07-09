@@ -359,19 +359,17 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     cycles = getattr(self, cycling_key)
                     energy = getattr(self, energy_key)
                     last_mode_state = self._last_mode_state[mode].get(hp_idx)
-                    # Flanke: von nicht aktiv auf aktiv
-                    if last_mode_state != mode_val and op_state_val == mode_val:
+                    # Flanke: operating_state wechselt von etwas anderem auf mode_val
+                    if last_mode_state != op_state_val and op_state_val == mode_val:
                         cycles[hp_idx] = cycles.get(hp_idx, 0) + 1
                         _LOGGER.info(
                             "Wärmepumpe %d: %s Modus aktiviert (Cycling: %d)",
                             hp_idx, mode, cycles[hp_idx]
                         )
-                    # Info-Log für jeden Modus und jede HP
                     _LOGGER.info(
                         "HP %d, Modus %s: last_mode_state=%s, op_state_val=%s",
                         hp_idx, mode, last_mode_state, op_state_val
                     )
-                    # Update für nächsten Durchlauf
                     self._last_mode_state[mode][hp_idx] = op_state_val
                     # Energieintegration für aktiven Modus
                     power_info = HP_SENSOR_TEMPLATES.get("actual_heating_capacity")
