@@ -114,7 +114,7 @@ HP_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "Hp",
         "writeable": False,
-        "state_class": "total",
+        "state_class": "measurement",
         "txt_mapping": True,
     },
     "flow_line_temperature": {
@@ -348,7 +348,7 @@ BOIL_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "boil",
         "writeable": False,
-        "state_class": "total",
+        "state_class": "measurement",
         "txt_mapping": True,
     },
     "actual_high_temperature": {
@@ -461,6 +461,7 @@ BUFF_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "buff",
         "writeable": False,
+        "state_class": "measurement",
         "txt_mapping": True,
     },
     "actual_high_temperature": {
@@ -587,6 +588,7 @@ SOL_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "sol",
         "writeable": False,
+        "state_class": "measurement",
         "txt_mapping": True,
     },
     "collector_temperature": {
@@ -659,7 +661,7 @@ HC_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "hc",
         "writeable": False,
-        "state_class": "total",
+        "state_class": "measurement",
         "txt_mapping": True,
     },
     "flow_line_temperature": {
@@ -983,6 +985,32 @@ CALCULATED_SENSOR_TEMPLATES = {
             "{{{{ (thermal / power) | round(2) if power > 0 else 0 }}}}"
         ),
     },
+    # State Change Detection Sensors
+    "heating_state_change": {
+        "name": "Heating State Change",
+        "unit": "cycles",
+        "precision": 0,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": None,
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') %}}"
+            "{{% set last_state = states('sensor.{full_entity_prefix}_heating_state_change') | int(0) %}}"
+            "{{% set now = now() %}}"
+            "{{% set today = now.strftime('%Y-%m-%d') %}}"
+            "{{% set last_update = state_attr('sensor.{full_entity_prefix}_heating_state_change', 'last_updated') %}}"
+            "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
+            "0"
+            "{{% elif operating_state == 'CH' %}}"
+            "{{{{ last_state + 1 }}}}"
+            "{{% else %}}"
+            "{{{{ last_state }}}}"
+            "{{% endif %}}"
+        ),
+    },
     "heating_cycling_daily": {
         "name": "Heating Cycling Daily",
         "unit": "cycles",
@@ -994,17 +1022,14 @@ CALCULATED_SENSOR_TEMPLATES = {
         "state_class": "total_increasing",
         "device_class": None,
         "template": (
-            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') | int(0) %}}"
-            "{{% set last_state = states('sensor.{full_entity_prefix}_heating_cycling_daily') | int(0) %}}"
+            "{{% set state_change = states('sensor.{full_entity_prefix}_heating_state_change') | int(0) %}}"
             "{{% set now = now() %}}"
             "{{% set today = now.strftime('%Y-%m-%d') %}}"
             "{{% set last_update = state_attr('sensor.{full_entity_prefix}_heating_cycling_daily', 'last_updated') %}}"
             "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
             "0"
-            "{{% elif operating_state == 1 and last_state == 0 %}}"
-            "{{{{ last_state + 1 }}}}"
             "{{% else %}}"
-            "{{{{ last_state }}}}"
+            "{{{{ state_change }}}}"
             "{{% endif %}}"
         ),
     },
@@ -1019,10 +1044,30 @@ CALCULATED_SENSOR_TEMPLATES = {
         "state_class": "total_increasing",
         "device_class": None,
         "template": (
-            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') | int(0) %}}"
-            "{{% set last_state = states('sensor.{full_entity_prefix}_heating_cycling_total') | int(0) %}}"
+            "{{% set state_change = states('sensor.{full_entity_prefix}_heating_state_change') | int(0) %}}"
             "{{% set offset = {cycling_offset} %}}"
-            "{{% if operating_state == 1 and last_state == offset %}}"
+            "{{{{ state_change + offset }}}}"
+        ),
+    },
+    "hot_water_state_change": {
+        "name": "Hot Water State Change",
+        "unit": "cycles",
+        "precision": 0,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": None,
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') %}}"
+            "{{% set last_state = states('sensor.{full_entity_prefix}_hot_water_state_change') | int(0) %}}"
+            "{{% set now = now() %}}"
+            "{{% set today = now.strftime('%Y-%m-%d') %}}"
+            "{{% set last_update = state_attr('sensor.{full_entity_prefix}_hot_water_state_change', 'last_updated') %}}"
+            "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
+            "0"
+            "{{% elif operating_state == 'DHW' %}}"
             "{{{{ last_state + 1 }}}}"
             "{{% else %}}"
             "{{{{ last_state }}}}"
@@ -1040,17 +1085,14 @@ CALCULATED_SENSOR_TEMPLATES = {
         "state_class": "total_increasing",
         "device_class": None,
         "template": (
-            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') | int(0) %}}"
-            "{{% set last_state = states('sensor.{full_entity_prefix}_hot_water_cycling_daily') | int(0) %}}"
+            "{{% set state_change = states('sensor.{full_entity_prefix}_hot_water_state_change') | int(0) %}}"
             "{{% set now = now() %}}"
             "{{% set today = now.strftime('%Y-%m-%d') %}}"
             "{{% set last_update = state_attr('sensor.{full_entity_prefix}_hot_water_cycling_daily', 'last_updated') %}}"
             "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
             "0"
-            "{{% elif operating_state == 2 and last_state == 0 %}}"
-            "{{{{ last_state + 1 }}}}"
             "{{% else %}}"
-            "{{{{ last_state }}}}"
+            "{{{{ state_change }}}}"
             "{{% endif %}}"
         ),
     },
@@ -1065,10 +1107,30 @@ CALCULATED_SENSOR_TEMPLATES = {
         "state_class": "total_increasing",
         "device_class": None,
         "template": (
-            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') | int(0) %}}"
-            "{{% set last_state = states('sensor.{full_entity_prefix}_hot_water_cycling_total') | int(0) %}}"
+            "{{% set state_change = states('sensor.{full_entity_prefix}_hot_water_state_change') | int(0) %}}"
             "{{% set offset = {cycling_offset} %}}"
-            "{{% if operating_state == 2 and last_state == offset %}}"
+            "{{{{ state_change + offset }}}}"
+        ),
+    },
+    "cooling_state_change": {
+        "name": "Cooling State Change",
+        "unit": "cycles",
+        "precision": 0,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": None,
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') %}}"
+            "{{% set last_state = states('sensor.{full_entity_prefix}_cooling_state_change') | int(0) %}}"
+            "{{% set now = now() %}}"
+            "{{% set today = now.strftime('%Y-%m-%d') %}}"
+            "{{% set last_update = state_attr('sensor.{full_entity_prefix}_cooling_state_change', 'last_updated') %}}"
+            "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
+            "0"
+            "{{% elif operating_state == 'CC' %}}"
             "{{{{ last_state + 1 }}}}"
             "{{% else %}}"
             "{{{{ last_state }}}}"
@@ -1086,17 +1148,14 @@ CALCULATED_SENSOR_TEMPLATES = {
         "state_class": "total_increasing",
         "device_class": None,
         "template": (
-            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') | int(0) %}}"
-            "{{% set last_state = states('sensor.{full_entity_prefix}_cooling_cycling_daily') | int(0) %}}"
+            "{{% set state_change = states('sensor.{full_entity_prefix}_cooling_state_change') | int(0) %}}"
             "{{% set now = now() %}}"
             "{{% set today = now.strftime('%Y-%m-%d') %}}"
             "{{% set last_update = state_attr('sensor.{full_entity_prefix}_cooling_cycling_daily', 'last_updated') %}}"
             "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
             "0"
-            "{{% elif operating_state == 3 and last_state == 0 %}}"
-            "{{{{ last_state + 1 }}}}"
             "{{% else %}}"
-            "{{{{ last_state }}}}"
+            "{{{{ state_change }}}}"
             "{{% endif %}}"
         ),
     },
@@ -1111,13 +1170,177 @@ CALCULATED_SENSOR_TEMPLATES = {
         "state_class": "total_increasing",
         "device_class": None,
         "template": (
-            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') | int(0) %}}"
-            "{{% set last_state = states('sensor.{full_entity_prefix}_cooling_cycling_total') | int(0) %}}"
+            "{{% set state_change = states('sensor.{full_entity_prefix}_cooling_state_change') | int(0) %}}"
             "{{% set offset = {cycling_offset} %}}"
-            "{{% if operating_state == 3 and last_state == offset %}}"
+            "{{{{ state_change + offset }}}}"
+        ),
+    },
+    "defrost_state_change": {
+        "name": "Defrost State Change",
+        "unit": "cycles",
+        "precision": 0,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": None,
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') %}}"
+            "{{% set last_state = states('sensor.{full_entity_prefix}_defrost_state_change') | int(0) %}}"
+            "{{% set now = now() %}}"
+            "{{% set today = now.strftime('%Y-%m-%d') %}}"
+            "{{% set last_update = state_attr('sensor.{full_entity_prefix}_defrost_state_change', 'last_updated') %}}"
+            "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
+            "0"
+            "{{% elif operating_state == 'DEFROST' %}}"
             "{{{{ last_state + 1 }}}}"
             "{{% else %}}"
             "{{{{ last_state }}}}"
+            "{{% endif %}}"
+        ),
+    },
+    "defrost_cycling_daily": {
+        "name": "Defrost Cycling Daily",
+        "unit": "cycles",
+        "precision": 0,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": None,
+        "template": (
+            "{{% set state_change = states('sensor.{full_entity_prefix}_defrost_state_change') | int(0) %}}"
+            "{{% set now = now() %}}"
+            "{{% set today = now.strftime('%Y-%m-%d') %}}"
+            "{{% set last_update = state_attr('sensor.{full_entity_prefix}_defrost_cycling_daily', 'last_updated') %}}"
+            "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
+            "0"
+            "{{% else %}}"
+            "{{{{ state_change }}}}"
+            "{{% endif %}}"
+        ),
+    },
+    "defrost_cycling_total": {
+        "name": "Defrost Cycling Total",
+        "unit": "cycles",
+        "precision": 0,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": None,
+        "template": (
+            "{{% set state_change = states('sensor.{full_entity_prefix}_defrost_state_change') | int(0) %}}"
+            "{{% set offset = {cycling_offset} %}}"
+            "{{{{ state_change + offset }}}}"
+        ),
+    },
+    
+    # Energy Consumption per Operating Mode (kWh)
+    "heating_energy_daily": {
+        "name": "Heating Energy Daily",
+        "unit": "kWh",
+        "precision": 2,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": "energy",
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') %}}"
+            "{{% set power = states('sensor.{full_entity_prefix}_power_current') | float(0) %}}"
+            "{{% set last_energy = states('sensor.{full_entity_prefix}_heating_energy_daily') | float(0) %}}"
+            "{{% set now = now() %}}"
+            "{{% set today = now.strftime('%Y-%m-%d') %}}"
+            "{{% set last_update = state_attr('sensor.{full_entity_prefix}_heating_energy_daily', 'last_updated') %}}"
+            "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
+            "0"
+            "{{% elif operating_state == 'CH' and power > 0 %}}"
+            "{{{{ last_energy + (power * 0.008333) }}}}"  # 30s update interval = 0.008333h
+            "{{% else %}}"
+            "{{{{ last_energy }}}}"
+            "{{% endif %}}"
+        ),
+    },
+    "hot_water_energy_daily": {
+        "name": "Hot Water Energy Daily",
+        "unit": "kWh",
+        "precision": 2,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": "energy",
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') %}}"
+            "{{% set power = states('sensor.{full_entity_prefix}_power_current') | float(0) %}}"
+            "{{% set last_energy = states('sensor.{full_entity_prefix}_hot_water_energy_daily') | float(0) %}}"
+            "{{% set now = now() %}}"
+            "{{% set today = now.strftime('%Y-%m-%d') %}}"
+            "{{% set last_update = state_attr('sensor.{full_entity_prefix}_hot_water_energy_daily', 'last_updated') %}}"
+            "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
+            "0"
+            "{{% elif operating_state == 'DHW' and power > 0 %}}"
+            "{{{{ last_energy + (power * 0.008333) }}}}"  # 30s update interval = 0.008333h
+            "{{% else %}}"
+            "{{{{ last_energy }}}}"
+            "{{% endif %}}"
+        ),
+    },
+    "cooling_energy_daily": {
+        "name": "Cooling Energy Daily",
+        "unit": "kWh",
+        "precision": 2,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": "energy",
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') %}}"
+            "{{% set power = states('sensor.{full_entity_prefix}_power_current') | float(0) %}}"
+            "{{% set last_energy = states('sensor.{full_entity_prefix}_cooling_energy_daily') | float(0) %}}"
+            "{{% set now = now() %}}"
+            "{{% set today = now.strftime('%Y-%m-%d') %}}"
+            "{{% set last_update = state_attr('sensor.{full_entity_prefix}_cooling_energy_daily', 'last_updated') %}}"
+            "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
+            "0"
+            "{{% elif operating_state == 'CC' and power > 0 %}}"
+            "{{{{ last_energy + (power * 0.008333) }}}}"  # 30s update interval = 0.008333h
+            "{{% else %}}"
+            "{{{{ last_energy }}}}"
+            "{{% endif %}}"
+        ),
+    },
+    "defrost_energy_daily": {
+        "name": "Defrost Energy Daily",
+        "unit": "kWh",
+        "precision": 2,
+        "data_type": "calculated",
+        "firmware_version": 1,
+        "device_type": "hp",
+        "writeable": False,
+        "state_class": "total_increasing",
+        "device_class": "energy",
+        "template": (
+            "{{% set operating_state = states('sensor.{full_entity_prefix}_operating_state') %}}"
+            "{{% set power = states('sensor.{full_entity_prefix}_power_current') | float(0) %}}"
+            "{{% set last_energy = states('sensor.{full_entity_prefix}_defrost_energy_daily') | float(0) %}}"
+            "{{% set now = now() %}}"
+            "{{% set today = now.strftime('%Y-%m-%d') %}}"
+            "{{% set last_update = state_attr('sensor.{full_entity_prefix}_defrost_energy_daily', 'last_updated') %}}"
+            "{{% if last_update and last_update.strftime('%Y-%m-%d') != today %}}"
+            "0"
+            "{{% elif operating_state == 'DEFROST' and power > 0 %}}"
+            "{{{{ last_energy + (power * 0.008333) }}}}"  # 30s update interval = 0.008333h
+            "{{% else %}}"
+            "{{{{ last_energy }}}}"
             "{{% endif %}}"
         ),
     },
@@ -1151,10 +1374,12 @@ LAMBDA_WP_CONFIG_TEMPLATE = """# Lambda WP configuration
 #    heating_cycling_total: 0      # Offset for HP1 heating total cycles
 #    hot_water_cycling_total: 0    # Offset for HP1 hot water total cycles
 #    cooling_cycling_total: 0      # Offset for HP1 cooling total cycles
+#    defrost_cycling_total: 0      # Offset for HP1 defrost total cycles
 #  hp2:
 #    heating_cycling_total: 1500   # Example: HP2 already had 1500 heating cycles
 #    hot_water_cycling_total: 800  # Example: HP2 already had 800 hot water cycles
 #    cooling_cycling_total: 200    # Example: HP2 already had 200 cooling cycles
+#    defrost_cycling_total: 50     # Example: HP2 already had 50 defrost cycles
 
 disabled_registers:
  - 100000 # this sensor does not exits, this is just an example
@@ -1168,4 +1393,5 @@ cycling_offsets:
     heating_cycling_total: 0
     hot_water_cycling_total: 0
     cooling_cycling_total: 0
+    defrost_cycling_total: 0
 """

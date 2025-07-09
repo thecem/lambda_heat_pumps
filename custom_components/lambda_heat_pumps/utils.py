@@ -95,7 +95,8 @@ async def migrate_lambda_config(hass: HomeAssistant) -> bool:
             "hp1": {
                 "heating_cycling_total": 0,
                 "hot_water_cycling_total": 0,
-                "cooling_cycling_total": 0
+                "cooling_cycling_total": 0,
+                "defrost_cycling_total": 0
             }
         }
         
