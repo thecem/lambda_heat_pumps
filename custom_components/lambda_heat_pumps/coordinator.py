@@ -28,6 +28,7 @@ from .utils import (
     generate_base_addresses,
     to_signed_16bit,
     to_signed_32bit,
+    increment_cycling_counter,
 )
 import time
 import json
@@ -348,7 +349,6 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         hp_idx, last_op_state, op_state_val
                     )
                 self._last_operating_state[hp_idx] = op_state_val
-                
                 for mode, mode_val in MODES.items():
                     cycling_key = f"{mode}_cycles"
                     energy_key = f"{mode}_energy"
@@ -360,16 +360,42 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     energy = getattr(self, energy_key)
                     last_mode_state = self._last_mode_state[mode].get(hp_idx)
                     # Flanke: operating_state wechselt von etwas anderem auf mode_val
-                    if last_mode_state != op_state_val and op_state_val == mode_val:
-                        cycles[hp_idx] = cycles.get(hp_idx, 0) + 1
-                        _LOGGER.info(
-                            "Wärmepumpe %d: %s Modus aktiviert (Cycling: %d)",
-                            hp_idx, mode, cycles[hp_idx]
-                        )
-                    _LOGGER.info(
-                        "HP %d, Modus %s: last_mode_state=%s, op_state_val=%s",
-                        hp_idx, mode, last_mode_state, op_state_val
-                    )
+                    if last_mode_state != mode_val and op_state_val == mode_val:
+                        # Prüfe, ob die Cycling-Entities bereits registriert sind
+                        cycling_entities_ready = False
+                        try:
+                            # Prüfe, ob die Cycling-Entities in hass.data verfügbar sind
+                            if ("lambda_heat_pumps" in self.hass.data and 
+                                self.entry.entry_id in self.hass.data["lambda_heat_pumps"] and
+                                "cycling_entities" in self.hass.data["lambda_heat_pumps"][self.entry.entry_id]):
+                                cycling_entities_ready = True
+                        except Exception:
+                            pass
+                        
+                        if cycling_entities_ready:
+                            # Zentrale Funktion für total-Zähler aufrufen
+                            await increment_cycling_counter(
+                                self.hass,
+                                mode=mode,
+                                hp_index=hp_idx,
+                                name_prefix=self.entry.data.get("name", "eu08l"),
+                                use_legacy_modbus_names=self._use_legacy_names,
+                                cycling_offsets=self._cycling_offsets
+                            )
+                            _LOGGER.info(
+                                "Wärmepumpe %d: %s Modus aktiviert (Cycling total inkrementiert)",
+                                hp_idx, mode
+                            )
+                        else:
+                            _LOGGER.debug(
+                                "Wärmepumpe %d: %s Modus aktiviert (Cycling-Entities noch nicht bereit)",
+                                hp_idx, mode
+                            )
+                    # Nur für Debug-Zwecke, nicht als Info-Log:
+                    # _LOGGER.debug(
+                    #     "HP %d, Modus %s: last_mode_state=%s, op_state_val=%s",
+                    #     hp_idx, mode, last_mode_state, op_state_val
+                    # )
                     self._last_mode_state[mode][hp_idx] = op_state_val
                     # Energieintegration für aktiven Modus
                     power_info = HP_SENSOR_TEMPLATES.get("actual_heating_capacity")

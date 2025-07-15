@@ -7,6 +7,7 @@ import aiofiles
 from homeassistant.core import HomeAssistant
 from .const import (
     BASE_ADDRESSES,
+    CALCULATED_SENSOR_TEMPLATES,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -347,7 +348,7 @@ def generate_sensor_names(
     """Generate consistent sensor names, entity IDs, and unique IDs.
     
     Args:
-        device_prefix: Device prefix like "hp1", "boil1", etc.
+        device_prefix: Device prefix like "hp1", "boil1", etc. or sensor_id for general sensors
         sensor_name: Human readable sensor name like "COP Calculated"
         sensor_id: Sensor identifier like "cop_calc"
         name_prefix: Name prefix like "eu08l" (used in legacy mode)
@@ -359,16 +360,29 @@ def generate_sensor_names(
     # Display name logic - identical to sensor.py
     # Both legacy and standard modes use the same display name format
     # The name_prefix will be added automatically by Home Assistant's device naming
-    display_name = f"{device_prefix.upper()} {sensor_name}"
-    
-    # Entity ID logic - only this differs between modes
-    if use_legacy_modbus_names:
-        entity_id = f"sensor.{name_prefix}_{device_prefix}_{sensor_id}"
-        unique_id = f"{name_prefix}_{device_prefix}_{sensor_id}"
+    if device_prefix == sensor_id:
+        # Für General Sensors nur den sensor_name verwenden
+        display_name = sensor_name
     else:
-        entity_id = f"sensor.{device_prefix}_{sensor_id}"
-        unique_id = f"{device_prefix}_{sensor_id}"
-    
+        display_name = f"{device_prefix.upper()} {sensor_name}"
+
+    # Always use lowercase for name_prefix to unify entity_id generation
+    name_prefix_lc = name_prefix.lower() if name_prefix else ""
+
+    # Entity ID logic - only this differs between modes
+    # Unique-ID immer mit Name-Prefix, HP-Index, Modus und Sensor-ID
+    if use_legacy_modbus_names:
+        entity_id = f"sensor.{name_prefix_lc}_{device_prefix}_{sensor_id}"
+        unique_id = f"{name_prefix_lc}_{device_prefix}_{sensor_id}"
+    else:
+        # Für General Sensors (device_prefix == sensor_id) nur sensor_id verwenden
+        if device_prefix == sensor_id:
+            entity_id = f"sensor.{sensor_id}"
+            unique_id = f"{sensor_id}"
+        else:
+            entity_id = f"sensor.{device_prefix}_{sensor_id}"
+            unique_id = f"{device_prefix}_{sensor_id}"
+
     return {
         "name": display_name,
         "entity_id": entity_id,
@@ -395,3 +409,95 @@ def generate_template_entity_prefix(
         return f"{name_prefix}_{device_prefix}"
     else:
         return device_prefix
+
+
+# --- Cycling Counter Increment Function ---
+from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
+
+async def increment_cycling_counter(
+    hass: HomeAssistant,
+    mode: str,
+    hp_index: int,
+    name_prefix: str,
+    use_legacy_modbus_names: bool = False,
+    cycling_offsets: dict = None,
+):
+    """
+    Increment the cycling_total counter for a given mode and heat pump index.
+    This should be called only on a real flank (state change)!
+
+    Args:
+        hass: HomeAssistant instance
+        mode: One of ["heating", "hot_water", "cooling", "defrost"]
+        hp_index: Index of the heat pump (1-based)
+        name_prefix: Name prefix (e.g. "eu08l")
+        use_legacy_modbus_names: Use legacy entity naming
+        cycling_offsets: Optional dict with cycling offsets from config
+    """
+    from homeassistant.const import STATE_UNKNOWN
+    from homeassistant.helpers.entity_component import async_update_entity
+
+
+    sensor_id = f"{mode}_cycling_total"
+    device_prefix = f"hp{hp_index}"
+    names = generate_sensor_names(device_prefix, CALCULATED_SENSOR_TEMPLATES[sensor_id]["name"], sensor_id, name_prefix, use_legacy_modbus_names)
+    entity_id = names["entity_id"]
+
+    # Check if entity is already registered
+    entity_registry = async_get_entity_registry(hass)
+    entity_entry = entity_registry.async_get(entity_id)
+    if entity_entry is None:
+        _LOGGER.warning(f"Skipping cycling counter increment: {entity_id} not yet registered")
+        return
+
+    # Zusätzliche Prüfung: Ist die Entity tatsächlich verfügbar?
+    state_obj = hass.states.get(entity_id)
+    if state_obj is None:
+        _LOGGER.warning(f"Skipping cycling counter increment: {entity_id} state not available yet")
+        return
+
+    # Get current state
+    if state_obj.state in (None, STATE_UNKNOWN, "unknown"):
+        current = 0
+    else:
+        try:
+            current = int(float(state_obj.state))
+        except Exception:
+            current = 0
+
+    # Offset aus cycling_offsets laden
+    offset = 0
+    if cycling_offsets is not None:
+        device_key = device_prefix
+        if device_key in cycling_offsets:
+            offset = int(cycling_offsets[device_key].get(sensor_id, 0))
+
+    new_value = int(current + 1)
+    
+    # Versuche die Entity-Instanz zu finden
+    cycling_entity = None
+    try:
+        # Suche in der neuen Cycling-Entities-Struktur
+        for entry_id, comp_data in hass.data.get("lambda_heat_pumps", {}).items():
+            if isinstance(comp_data, dict) and "cycling_entities" in comp_data:
+                cycling_entity = comp_data["cycling_entities"].get(entity_id)
+                if cycling_entity:
+                    break
+    except Exception as e:
+        _LOGGER.debug(f"Error searching for entity {entity_id}: {e}")
+    
+    final_value = int(new_value + offset)
+    if cycling_entity is not None and hasattr(cycling_entity, "set_cycling_value"):
+        cycling_entity.set_cycling_value(final_value)
+        _LOGGER.info(f"Cycling counter incremented: {entity_id} = {final_value} (was {current}, offset {offset}) [entity updated]")
+    else:
+        # Fallback: State setzen wie bisher
+        _LOGGER.warning(f"Cycling entity {entity_id} not found, using fallback state update")
+        hass.states.async_set(entity_id, final_value, state_obj.attributes if state_obj else {})
+        _LOGGER.info(f"Cycling counter incremented: {entity_id} = {final_value} (was {current}, offset {offset}) [state only]")
+    
+    # Optional: Entity zum Update zwingen (z.B. für Recorder)
+    try:
+        await async_update_entity(hass, entity_id)
+    except Exception as e:
+        _LOGGER.debug(f"Could not force update for {entity_id}: {e}")

@@ -88,6 +88,8 @@ async def async_setup_entry(
     for prefix, count, template in TEMPLATES:
         for idx in range(1, count + 1):
             base_address = generate_base_addresses(prefix, count)[idx]
+            # Always use lowercased name_prefix for all entity_id/unique_id generation
+            name_prefix_lc = name_prefix.lower() if name_prefix else ""
             for sensor_id, sensor_info in template.items():
                 address = base_address + sensor_info["relative_address"]
                 if coordinator.is_register_disabled(address):
@@ -120,41 +122,34 @@ async def async_setup_entry(
                     sensor_id_final = f"{prefix}{idx}_{sensor_id}"
                     # Data key (original format)
                     entity_id = (
-                        f"sensor.{name_prefix}_{override_name}"
+                        f"sensor.{name_prefix_lc}_{override_name}"
                     )
-                    unique_id = f"{name_prefix}_{override_name}"
+                    unique_id = f"{name_prefix_lc}_{override_name}"
                 else:
                     prefix_upper = prefix.upper()
+                    device_prefix = f"{prefix}{idx}"
+                    
                     if (
                         prefix == "hc"
                         and sensor_info.get("device_type") == "Climate"
                     ):
-                        name = (
-                            sensor_info["name"].format(idx)
-                        )
-                        if use_legacy_modbus_names:
-                            sensor_id_final = f"{prefix}{idx}_{sensor_id}"
-                            entity_id = (
-                                f"sensor.{name_prefix}_{prefix}{idx}_"
-                                f"{sensor_id}"
-                            )
-                        else:
-                            sensor_id_final = f"{prefix}{idx}_{sensor_id}"
-                            entity_id = f"sensor.{sensor_id_final}"
+                        name = sensor_info["name"].format(idx)
                     else:
-                        name = (
-                            f"{prefix_upper}{idx} {sensor_info['name']}"
-                        )
-                        if use_legacy_modbus_names:
-                            sensor_id_final = f"{prefix}{idx}_{sensor_id}"
-                            entity_id = (
-                                f"sensor.{name_prefix}_{prefix}{idx}_"
-                                f"{sensor_id}"
-                            )
-                        else:
-                            sensor_id_final = f"{prefix}{idx}_{sensor_id}"
-                            entity_id = f"sensor.{sensor_id_final}"
-                    unique_id = entity_id.replace("sensor.", "")
+                        name = f"{prefix_upper}{idx} {sensor_info['name']}"
+                    
+                    # Verwende die zentrale Namensgenerierung
+                    from .utils import generate_sensor_names
+                    names = generate_sensor_names(
+                        device_prefix,
+                        sensor_info["name"],
+                        sensor_id,
+                        name_prefix,
+                        use_legacy_modbus_names
+                    )
+                    
+                    sensor_id_final = f"{prefix}{idx}_{sensor_id}"
+                    entity_id = names["entity_id"]
+                    unique_id = names["unique_id"]
 
                 device_type = (
                     prefix.upper() if prefix in [
@@ -221,10 +216,18 @@ async def async_setup_entry(
             name = sensor_info["name"]
             sensor_id_final = sensor_id
 
-        if use_legacy_modbus_names:
-            entity_id = f"sensor.{name_prefix}_{sensor_id_final}"
-        else:
-            entity_id = f"sensor.{sensor_id_final}"
+        # Verwende die zentrale Namensgenerierung
+        from .utils import generate_sensor_names
+        names = generate_sensor_names(
+            sensor_id_final,  # device_prefix für General Sensors
+            sensor_info["name"],
+            sensor_id,
+            name_prefix,
+            use_legacy_modbus_names
+        )
+        
+        entity_id = names["entity_id"]
+        unique_id = names["unique_id"]
 
         sensors.append(
             LambdaSensor(
@@ -243,21 +246,408 @@ async def async_setup_entry(
                 txt_mapping=sensor_info.get("txt_mapping", False),
                 precision=sensor_info.get("precision", None),
                 entity_id=entity_id,
+                unique_id=unique_id,
             )
         )
 
-    _LOGGER.debug(
-        "Created %d sensors",
+
+    # --- Cycling Total Sensors (echte Entities, keine Templates) ---
+    cycling_modes = [
+        ("heating", "heating_cycling_total"),
+        ("hot_water", "hot_water_cycling_total"),
+        ("cooling", "cooling_cycling_total"),
+        ("defrost", "defrost_cycling_total"),
+    ]
+    cycling_sensor_count = 0
+    cycling_sensor_ids = []
+    cycling_entities = {}  # Dictionary für schnellen Zugriff
+    
+    for hp_idx in range(1, num_hps + 1):
+        for mode, template_id in cycling_modes:
+            template = CALCULATED_SENSOR_TEMPLATES[template_id]
+            # Entity-ID und unique_id generieren
+            device_prefix = f"hp{hp_idx}"
+            from .utils import generate_sensor_names
+            names = generate_sensor_names(
+                device_prefix,
+                template["name"],
+                template_id,
+                name_prefix,
+                use_legacy_modbus_names
+            )
+            cycling_sensor_ids.append(names["entity_id"])
+            
+            cycling_sensor = LambdaCyclingSensor(
+                hass=hass,
+                entry=entry,
+                sensor_id=template_id,
+                name=names["name"],
+                entity_id=names["entity_id"],
+                unique_id=names["unique_id"],
+                unit=template["unit"],
+                state_class=template["state_class"],
+                device_class=template["device_class"],
+                device_type=template["device_type"],
+                hp_index=hp_idx,
+            )
+            
+            sensors.append(cycling_sensor)
+            cycling_entities[names["entity_id"]] = cycling_sensor
+            cycling_sensor_count += 1
+    
+    # --- Yesterday Cycling Sensors (echte Entities für Daily-Berechnung) ---
+    yesterday_modes = [
+        ("heating", "heating_cycling_yesterday"),
+        ("hot_water", "hot_water_cycling_yesterday"),
+        ("cooling", "cooling_cycling_yesterday"),
+        ("defrost", "defrost_cycling_yesterday"),
+    ]
+    yesterday_sensor_count = 0
+    yesterday_sensor_ids = []
+    
+    for hp_idx in range(1, num_hps + 1):
+        for mode, template_id in yesterday_modes:
+            template = CALCULATED_SENSOR_TEMPLATES[template_id]
+            # Entity-ID und unique_id generieren
+            device_prefix = f"hp{hp_idx}"
+            from .utils import generate_sensor_names
+            names = generate_sensor_names(
+                device_prefix,
+                template["name"],
+                template_id,
+                name_prefix,
+                use_legacy_modbus_names
+            )
+            yesterday_sensor_ids.append(names["entity_id"])
+            
+            yesterday_sensor = LambdaYesterdaySensor(
+                hass=hass,
+                entry=entry,
+                sensor_id=template_id,
+                name=names["name"],
+                entity_id=names["entity_id"],
+                unique_id=names["unique_id"],
+                unit=template["unit"],
+                state_class=template["state_class"],
+                device_class=template["device_class"],
+                device_type=template["device_type"],
+                hp_index=hp_idx,
+                mode=mode,
+            )
+            
+            sensors.append(yesterday_sensor)
+            yesterday_sensor_count += 1
+    
+    # Speichere die Cycling-Entities für schnellen Zugriff
+    if "lambda_heat_pumps" not in hass.data:
+        hass.data["lambda_heat_pumps"] = {}
+    if entry.entry_id not in hass.data["lambda_heat_pumps"]:
+        hass.data["lambda_heat_pumps"][entry.entry_id] = {}
+    hass.data["lambda_heat_pumps"][entry.entry_id]["cycling_entities"] = cycling_entities
+    _LOGGER.info(
+        "Cycling-Sensoren erzeugt: %d, Entity-IDs: %s",
+        cycling_sensor_count,
+        cycling_sensor_ids,
+    )
+    _LOGGER.info(
+        "Yesterday-Sensoren erzeugt: %d, Entity-IDs: %s",
+        yesterday_sensor_count,
+        yesterday_sensor_ids,
+    )
+
+    _LOGGER.info(
+        "Alle Sensoren (inkl. Cycling) erzeugt: %d",
         len(sensors),
     )
     async_add_entities(sensors)
-    
+
     # Load template sensors from template_sensor.py
     from .template_sensor import async_setup_entry as setup_template_sensors
     try:
         await setup_template_sensors(hass, entry, async_add_entities)
     except Exception as e:
         _LOGGER.error("Error setting up template sensors: %s", e)
+
+
+# --- Entity-Klasse für Cycling Total Sensoren ---
+from homeassistant.helpers.entity import Entity
+from homeassistant.components.sensor import SensorEntity
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
+
+class LambdaCyclingSensor(SensorEntity):
+    """Cycling total sensor (echte Entity, Wert wird von increment_cycling_counter gesetzt)."""
+    
+    def __init__(self, hass, entry, sensor_id, name, entity_id, unique_id, unit, state_class, device_class, device_type, hp_index):
+        self.hass = hass
+        self._entry = entry
+        self._sensor_id = sensor_id
+        self._name = name
+        self.entity_id = entity_id
+        self._unique_id = unique_id
+        self._unit = unit
+        self._state_class = state_class
+        self._device_class = device_class
+        self._device_type = device_type
+        self._hp_index = hp_index
+        self._attr_has_entity_name = True
+        self._attr_should_poll = False
+        self._attr_native_unit_of_measurement = unit
+        self._attr_name = name
+        self._attr_unique_id = unique_id
+        # Initialisiere cycling_value mit 0
+        self._cycling_value = 0
+        # Yesterday-Wert für Daily-Berechnung
+        self._yesterday_value = 0
+        # Signal-Unsubscribe-Funktion
+        self._unsub_dispatcher = None
+        
+        if state_class == "total_increasing":
+            from homeassistant.components.sensor import SensorStateClass
+            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        elif state_class == "total":
+            from homeassistant.components.sensor import SensorStateClass
+            self._attr_state_class = SensorStateClass.TOTAL
+        elif state_class == "measurement":
+            from homeassistant.components.sensor import SensorStateClass
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+        else:
+            self._attr_state_class = None
+        self._attr_device_class = device_class
+
+    def set_cycling_value(self, value):
+        """Set the cycling value and update state."""
+        self._cycling_value = int(value)  # Stelle sicher, dass es ein Integer ist
+        # Stelle sicher, dass der State korrekt aktualisiert wird
+        self.async_write_ha_state()
+        _LOGGER.debug(f"Cycling sensor {self.entity_id} value set to {value}")
+
+    def update_yesterday_value(self):
+        """Update yesterday value with current total value (called at midnight)."""
+        old_yesterday = self._yesterday_value
+        self._yesterday_value = self._cycling_value
+        _LOGGER.info(f"Yesterday value updated for {self.entity_id}: {old_yesterday} -> {self._yesterday_value}")
+
+    async def async_added_to_hass(self):
+        """Initialize the sensor when added to Home Assistant."""
+        # Stelle sicher, dass der State korrekt gesetzt ist
+        await super().async_added_to_hass()
+        
+        # Initialisiere cycling_value auf 0, falls noch nicht gesetzt
+        if not hasattr(self, '_cycling_value') or self._cycling_value is None:
+            self._cycling_value = 0
+            _LOGGER.info(f"Cycling sensor {self.entity_id} initialisiert mit Wert 0")
+        else:
+            # Stelle sicher, dass der Wert ein Integer ist
+            self._cycling_value = int(self._cycling_value)
+        
+        # Registriere Signal-Handler für Yesterday-Update
+        from .automations import SIGNAL_UPDATE_YESTERDAY
+        self._unsub_dispatcher = async_dispatcher_connect(
+            self.hass, 
+            SIGNAL_UPDATE_YESTERDAY, 
+            self._handle_yesterday_update
+        )
+        
+        # Schreibe den State sofort ins UI
+        self.async_write_ha_state()
+
+    async def async_will_remove_from_hass(self):
+        """Clean up when entity is removed."""
+        if self._unsub_dispatcher:
+            self._unsub_dispatcher()
+            self._unsub_dispatcher = None
+        await super().async_will_remove_from_hass()
+
+    @callback
+    def _handle_yesterday_update(self, entry_id: str):
+        """Handle yesterday update signal."""
+        if entry_id == self._entry.entry_id:
+            self.update_yesterday_value()
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def unique_id(self):
+        return self._unique_id
+
+    @property
+    def native_unit_of_measurement(self):
+        return self._unit
+
+    @property
+    def state_class(self):
+        return self._attr_state_class
+
+    @property
+    def device_class(self):
+        return self._attr_device_class
+
+    @property
+    def device_info(self):
+        from .utils import build_device_info
+        return build_device_info(self._entry, self._device_type, self._hp_index)
+
+    @property
+    def native_value(self):
+        """Return the current cycling value."""
+        # Wert aus Attribut, Standard 0
+        value = getattr(self, '_cycling_value', 0)
+        if value is None:
+            value = 0
+        return int(value)  # Stelle sicher, dass es ein Integer ist
+
+    @property
+    def extra_state_attributes(self):
+        """Return extra state attributes."""
+        return {
+            "yesterday_value": self._yesterday_value,
+            "hp_index": self._hp_index,
+            "sensor_type": "cycling_total"
+        }
+
+
+class LambdaYesterdaySensor(SensorEntity):
+    """Yesterday cycling sensor (speichert Total-Werte für Daily-Berechnung)."""
+    
+    def __init__(self, hass, entry, sensor_id, name, entity_id, unique_id, unit, state_class, device_class, device_type, hp_index, mode):
+        self.hass = hass
+        self._entry = entry
+        self._sensor_id = sensor_id
+        self._name = name
+        self.entity_id = entity_id
+        self._unique_id = unique_id
+        self._unit = unit
+        self._state_class = state_class
+        self._device_class = device_class
+        self._device_type = device_type
+        self._hp_index = hp_index
+        self._mode = mode
+        self._attr_has_entity_name = True
+        self._attr_should_poll = False
+        self._attr_native_unit_of_measurement = unit
+        self._attr_name = name
+        self._attr_unique_id = unique_id
+        # Yesterday-Wert (wird von Total-Sensor übernommen)
+        self._yesterday_value = 0
+        # Signal-Unsubscribe-Funktion
+        self._unsub_dispatcher = None
+        
+        if state_class == "total_increasing":
+            from homeassistant.components.sensor import SensorStateClass
+            self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        elif state_class == "total":
+            from homeassistant.components.sensor import SensorStateClass
+            self._attr_state_class = SensorStateClass.TOTAL
+        elif state_class == "measurement":
+            from homeassistant.components.sensor import SensorStateClass
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+        else:
+            self._attr_state_class = None
+        self._attr_device_class = device_class
+
+    def update_yesterday_value(self, total_value):
+        """Update yesterday value with current total value (called at midnight)."""
+        old_yesterday = self._yesterday_value
+        self._yesterday_value = int(total_value)
+        _LOGGER.info(f"Yesterday sensor {self.entity_id} updated: {old_yesterday} -> {self._yesterday_value}")
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self):
+        """Initialize the sensor when added to Home Assistant."""
+        await super().async_added_to_hass()
+        
+        # Initialisiere yesterday_value auf 0
+        if not hasattr(self, '_yesterday_value') or self._yesterday_value is None:
+            self._yesterday_value = 0
+            _LOGGER.info(f"Yesterday sensor {self.entity_id} initialisiert mit Wert 0")
+        
+        # Registriere Signal-Handler für Yesterday-Update
+        from .automations import SIGNAL_UPDATE_YESTERDAY
+        self._unsub_dispatcher = async_dispatcher_connect(
+            self.hass, 
+            SIGNAL_UPDATE_YESTERDAY, 
+            self._handle_yesterday_update
+        )
+        
+        # Schreibe den State sofort ins UI
+        self.async_write_ha_state()
+
+    async def async_will_remove_from_hass(self):
+        """Clean up when entity is removed."""
+        if self._unsub_dispatcher:
+            self._unsub_dispatcher()
+            self._unsub_dispatcher = None
+        await super().async_will_remove_from_hass()
+
+    @callback
+    def _handle_yesterday_update(self, entry_id: str):
+        """Handle yesterday update signal."""
+        if entry_id == self._entry.entry_id:
+            # Hole den aktuellen Total-Wert vom entsprechenden Total-Sensor
+            total_sensor_id = f"{self._mode}_cycling_total"
+            device_prefix = f"hp{self._hp_index}"
+            from .utils import generate_sensor_names
+            names = generate_sensor_names(
+                device_prefix,
+                CALCULATED_SENSOR_TEMPLATES[total_sensor_id]["name"],
+                total_sensor_id,
+                self._entry.data.get("name", "").lower().replace(" ", ""),
+                self._entry.data.get("use_legacy_modbus_names", False)
+            )
+            total_entity_id = names["entity_id"]
+            
+            # Hole den aktuellen Wert vom Total-Sensor
+            total_state = self.hass.states.get(total_entity_id)
+            if total_state and total_state.state not in (None, "unknown", "unavailable"):
+                try:
+                    total_value = int(float(total_state.state))
+                    self.update_yesterday_value(total_value)
+                except (ValueError, TypeError):
+                    _LOGGER.warning(f"Could not parse total value from {total_entity_id}: {total_state.state}")
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def unique_id(self):
+        return self._unique_id
+
+    @property
+    def native_unit_of_measurement(self):
+        return self._unit
+
+    @property
+    def state_class(self):
+        return self._attr_state_class
+
+    @property
+    def device_class(self):
+        return self._attr_device_class
+
+    @property
+    def device_info(self):
+        from .utils import build_device_info
+        return build_device_info(self._entry, self._device_type, self._hp_index)
+
+    @property
+    def native_value(self):
+        """Return the yesterday value."""
+        value = getattr(self, '_yesterday_value', 0)
+        if value is None:
+            value = 0
+        return int(value)
+
+    @property
+    def extra_state_attributes(self):
+        """Return extra state attributes."""
+        return {
+            "mode": self._mode,
+            "hp_index": self._hp_index,
+            "sensor_type": "cycling_yesterday"
+        }
 
 
 class LambdaSensor(CoordinatorEntity, SensorEntity):

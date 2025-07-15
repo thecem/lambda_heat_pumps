@@ -19,6 +19,7 @@ from .const import (
 from .coordinator import LambdaDataUpdateCoordinator
 from .services import async_setup_services
 from .utils import generate_base_addresses
+from .automations import setup_cycling_automations, cleanup_cycling_automations
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=30)
@@ -111,6 +112,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_on_unload(
             entry.add_update_listener(async_reload_entry)
         )
+        # Set up automations
+        await setup_cycling_automations(hass, entry)
         return True
     except Exception as ex:
         _LOGGER.error("Failed to setup Lambda integration: %s", ex)
@@ -124,6 +127,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
+        # Clean up automations
+        await cleanup_cycling_automations(hass, entry)
     return unload_ok
 
 
@@ -169,6 +174,8 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
                 entry.async_on_unload(
                     entry.add_update_listener(async_reload_entry)
                 )
+                # Re-setup automations
+                await setup_cycling_automations(hass, entry)
                 _LOGGER.debug(
                     "Successfully reloaded Lambda integration for entry %s",
                     entry.entry_id

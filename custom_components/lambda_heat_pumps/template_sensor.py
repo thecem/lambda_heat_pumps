@@ -78,10 +78,12 @@ async def async_setup_entry(
     for device_type, count in DEVICE_COUNTS.items():
         for idx in range(1, count + 1):
             device_prefix = f"{device_type}{idx}"
-            
-            # Filter template sensors for this device type
+            # Nur Template-Sensoren mit "template"-Feld erzeugen (ausschließlich Daily-Sensoren)
             for sensor_id, sensor_info in CALCULATED_SENSOR_TEMPLATES.items():
-                if sensor_info.get("device_type") == device_type:
+                if (sensor_info.get("device_type") == device_type and 
+                    "template" in sensor_info and 
+                    not sensor_id.endswith("_cycling_total") and 
+                    not sensor_id.endswith("_cycling_yesterday")):
                     # Generate consistent names using centralized function
                     naming = generate_sensor_names(
                         device_prefix=device_prefix,
@@ -90,14 +92,12 @@ async def async_setup_entry(
                         name_prefix=name_prefix,
                         use_legacy_modbus_names=use_legacy_modbus_names
                     )
-                    
                     # Generate entity prefix for template
                     full_entity_prefix = generate_template_entity_prefix(
                         device_prefix=device_prefix,
                         name_prefix=name_prefix,
                         use_legacy_modbus_names=use_legacy_modbus_names
                     )
-
                     # Offset bestimmen
                     cycling_offset = 0
                     if sensor_id.endswith("_cycling_total"):
@@ -108,13 +108,11 @@ async def async_setup_entry(
                         full_entity_prefix=full_entity_prefix,
                         cycling_offset=cycling_offset
                     )
-                    
                     _LOGGER.debug(
                         "Creating template sensor %s with template: %s",
                         naming["entity_id"],
                         template_str
                     )
-                    
                     template_sensors.append(
                         LambdaTemplateSensor(
                             coordinator=coordinator,
@@ -243,12 +241,16 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
                 self._template_str
             )
             
-            # Convert to float if possible and apply precision
+            # Convert to appropriate type and apply precision
             if self._state is not None and self._state != "unavailable":
                 try:
                     float_value = float(self._state)
                     if self._precision is not None:
-                        self._state = round(float_value, self._precision)
+                        if self._precision == 0:
+                            # For precision 0, convert to integer
+                            self._state = int(round(float_value, 0))
+                        else:
+                            self._state = round(float_value, self._precision)
                     else:
                         self._state = float_value
                 except (ValueError, TypeError):
