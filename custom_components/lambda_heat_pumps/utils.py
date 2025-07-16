@@ -36,10 +36,9 @@ def get_compatible_sensors(sensor_templates: dict, fw_version: int) -> dict:
     }
 
 
-def build_device_info(entry, device_type, idx=None, sensor_id=None):
+def build_device_info(entry):
     """
     Build device_info dict for Home Assistant device registry.
-    device_type: wird ignoriert, alle Entities gehören zum Main-Device
     """
     DOMAIN = entry.domain if hasattr(entry, "domain") else "lambda_heat_pumps"
     entry_id = entry.entry_id

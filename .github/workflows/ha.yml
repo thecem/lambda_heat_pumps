@@ -1,13 +1,7 @@
 name: Validate
 on:
   push:
-    branches:
-      - main
-      - template-sensoren
   pull_request:
-    branches:
-      - main
-      - template-sensoren
   schedule:
     - cron: 0 0 * * *
   workflow_dispatch:

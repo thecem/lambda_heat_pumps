@@ -338,7 +338,7 @@ async def _handle_write_modbus_register(hass: HomeAssistant, call: ServiceCall) 
             )
 
 
-async def _handle_write_room_and_pv(hass: HomeAssistant, call: ServiceCall = None) -> None:
+async def _handle_write_room_and_pv(hass: HomeAssistant) -> None:
     """
     Write room temperature and PV surplus to Modbus registers
     for all entries.
@@ -372,6 +372,7 @@ async def _write_room_and_pv_for_entry(hass: HomeAssistant, entry_id: str, entry
 
     # Raumthermostat schreiben
     if config_entry.options.get("room_thermostat_control", False):
+
         await _write_room_temperatures(hass, config_entry, coordinator, entry_id, entry_data)
 
     # PV-Überschuss schreiben
@@ -380,6 +381,7 @@ async def _write_room_and_pv_for_entry(hass: HomeAssistant, entry_id: str, entry
 
 
 async def _write_room_temperatures(hass: HomeAssistant, config_entry, coordinator, entry_id: str, entry_data: dict) -> None:
+
     """Write room temperatures for all heating circuits."""
     num_hc = config_entry.data.get("num_hc", 1)
     for hc_idx in range(1, num_hc + 1):
@@ -420,6 +422,7 @@ async def _write_room_temperatures(hass: HomeAssistant, config_entry, coordinato
                 hc_idx,
                 ex,
             )
+
 
 
 async def _write_pv_surplus(hass: HomeAssistant, config_entry, coordinator, entry_id: str, entry_data: dict) -> None:
@@ -483,7 +486,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def async_write_room_and_pv(call: ServiceCall = None) -> None:
         """Write room temperature and PV surplus to Modbus registers."""
-        await _handle_write_room_and_pv(hass, call)
+        await _handle_write_room_and_pv(hass)
 
     # Setup regelmäßige Aktualisierungen für alle Entries
     @callback
@@ -508,7 +511,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     # Bei Änderungen in der Konfiguration die Timers neu einrichten
     @callback
-    def config_entry_updated(hass, updated_entry) -> None:
+    def config_entry_updated() -> None:
         """Reagiere auf Konfigurationsänderungen."""
         _LOGGER.debug("Config entry updated, resetting scheduled updates")
         setup_scheduled_updates()

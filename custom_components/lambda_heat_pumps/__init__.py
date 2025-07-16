@@ -10,7 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
-import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers import config_validation as cv
 
 from .const import (
     DOMAIN,
@@ -41,12 +41,10 @@ PLATFORMS = [
 # Config schema - only config entries are supported
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-# Remove the old template definition - now imported from const.py
 
 
-def setup_debug_logging(hass: HomeAssistant, config: ConfigType) -> None:
+def setup_debug_logging(config: ConfigType) -> None:
     """Set up debug logging for the integration."""
-    # hass argument is unused, kept for interface compatibility
     if config.get("debug", False):
         logging.getLogger(DEBUG_PREFIX).setLevel(logging.DEBUG)
         _LOGGER.info("Debug logging enabled for %s", DEBUG_PREFIX)
@@ -54,7 +52,7 @@ def setup_debug_logging(hass: HomeAssistant, config: ConfigType) -> None:
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Lambda integration."""
-    setup_debug_logging(hass, config)
+    setup_debug_logging(config)
     return True
 
 

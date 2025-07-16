@@ -800,6 +800,7 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self):
         """Return device info for this sensor."""
+
         # Use device_type from sensor template, defaulting to "main" if not set
         device_type = (
             self._device_type.lower() if self._device_type else "main"

@@ -72,7 +72,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
 
     @property
     def device_info(self):
-        return build_device_info(self._entry, "main")
+        return build_device_info(self._entry)
 
     async def async_set_temperature(self, **kwargs):
         temperature = kwargs.get("temperature")
