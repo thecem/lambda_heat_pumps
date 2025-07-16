@@ -47,6 +47,7 @@ from .const import (
     MAX_NUM_BUFFER,
     MAX_NUM_SOLAR,
 )
+from .modbus_utils import read_holding_registers
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,12 +58,13 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
 
     client = ModbusTcpClient(data[CONF_HOST], port=data[CONF_PORT])
     try:
-        if not await hass.async_add_executor_job(client.connect):
+        if not client.connect():
             raise CannotConnect("Could not connect to Modbus TCP")
 
         # Test read of a register to verify connection
         result = await hass.async_add_executor_job(
-            client.read_holding_registers,
+            read_holding_registers,
+            client,
             0,  # Start address
             1,  # Number of registers to read
             data[CONF_SLAVE_ID],

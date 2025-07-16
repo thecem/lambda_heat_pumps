@@ -12,14 +12,19 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers import config_validation as cv
 
-from .const import DOMAIN, DEBUG_PREFIX
+from .const import (
+    DOMAIN,
+    DEBUG_PREFIX,
+    LAMBDA_WP_CONFIG_TEMPLATE  # Import template from const
+)
 from .coordinator import LambdaDataUpdateCoordinator
 from .services import async_setup_services
 from .utils import generate_base_addresses
+from .automations import setup_cycling_automations, cleanup_cycling_automations
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=30)
-VERSION = "1.0.0"
+VERSION = "1.1.0"  # Updated version for cycling sensors feature
 
 # Diese Konstante teilt Home Assistant mit, dass die Integration
 # Übersetzungen hat
@@ -33,34 +38,9 @@ PLATFORMS = [
     Platform.CLIMATE,
 ]
 
-# Config schema - nur Config Entry Setup
+# Config schema - only config entries are supported
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-LAMBDA_WP_CONFIG_TEMPLATE = """# Lambda WP configuration
-# This file is used by Lambda WP Integration to define the configuration of
-# Lambda WP.
-# The file is created during the installation of the Lambda WP Integration and
-# can then be edited with the file editor or visual studio code.
-# Modbus registrations that are not required can be deactivated here.
-# Disabled registrations as an example:
-#disabled_registers:
-# - 2004 # boil1_actual_circulation_temp
-
-# overwritten sensor names as an example:
-# these override the names of the sensors created by the Lambda WP integration.
-#sensors_names_override:
-#- id: actual_heating_capacity
-#  override_name: Hp_QP_heating
-# sensors_names_override does only functions if use_legacy_modbus_names is
-# set to true!!!
-
-disabled_registers:
- - 100000 # this sensor does not exits, this is just an example
-
-sensors_names_override:
-- id: name_of_the_sensor_to_override_example
-  override_name: new_name_of_the_sensor_example
-"""
 
 
 def setup_debug_logging(config: ConfigType) -> None:
@@ -79,12 +59,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Lambda Heat Pumps from a config entry."""
     _LOGGER.debug("Setting up Lambda integration with config: %s", entry.data)
+
     # Prüfe, ob lambda_wp_config.yaml existiert, sonst anlegen
     config_dir = hass.config.config_dir
     lambda_config_path = os.path.join(config_dir, "lambda_wp_config.yaml")
     if not os.path.exists(lambda_config_path):
         async with aiofiles.open(lambda_config_path, "w") as f:
-            await f.write(LAMBDA_WP_CONFIG_TEMPLATE)
+            await f.write(LAMBDA_WP_CONFIG_TEMPLATE)  # Use template from const
+        _LOGGER.info("Created lambda_wp_config.yaml with default template")
+
     # Generate base addresses based on configured device counts
     num_hps = entry.data.get("num_hps", 1)
     num_boil = entry.data.get("num_boil", 1)
@@ -131,6 +114,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_on_unload(
             entry.add_update_listener(async_reload_entry)
         )
+        # Set up automations
+        await setup_cycling_automations(hass, entry)
         return True
     except Exception as ex:
         _LOGGER.error("Failed to setup Lambda integration: %s", ex)
@@ -144,6 +129,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
+        # Clean up automations
+        await cleanup_cycling_automations(hass, entry)
     return unload_ok
 
 
@@ -189,6 +176,8 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
                 entry.async_on_unload(
                     entry.add_update_listener(async_reload_entry)
                 )
+                # Re-setup automations
+                await setup_cycling_automations(hass, entry)
                 _LOGGER.debug(
                     "Successfully reloaded Lambda integration for entry %s",
                     entry.entry_id

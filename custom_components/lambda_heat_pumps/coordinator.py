@@ -20,6 +20,7 @@ from .const import (
     SOL_SENSOR_TEMPLATES,
     HC_SENSOR_TEMPLATES,
     DEFAULT_UPDATE_INTERVAL,
+    CALCULATED_SENSOR_TEMPLATES,
 )
 from .utils import (
     load_disabled_registers,
@@ -27,7 +28,11 @@ from .utils import (
     generate_base_addresses,
     to_signed_16bit,
     to_signed_32bit,
+    increment_cycling_counter,
 )
+from .modbus_utils import read_holding_registers
+import time
+import json
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=30)
@@ -69,6 +74,47 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         self._config_path = os.path.join(self._config_dir, "lambda_heat_pumps")
         self.hass = hass
         self.entry = entry
+        self._last_operating_state = {}
+        self._heating_cycles = {}
+        self._heating_energy = {}
+        self._last_energy_update = {}
+        self._cycling_offsets = {}
+        self._energy_offsets = {}
+        self._use_legacy_names = entry.data.get("use_legacy_modbus_names", False)
+        self._persist_file = os.path.join(self._config_path, "cycle_energy_persist.json")
+        # self._load_offsets_and_persisted() ENTFERNT!
+
+    async def _persist_counters(self):
+        data = {
+            "heating_cycles": self._heating_cycles,
+            "heating_energy": self._heating_energy,
+        }
+        async with aiofiles.open(self._persist_file, "w") as f:
+            await f.write(json.dumps(data))
+
+    async def _load_offsets_and_persisted(self):
+        # Lade Offsets aus lambda_wp_config.yaml
+        config_path = os.path.join(self._config_path, "lambda_wp_config.yaml")
+        if os.path.exists(config_path):
+            async with aiofiles.open(config_path, "r") as f:
+                import yaml
+                content = await f.read()
+                config = yaml.safe_load(content) or {}
+                self._cycling_offsets = config.get("cycling_offsets", {})
+                self._energy_offsets = config.get("energy_offsets", {})
+        # Lade persistierte Zählerstände (falls vorhanden)
+        if os.path.exists(self._persist_file):
+            async with aiofiles.open(self._persist_file, "r") as f:
+                content = await f.read()
+                data = json.loads(content)
+                self._heating_cycles = data.get("heating_cycles", {})
+                self._heating_energy = data.get("heating_energy", {})
+
+    def _generate_entity_id(self, sensor_type, idx):
+        if self._use_legacy_names:
+            return f"sensor.hp{idx+1}_{sensor_type}"
+        else:
+            return f"sensor.eu08l_hp{idx+1}_{sensor_type}"
 
     async def async_init(self):
         """Async initialization."""
@@ -104,6 +150,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     "No disabled registers configured - this is normal if you "
                     "haven't disabled any registers"
                 )
+            await self._load_offsets_and_persisted()
         except Exception as e:
             _LOGGER.error("Failed to initialize coordinator: %s", str(e))
             self.disabled_registers = set()
@@ -166,6 +213,19 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                 await self._connect()
 
             data = {}
+            interval = DEFAULT_UPDATE_INTERVAL / 3600.0  # Intervall in Stunden
+            num_hps = self.entry.data.get("num_hps", 1)
+            # Generische Flankenerkennung für alle relevanten Modi
+            MODES = {
+                "heating": 1,   # CH
+                "hot_water": 2,  # DHW
+                "cooling": 3,   # CC
+                "defrost": 5,   # DEFROST
+            }
+            if not hasattr(self, '_last_mode_state'):
+                self._last_mode_state = {mode: {} for mode in MODES}
+            if not hasattr(self, '_last_operating_state'):
+                self._last_operating_state = {}
 
             # Read general sensors
             for sensor_id, sensor_info in SENSOR_TYPES.items():
@@ -177,7 +237,8 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         2 if sensor_info.get("data_type") == "int32" else 1
                     )
                     result = await self.hass.async_add_executor_job(
-                        self.client.read_holding_registers,
+                        read_holding_registers,
+                        self.client,
                         address,
                         count,
                         self.entry.data.get("slave_id", 1),
@@ -226,7 +287,8 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
                         result = await self.hass.async_add_executor_job(
-                            self.client.read_holding_registers,
+                            read_holding_registers,
+                            self.client,
                             address,
                             count,
                             self.entry.data.get("slave_id", 1),
@@ -269,6 +331,96 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             ex,
                         )
 
+            # Flankenerkennung und Energieintegration nach dem Auslesen aller Wärmepumpen-Sensoren
+            for hp_idx in range(1, num_hps + 1):
+                op_state_val = data.get(f"hp{hp_idx}_operating_state")
+                if op_state_val is None:
+                    continue
+
+                # Debug-Log: Immer ausgeben
+                last_op_state = self._last_operating_state.get(hp_idx, "UNBEKANNT")
+                _LOGGER.debug(
+                    "DEBUG: HP %d, last_op_state=%s, op_state_val=%s",
+                    hp_idx, last_op_state, op_state_val
+                )
+                # Info-Meldung bei Änderung
+                if last_op_state != op_state_val:
+                    _LOGGER.info(
+                        "Wärmepumpe %d: operating_state geändert von %s auf %s",
+                        hp_idx, last_op_state, op_state_val
+                    )
+                self._last_operating_state[hp_idx] = op_state_val
+                for mode, mode_val in MODES.items():
+                    cycling_key = f"{mode}_cycles"
+                    energy_key = f"{mode}_energy"
+                    if not hasattr(self, cycling_key):
+                        setattr(self, cycling_key, {})
+                    if not hasattr(self, energy_key):
+                        setattr(self, energy_key, {})
+                    cycles = getattr(self, cycling_key)
+                    energy = getattr(self, energy_key)
+                    last_mode_state = self._last_mode_state[mode].get(hp_idx)
+                    # Flanke: operating_state wechselt von etwas anderem auf mode_val
+                    if last_mode_state != mode_val and op_state_val == mode_val:
+                        # Prüfe, ob die Cycling-Entities bereits registriert sind
+                        cycling_entities_ready = False
+                        try:
+                            # Prüfe, ob die Cycling-Entities in hass.data verfügbar sind
+                            if (
+                                "lambda_heat_pumps" in self.hass.data
+                                and self.entry.entry_id in self.hass.data["lambda_heat_pumps"]
+                                and "cycling_entities" in self.hass.data["lambda_heat_pumps"][self.entry.entry_id]
+                            ):
+                                cycling_entities_ready = True
+                        except Exception:
+                            pass
+
+                        if cycling_entities_ready:
+                            # Zentrale Funktion für total-Zähler aufrufen
+                            await increment_cycling_counter(
+                                self.hass,
+                                mode=mode,
+                                hp_index=hp_idx,
+                                name_prefix=self.entry.data.get("name", "eu08l"),
+                                use_legacy_modbus_names=self._use_legacy_names,
+                                cycling_offsets=self._cycling_offsets
+                            )
+                            _LOGGER.info(
+                                "Wärmepumpe %d: %s Modus aktiviert (Cycling total inkrementiert)",
+                                hp_idx, mode
+                            )
+                        else:
+                            _LOGGER.debug(
+                                "Wärmepumpe %d: %s Modus aktiviert (Cycling-Entities noch nicht bereit)",
+                                hp_idx, mode
+                            )
+                    # Nur für Debug-Zwecke, nicht als Info-Log:
+                    # _LOGGER.debug(
+                    #     "HP %d, Modus %s: last_mode_state=%s, op_state_val=%s",
+                    #     hp_idx, mode, last_mode_state, op_state_val
+                    # )
+                    self._last_mode_state[mode][hp_idx] = op_state_val
+                    # Energieintegration für aktiven Modus
+                    power_info = HP_SENSOR_TEMPLATES.get("actual_heating_capacity")
+                    if power_info:
+                        power_val = data.get(
+                            f"hp{hp_idx}_actual_heating_capacity", 0.0
+                        )
+                        if op_state_val == mode_val:
+                            energy[hp_idx] = energy.get(hp_idx, 0.0) + power_val * interval
+                    # Sensorwerte bereitstellen (inkl. Offset)
+                    cycling_entity_id = self._generate_entity_id(
+                        f"{mode}_cycling_daily", hp_idx - 1
+                    )
+                    energy_entity_id = self._generate_entity_id(
+                        f"{mode}_energy_daily", hp_idx - 1
+                    )
+                    cycling_offset = self._cycling_offsets.get(f"hp{hp_idx}", 0)
+                    energy_offset = self._energy_offsets.get(f"hp{hp_idx}", 0.0)
+                    data[cycling_entity_id] = cycles.get(hp_idx, 0) + cycling_offset
+                    data[energy_entity_id] = energy.get(hp_idx, 0.0) + energy_offset
+            await self._persist_counters()
+
             # Read boiler sensors
             num_boil = self.entry.data.get("num_boil", 1)
             for boil_idx in range(1, num_boil + 1):
@@ -288,7 +440,8 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
                         result = await self.hass.async_add_executor_job(
-                            self.client.read_holding_registers,
+                            read_holding_registers,
+                            self.client,
                             address,
                             count,
                             self.entry.data.get("slave_id", 1),
@@ -350,7 +503,8 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
                         result = await self.hass.async_add_executor_job(
-                            self.client.read_holding_registers,
+                            read_holding_registers,
+                            self.client,
                             address,
                             count,
                             self.entry.data.get("slave_id", 1),
@@ -410,7 +564,8 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
                         result = await self.hass.async_add_executor_job(
-                            self.client.read_holding_registers,
+                            read_holding_registers,
+                            self.client,
                             address,
                             count,
                             self.entry.data.get("slave_id", 1),
@@ -470,7 +625,8 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
                         result = await self.hass.async_add_executor_job(
-                            self.client.read_holding_registers,
+                            read_holding_registers,
+                            self.client,
                             address,
                             count,
                             self.entry.data.get("slave_id", 1),
@@ -513,6 +669,29 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             ex,
                         )
 
+            # Dummy-Keys für Template-Sensoren einfügen
+            # Erzeuge alle möglichen Template-Sensor-IDs
+            num_hps = self.entry.data.get("num_hps", 1)
+            num_boil = self.entry.data.get("num_boil", 1)
+            num_buff = self.entry.data.get("num_buff", 0)
+            num_sol = self.entry.data.get("num_sol", 0)
+            num_hc = self.entry.data.get("num_hc", 1)
+            DEVICE_COUNTS = {
+                "hp": num_hps,
+                "boil": num_boil,
+                "buff": num_buff,
+                "sol": num_sol,
+                "hc": num_hc,
+            }
+            for device_type, count in DEVICE_COUNTS.items():
+                for idx in range(1, count + 1):
+                    device_prefix = f"{device_type}{idx}"
+                    for sensor_id, sensor_info in CALCULATED_SENSOR_TEMPLATES.items():
+                        if sensor_info.get("device_type") == device_type:
+                            key = f"{device_prefix}_{sensor_id}"
+                            # Setze einen sich ändernden Wert, z.B. Zeitstempel
+                            data[key] = time.time()
+
             # Update room temperature and PV surplus only after Home Assistant
             # has started. This prevents timing issues with template sensors
             if hasattr(self, '_ha_started') and self._ha_started:
@@ -542,9 +721,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
 
         self.client = ModbusTcpClient(self.host, port=self.port)
         try:
-            connected = await self.hass.async_add_executor_job(
-                self.client.connect
-            )
+            connected = self.client.connect()
             if not connected:
                 raise ConnectionError(
                     "Could not connect to Modbus TCP at "

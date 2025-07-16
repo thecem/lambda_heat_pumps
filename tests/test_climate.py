@@ -156,12 +156,16 @@ async def test_lambda_climate_entity_set_temperature():
     # Überprüfe, ob async_add_executor_job mit den korrekten Parametern aufgerufen wurde
     hass_mock.async_add_executor_job.assert_called_once()
     call_args = hass_mock.async_add_executor_job.call_args[0]
-    assert call_args[0] == coordinator_mock.client.write_registers
+    # Jetzt wird write_registers aus modbus_utils verwendet
+    from custom_components.lambda_heat_pumps.modbus_utils import write_registers
+    assert call_args[0] == write_registers
+    # client (coordinator_mock.client)
+    assert call_args[1] == coordinator_mock.client
     # base_address + relative_set_address (sollte 2050 sein für hot_water)
-    assert call_args[1] == 2050
+    assert call_args[2] == 2050
     # Temperatur * scale (10.0)
-    assert call_args[2] == [600]
-    assert call_args[3] == 1  # slave_id
+    assert call_args[3] == [600]
+    assert call_args[4] == 1  # slave_id
 
     # Überprüfe, ob der Coordinator-Cache aktualisiert wurde
     assert coordinator_mock.data["boil1_target_high_temperature"] == 60

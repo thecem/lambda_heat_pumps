@@ -16,6 +16,7 @@ from .const import (
     DEFAULT_WRITE_INTERVAL,
     CONF_PV_POWER_SENSOR_ENTITY,
 )
+from .modbus_utils import read_holding_registers, write_registers
 
 # Konstanten für Zustandsarten definieren
 STATE_UNAVAILABLE = "unavailable"
@@ -138,12 +139,12 @@ async def _process_room_temperature_entry(
     # Für jeden Heizkreis prüfen und aktualisieren
     for hc_idx in range(1, num_hc + 1):
         await _update_heating_circuit_temperature(
-            hass, config_entry, coordinator, hc_idx, entry_id
+            hass, config_entry, coordinator, hc_idx, entry_id, entry_data
         )
 
 
 async def _update_heating_circuit_temperature(
-    hass: HomeAssistant, config_entry, coordinator, hc_idx: int, entry_id: str
+    hass: HomeAssistant, config_entry, coordinator, hc_idx: int, entry_id: str, entry_data: dict
 ) -> None:
     """Update temperature for a specific heating circuit."""
     entity_key = CONF_ROOM_TEMPERATURE_ENTITY.format(hc_idx)
@@ -204,10 +205,11 @@ async def _update_heating_circuit_temperature(
         )
 
         result = await hass.async_add_executor_job(
-            coordinator.client.write_registers,
+            write_registers,
+            coordinator.client,
             register_address,
             [raw_value],
-            config_entry.data.get("slave_id", 1),
+            entry_data.get("slave_id", 1),
         )
 
         if result.isError():
@@ -256,10 +258,10 @@ async def _handle_read_modbus_register(hass: HomeAssistant, call: ServiceCall) -
 
         try:
             result = await hass.async_add_executor_job(
-                coordinator.client.read_holding_registers,
+                read_holding_registers,
+                coordinator.client,
                 register_address,
                 1,
-                entry_data.get("slave_id", 1),
             )
             if result.isError():
                 _LOGGER.error(
@@ -312,7 +314,8 @@ async def _handle_write_modbus_register(hass: HomeAssistant, call: ServiceCall) 
 
         try:
             result = await hass.async_add_executor_job(
-                coordinator.client.write_registers,
+                write_registers,
+                coordinator.client,
                 register_address,
                 [value],
                 entry_data.get("slave_id", 1),
@@ -369,14 +372,16 @@ async def _write_room_and_pv_for_entry(hass: HomeAssistant, entry_id: str, entry
 
     # Raumthermostat schreiben
     if config_entry.options.get("room_thermostat_control", False):
-        await _write_room_temperatures(hass, config_entry, coordinator)
+
+        await _write_room_temperatures(hass, config_entry, coordinator, entry_id, entry_data)
 
     # PV-Überschuss schreiben
     if config_entry.options.get("pv_surplus", False):
-        await _write_pv_surplus(hass, config_entry, coordinator)
+        await _write_pv_surplus(hass, config_entry, coordinator, entry_id, entry_data)
 
 
-async def _write_room_temperatures(hass: HomeAssistant, config_entry, coordinator) -> None:
+async def _write_room_temperatures(hass: HomeAssistant, config_entry, coordinator, entry_id: str, entry_data: dict) -> None:
+
     """Write room temperatures for all heating circuits."""
     num_hc = config_entry.data.get("num_hc", 1)
     for hc_idx in range(1, num_hc + 1):
@@ -395,7 +400,7 @@ async def _write_room_temperatures(hass: HomeAssistant, config_entry, coordinato
             temperature = float(state.state)
             raw_value = int(temperature * 10)
             register_address = 5004 + (hc_idx - 1) * 100
-            _LOGGER.debug(
+            _LOGGER.info(
                 "[Scheduled] Writing room temperature to "
                 "register %s: %s (%s°C) for HC %s",
                 register_address,
@@ -404,10 +409,11 @@ async def _write_room_temperatures(hass: HomeAssistant, config_entry, coordinato
                 hc_idx,
             )
             await hass.async_add_executor_job(
-                coordinator.client.write_registers,
+                write_registers,
+                coordinator.client,
                 register_address,
                 [raw_value],
-                config_entry.data.get("slave_id", 1),
+                entry_data.get("slave_id", 1),
             )
         except Exception as ex:
             _LOGGER.error(
@@ -418,7 +424,8 @@ async def _write_room_temperatures(hass: HomeAssistant, config_entry, coordinato
             )
 
 
-async def _write_pv_surplus(hass: HomeAssistant, config_entry, coordinator) -> None:
+
+async def _write_pv_surplus(hass: HomeAssistant, config_entry, coordinator, entry_id: str, entry_data: dict) -> None:
     """Write PV surplus to Modbus register."""
     entity_id = config_entry.options.get(CONF_PV_POWER_SENSOR_ENTITY)
     if not entity_id:
@@ -437,7 +444,7 @@ async def _write_pv_surplus(hass: HomeAssistant, config_entry, coordinator) -> N
             power_value *= 1000  # in W
         raw_value = int(power_value)
 
-        _LOGGER.debug(
+        _LOGGER.info(
             "[Scheduled] Writing PV surplus to register %s: "
             "%s W (Source: %s %s)",
             102,
@@ -447,10 +454,11 @@ async def _write_pv_surplus(hass: HomeAssistant, config_entry, coordinator) -> N
         )
 
         await hass.async_add_executor_job(
-            coordinator.client.write_registers,
+            write_registers,
+            coordinator.client,
             102,  # register_address for PV surplus
             [raw_value],
-            config_entry.data.get("slave_id", 1),
+            entry_data.get("slave_id", 1),
         )
     except Exception as ex:
         _LOGGER.error("Error writing PV surplus: %s", ex)
