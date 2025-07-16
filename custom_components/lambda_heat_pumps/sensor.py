@@ -8,6 +8,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -365,7 +366,7 @@ async def async_setup_entry(
 
 
 # --- Entity-Klasse für Cycling Total Sensoren ---
-class LambdaCyclingSensor(SensorEntity):
+class LambdaCyclingSensor(SensorEntity, RestoreEntity):
     """Cycling total sensor (echte Entity, Wert wird von increment_cycling_counter gesetzt)."""
 
     def __init__(self, hass, entry, sensor_id, name, entity_id, unique_id, unit, state_class, device_class, device_type, hp_index):
@@ -515,7 +516,7 @@ class LambdaCyclingSensor(SensorEntity):
         }
 
 
-class LambdaYesterdaySensor(SensorEntity):
+class LambdaYesterdaySensor(SensorEntity, RestoreEntity):
     """Yesterday cycling sensor (speichert Total-Werte für Daily-Berechnung)."""
 
     def __init__(self, hass, entry, sensor_id, name, entity_id, unique_id, unit, state_class, device_class, device_type, hp_index, mode):
