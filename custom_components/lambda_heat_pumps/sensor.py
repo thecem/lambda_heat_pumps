@@ -1,7 +1,6 @@
 """Platform for Lambda WP sensor integration."""
 from __future__ import annotations
 
-import asyncio
 import logging
 
 from homeassistant.components.sensor import (
@@ -14,7 +13,6 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.template import Template, TemplateError
-from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import (

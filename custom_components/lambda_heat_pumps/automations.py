@@ -4,12 +4,10 @@ Handles daily cycling counter updates and automation setup.
 """
 
 import logging
-from datetime import datetime, time
+from datetime import datetime
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.dispatcher import async_dispatcher_send
-from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -51,7 +49,9 @@ async def setup_cycling_automations(hass: HomeAssistant, entry) -> None:
     _LOGGER.info("Cycling automations set up successfully")
 
 
-async def cleanup_cycling_automations(hass: HomeAssistant, entry_id: str) -> None:
+async def cleanup_cycling_automations(
+    hass: HomeAssistant, entry_id: str
+) -> None:
     """Clean up cycling-related automations."""
     _LOGGER.info("Cleaning up cycling automations for entry %s", entry_id)
 

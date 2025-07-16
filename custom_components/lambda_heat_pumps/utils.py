@@ -1,15 +1,15 @@
 """Utility functions for Lambda Heat Pumps integration."""
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 import yaml
 import aiofiles
-from typing import Any, Dict, List, Optional, Set
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
+from homeassistant.helpers.entity_registry import (
+    async_get as async_get_entity_registry
+)
 from homeassistant.const import STATE_UNKNOWN
 from homeassistant.helpers.entity_component import async_update_entity
 

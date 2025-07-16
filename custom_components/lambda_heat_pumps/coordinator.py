@@ -30,9 +30,9 @@ from .utils import (
     to_signed_32bit,
     increment_cycling_counter,
 )
+from .modbus_utils import read_holding_registers
 import time
 import json
-from datetime import datetime
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=30)
@@ -237,9 +237,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         2 if sensor_info.get("data_type") == "int32" else 1
                     )
                     result = await self.hass.async_add_executor_job(
-                        self.client.read_holding_registers,
+                        read_holding_registers,
+                        self.client,
                         address,
                         count,
+                        self.entry.data.get("slave_id", 1),
                     )
                     if hasattr(result, "isError") and result.isError():
                         _LOGGER.error(
@@ -285,9 +287,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
                         result = await self.hass.async_add_executor_job(
-                            self.client.read_holding_registers,
+                            read_holding_registers,
+                            self.client,
                             address,
                             count,
+                            self.entry.data.get("slave_id", 1),
                         )
                         if hasattr(result, "isError") and result.isError():
                             _LOGGER.error(
@@ -436,9 +440,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
                         result = await self.hass.async_add_executor_job(
-                            self.client.read_holding_registers,
+                            read_holding_registers,
+                            self.client,
                             address,
                             count,
+                            self.entry.data.get("slave_id", 1),
                         )
                         if hasattr(result, "isError") and result.isError():
                             _LOGGER.error(
@@ -497,9 +503,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
                         result = await self.hass.async_add_executor_job(
-                            self.client.read_holding_registers,
+                            read_holding_registers,
+                            self.client,
                             address,
                             count,
+                            self.entry.data.get("slave_id", 1),
                         )
                         if hasattr(result, "isError") and result.isError():
                             _LOGGER.error(
@@ -556,9 +564,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
                         result = await self.hass.async_add_executor_job(
-                            self.client.read_holding_registers,
+                            read_holding_registers,
+                            self.client,
                             address,
                             count,
+                            self.entry.data.get("slave_id", 1),
                         )
                         if hasattr(result, "isError") and result.isError():
                             _LOGGER.error(
@@ -615,9 +625,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
                         result = await self.hass.async_add_executor_job(
-                            self.client.read_holding_registers,
+                            read_holding_registers,
+                            self.client,
                             address,
                             count,
+                            self.entry.data.get("slave_id", 1),
                         )
                         if hasattr(result, "isError") and result.isError():
                             _LOGGER.error(
