@@ -218,11 +218,7 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self):
         """Return device info."""
-        return build_device_info(
-            self._entry,
-            self._device_type,
-            self._sensor_id,
-        )
+        return build_device_info(self._entry)
 
     @callback
     def _handle_coordinator_update(self) -> None:

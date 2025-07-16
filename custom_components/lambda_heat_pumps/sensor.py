@@ -420,13 +420,9 @@ class LambdaCyclingSensor(SensorEntity):
         # Stelle sicher, dass der State korrekt gesetzt ist
         await super().async_added_to_hass()
 
-        # Initialisiere cycling_value auf 0, falls noch nicht gesetzt
-        if not hasattr(self, '_cycling_value') or self._cycling_value is None:
-            self._cycling_value = 0
-            _LOGGER.info(f"Cycling sensor {self.entity_id} initialisiert mit Wert 0")
-        else:
-            # Stelle sicher, dass der Wert ein Integer ist
-            self._cycling_value = int(self._cycling_value)
+        # Lade den letzten State aus der Datenbank
+        last_state = await self.async_get_last_state()
+        await self.restore_state(last_state)
 
         # Registriere Signal-Handler für Yesterday-Update
         from .automations import SIGNAL_UPDATE_YESTERDAY  # noqa: F401
@@ -445,6 +441,30 @@ class LambdaCyclingSensor(SensorEntity):
             self._unsub_dispatcher()
             self._unsub_dispatcher = None
         await super().async_will_remove_from_hass()
+
+    async def restore_state(self, last_state):
+        """Restore state from database to prevent reset on reload."""
+        if last_state is not None:
+            try:
+                # Lade den letzten Wert aus der Datenbank
+                last_value = last_state.state
+                if last_value not in (None, "unknown", "unavailable"):
+                    self._cycling_value = int(float(last_value))
+                    _LOGGER.info(f"Cycling sensor {self.entity_id} restored from database: {self._cycling_value}")
+                else:
+                    # Fallback auf 0 nur wenn wirklich kein Wert in der DB
+                    self._cycling_value = 0
+                    _LOGGER.info(f"Cycling sensor {self.entity_id} initialized with 0 (no previous state)")
+            except (ValueError, TypeError) as e:
+                _LOGGER.warning(f"Could not restore state for {self.entity_id}: {e}, using 0")
+                self._cycling_value = 0
+        else:
+            # Kein vorheriger State vorhanden, initialisiere mit 0
+            self._cycling_value = 0
+            _LOGGER.info(f"Cycling sensor {self.entity_id} initialized with 0 (no previous state)")
+
+        # Stelle sicher, dass der Wert ein Integer ist
+        self._cycling_value = int(self._cycling_value)
 
     @callback
     def _handle_yesterday_update(self, entry_id: str):
@@ -474,7 +494,7 @@ class LambdaCyclingSensor(SensorEntity):
 
     @property
     def device_info(self):
-        return build_device_info(self._entry, self._device_type, self._hp_index)
+        return build_device_info(self._entry)
 
     @property
     def native_value(self):
@@ -542,10 +562,9 @@ class LambdaYesterdaySensor(SensorEntity):
         """Initialize the sensor when added to Home Assistant."""
         await super().async_added_to_hass()
 
-        # Initialisiere yesterday_value auf 0
-        if not hasattr(self, '_yesterday_value') or self._yesterday_value is None:
-            self._yesterday_value = 0
-            _LOGGER.info(f"Yesterday sensor {self.entity_id} initialisiert mit Wert 0")
+        # Lade den letzten State aus der Datenbank
+        last_state = await self.async_get_last_state()
+        await self.restore_state(last_state)
 
         # Registriere Signal-Handler für Yesterday-Update
         from .automations import SIGNAL_UPDATE_YESTERDAY  # noqa: F401
@@ -564,6 +583,30 @@ class LambdaYesterdaySensor(SensorEntity):
             self._unsub_dispatcher()
             self._unsub_dispatcher = None
         await super().async_will_remove_from_hass()
+
+    async def restore_state(self, last_state):
+        """Restore state from database to prevent reset on reload."""
+        if last_state is not None:
+            try:
+                # Lade den letzten Wert aus der Datenbank
+                last_value = last_state.state
+                if last_value not in (None, "unknown", "unavailable"):
+                    self._yesterday_value = int(float(last_value))
+                    _LOGGER.info(f"Yesterday sensor {self.entity_id} restored from database: {self._yesterday_value}")
+                else:
+                    # Fallback auf 0 nur wenn wirklich kein Wert in der DB
+                    self._yesterday_value = 0
+                    _LOGGER.info(f"Yesterday sensor {self.entity_id} initialized with 0 (no previous state)")
+            except (ValueError, TypeError) as e:
+                _LOGGER.warning(f"Could not restore state for {self.entity_id}: {e}, using 0")
+                self._yesterday_value = 0
+        else:
+            # Kein vorheriger State vorhanden, initialisiere mit 0
+            self._yesterday_value = 0
+            _LOGGER.info(f"Yesterday sensor {self.entity_id} initialized with 0 (no previous state)")
+
+        # Stelle sicher, dass der Wert ein Integer ist
+        self._yesterday_value = int(self._yesterday_value)
 
     @callback
     def _handle_yesterday_update(self, entry_id: str):
@@ -612,7 +655,8 @@ class LambdaYesterdaySensor(SensorEntity):
 
     @property
     def device_info(self):
-        return build_device_info(self._entry, self._device_type, self._hp_index)
+        """Return device info."""
+        return build_device_info(self._entry)
 
     @property
     def native_value(self):
@@ -800,24 +844,7 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self):
         """Return device info for this sensor."""
-
-        # Use device_type from sensor template, defaulting to "main" if not set
-        device_type = (
-            self._device_type.lower() if self._device_type else "main"
-        )
-
-        # Extract index from sensor_id if it exists
-        idx = None
-        if self._sensor_id:
-            parts = self._sensor_id.split('_')
-            if len(parts) > 0:
-                # Extract number from prefix (e.g., "hp1" -> 1)
-                import re
-                match = re.search(r'\d+', parts[0])
-                if match:
-                    idx = int(match.group())
-
-        return build_device_info(self._entry, device_type, idx)
+        return build_device_info(self._entry)
 
 
 class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
@@ -905,11 +932,7 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self):
         """Return device info."""
-        return build_device_info(
-            self._entry,
-            self._device_type,
-            self._sensor_id,
-        )
+        return build_device_info(self._entry)
 
     @callback
     def handle_coordinator_update(self) -> None:
