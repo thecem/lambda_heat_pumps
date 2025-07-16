@@ -494,7 +494,7 @@ class LambdaCyclingSensor(SensorEntity):
 
     @property
     def device_info(self):
-        return build_device_info(self._entry, self._device_type, self._hp_index)
+        return build_device_info(self._entry)
 
     @property
     def native_value(self):
@@ -655,7 +655,8 @@ class LambdaYesterdaySensor(SensorEntity):
 
     @property
     def device_info(self):
-        return build_device_info(self._entry, self._device_type, self._hp_index)
+        """Return device info."""
+        return build_device_info(self._entry)
 
     @property
     def native_value(self):
@@ -843,24 +844,7 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self):
         """Return device info for this sensor."""
-
-        # Use device_type from sensor template, defaulting to "main" if not set
-        device_type = (
-            self._device_type.lower() if self._device_type else "main"
-        )
-
-        # Extract index from sensor_id if it exists
-        idx = None
-        if self._sensor_id:
-            parts = self._sensor_id.split('_')
-            if len(parts) > 0:
-                # Extract number from prefix (e.g., "hp1" -> 1)
-                import re
-                match = re.search(r'\d+', parts[0])
-                if match:
-                    idx = int(match.group())
-
-        return build_device_info(self._entry, device_type, idx)
+        return build_device_info(self._entry)
 
 
 class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
@@ -948,11 +932,7 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self):
         """Return device info."""
-        return build_device_info(
-            self._entry,
-            self._device_type,
-            self._sensor_id,
-        )
+        return build_device_info(self._entry)
 
     @callback
     def handle_coordinator_update(self) -> None:
