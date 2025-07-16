@@ -12,8 +12,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
-    DOMAIN, 
-    DEBUG_PREFIX, 
+    DOMAIN,
+    DEBUG_PREFIX,
     LAMBDA_WP_CONFIG_TEMPLATE  # Import template from const
 )
 from .coordinator import LambdaDataUpdateCoordinator
@@ -57,7 +57,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Lambda Heat Pumps from a config entry."""
     _LOGGER.debug("Setting up Lambda integration with config: %s", entry.data)
-    
+
     # Prüfe, ob lambda_wp_config.yaml existiert, sonst anlegen
     config_dir = hass.config.config_dir
     lambda_config_path = os.path.join(config_dir, "lambda_wp_config.yaml")
@@ -65,7 +65,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async with aiofiles.open(lambda_config_path, "w") as f:
             await f.write(LAMBDA_WP_CONFIG_TEMPLATE)  # Use template from const
         _LOGGER.info("Created lambda_wp_config.yaml with default template")
-    
+
     # Generate base addresses based on configured device counts
     num_hps = entry.data.get("num_hps", 1)
     num_boil = entry.data.get("num_boil", 1)

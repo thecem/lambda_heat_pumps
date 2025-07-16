@@ -92,7 +92,6 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
             self.coordinator.client.write_registers,
             reg_addr,
             [raw_value],
-            self._entry.data.get("slave_id", 1)
         )
         if hasattr(result, "isError") and result.isError():
             _LOGGER.error("Failed to write target temperature: %s", result)

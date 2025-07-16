@@ -80,10 +80,10 @@ async def async_setup_entry(
             device_prefix = f"{device_type}{idx}"
             # Nur Template-Sensoren mit "template"-Feld erzeugen (ausschließlich Daily-Sensoren)
             for sensor_id, sensor_info in CALCULATED_SENSOR_TEMPLATES.items():
-                if (sensor_info.get("device_type") == device_type and 
-                    "template" in sensor_info and 
-                    not sensor_id.endswith("_cycling_total") and 
-                    not sensor_id.endswith("_cycling_yesterday")):
+                if (sensor_info.get("device_type") == device_type
+                    and "template" in sensor_info
+                    and not sensor_id.endswith("_cycling_total")
+                        and not sensor_id.endswith("_cycling_yesterday")):
                     # Generate consistent names using centralized function
                     naming = generate_sensor_names(
                         device_prefix=device_prefix,
@@ -229,18 +229,18 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
         """Handle updated data from the coordinator."""
         if self._template is None:
             return
-            
+
         try:
             # Render the template
             self._state = self._template.async_render()
-            
+
             _LOGGER.debug(
                 "Template sensor %s rendered state: %s (template: %s)",
                 self._sensor_id,
                 self._state,
                 self._template_str
             )
-            
+
             # Convert to appropriate type and apply precision
             if self._state is not None and self._state != "unavailable":
                 try:
@@ -256,7 +256,7 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
                 except (ValueError, TypeError):
                     # Keep as string if conversion fails
                     pass
-                    
+
         except TemplateError as err:
             _LOGGER.warning(
                 "Template error for sensor %s: %s", self._sensor_id, err
@@ -268,8 +268,8 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
         await super().async_added_to_hass()
-        
+
         # Initialize the template now that we have access to hass
         self._template = Template(self._template_str, self.hass)
-        
-        self._handle_coordinator_update() 
+
+        self._handle_coordinator_update()

@@ -14,6 +14,8 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.template import Template, TemplateError
+from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import (
     DOMAIN,
@@ -26,7 +28,7 @@ from .const import (
     CALCULATED_SENSOR_TEMPLATES,
 )
 from .coordinator import LambdaDataUpdateCoordinator
-from .utils import build_device_info, generate_base_addresses
+from .utils import build_device_info, generate_base_addresses, generate_sensor_names
 from .const_mapping import HP_ERROR_STATE  # noqa: F401
 from .const_mapping import HP_STATE  # noqa: F401
 from .const_mapping import HP_RELAIS_STATE_2ND_HEATING_STAGE  # noqa: F401
@@ -128,7 +130,7 @@ async def async_setup_entry(
                 else:
                     prefix_upper = prefix.upper()
                     device_prefix = f"{prefix}{idx}"
-                    
+
                     if (
                         prefix == "hc"
                         and sensor_info.get("device_type") == "Climate"
@@ -136,9 +138,8 @@ async def async_setup_entry(
                         name = sensor_info["name"].format(idx)
                     else:
                         name = f"{prefix_upper}{idx} {sensor_info['name']}"
-                    
+
                     # Verwende die zentrale Namensgenerierung
-                    from .utils import generate_sensor_names
                     names = generate_sensor_names(
                         device_prefix,
                         sensor_info["name"],
@@ -146,7 +147,7 @@ async def async_setup_entry(
                         name_prefix,
                         use_legacy_modbus_names
                     )
-                    
+
                     sensor_id_final = f"{prefix}{idx}_{sensor_id}"
                     entity_id = names["entity_id"]
                     unique_id = names["unique_id"]
@@ -217,7 +218,6 @@ async def async_setup_entry(
             sensor_id_final = sensor_id
 
         # Verwende die zentrale Namensgenerierung
-        from .utils import generate_sensor_names
         names = generate_sensor_names(
             sensor_id_final,  # device_prefix für General Sensors
             sensor_info["name"],
@@ -225,7 +225,7 @@ async def async_setup_entry(
             name_prefix,
             use_legacy_modbus_names
         )
-        
+
         entity_id = names["entity_id"]
         unique_id = names["unique_id"]
 
@@ -250,7 +250,6 @@ async def async_setup_entry(
             )
         )
 
-
     # --- Cycling Total Sensors (echte Entities, keine Templates) ---
     cycling_modes = [
         ("heating", "heating_cycling_total"),
@@ -261,13 +260,12 @@ async def async_setup_entry(
     cycling_sensor_count = 0
     cycling_sensor_ids = []
     cycling_entities = {}  # Dictionary für schnellen Zugriff
-    
+
     for hp_idx in range(1, num_hps + 1):
         for mode, template_id in cycling_modes:
             template = CALCULATED_SENSOR_TEMPLATES[template_id]
             # Entity-ID und unique_id generieren
             device_prefix = f"hp{hp_idx}"
-            from .utils import generate_sensor_names
             names = generate_sensor_names(
                 device_prefix,
                 template["name"],
@@ -276,7 +274,7 @@ async def async_setup_entry(
                 use_legacy_modbus_names
             )
             cycling_sensor_ids.append(names["entity_id"])
-            
+
             cycling_sensor = LambdaCyclingSensor(
                 hass=hass,
                 entry=entry,
@@ -290,11 +288,11 @@ async def async_setup_entry(
                 device_type=template["device_type"],
                 hp_index=hp_idx,
             )
-            
+
             sensors.append(cycling_sensor)
             cycling_entities[names["entity_id"]] = cycling_sensor
             cycling_sensor_count += 1
-    
+
     # --- Yesterday Cycling Sensors (echte Entities für Daily-Berechnung) ---
     yesterday_modes = [
         ("heating", "heating_cycling_yesterday"),
@@ -304,13 +302,12 @@ async def async_setup_entry(
     ]
     yesterday_sensor_count = 0
     yesterday_sensor_ids = []
-    
+
     for hp_idx in range(1, num_hps + 1):
         for mode, template_id in yesterday_modes:
             template = CALCULATED_SENSOR_TEMPLATES[template_id]
             # Entity-ID und unique_id generieren
             device_prefix = f"hp{hp_idx}"
-            from .utils import generate_sensor_names
             names = generate_sensor_names(
                 device_prefix,
                 template["name"],
@@ -319,7 +316,7 @@ async def async_setup_entry(
                 use_legacy_modbus_names
             )
             yesterday_sensor_ids.append(names["entity_id"])
-            
+
             yesterday_sensor = LambdaYesterdaySensor(
                 hass=hass,
                 entry=entry,
@@ -334,10 +331,10 @@ async def async_setup_entry(
                 hp_index=hp_idx,
                 mode=mode,
             )
-            
+
             sensors.append(yesterday_sensor)
             yesterday_sensor_count += 1
-    
+
     # Speichere die Cycling-Entities für schnellen Zugriff
     if "lambda_heat_pumps" not in hass.data:
         hass.data["lambda_heat_pumps"] = {}
@@ -370,13 +367,9 @@ async def async_setup_entry(
 
 
 # --- Entity-Klasse für Cycling Total Sensoren ---
-from homeassistant.helpers.entity import Entity
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
-
 class LambdaCyclingSensor(SensorEntity):
     """Cycling total sensor (echte Entity, Wert wird von increment_cycling_counter gesetzt)."""
-    
+
     def __init__(self, hass, entry, sensor_id, name, entity_id, unique_id, unit, state_class, device_class, device_type, hp_index):
         self.hass = hass
         self._entry = entry
@@ -400,15 +393,12 @@ class LambdaCyclingSensor(SensorEntity):
         self._yesterday_value = 0
         # Signal-Unsubscribe-Funktion
         self._unsub_dispatcher = None
-        
+
         if state_class == "total_increasing":
-            from homeassistant.components.sensor import SensorStateClass
             self._attr_state_class = SensorStateClass.TOTAL_INCREASING
         elif state_class == "total":
-            from homeassistant.components.sensor import SensorStateClass
             self._attr_state_class = SensorStateClass.TOTAL
         elif state_class == "measurement":
-            from homeassistant.components.sensor import SensorStateClass
             self._attr_state_class = SensorStateClass.MEASUREMENT
         else:
             self._attr_state_class = None
@@ -431,7 +421,7 @@ class LambdaCyclingSensor(SensorEntity):
         """Initialize the sensor when added to Home Assistant."""
         # Stelle sicher, dass der State korrekt gesetzt ist
         await super().async_added_to_hass()
-        
+
         # Initialisiere cycling_value auf 0, falls noch nicht gesetzt
         if not hasattr(self, '_cycling_value') or self._cycling_value is None:
             self._cycling_value = 0
@@ -439,15 +429,15 @@ class LambdaCyclingSensor(SensorEntity):
         else:
             # Stelle sicher, dass der Wert ein Integer ist
             self._cycling_value = int(self._cycling_value)
-        
+
         # Registriere Signal-Handler für Yesterday-Update
-        from .automations import SIGNAL_UPDATE_YESTERDAY
+        from .automations import SIGNAL_UPDATE_YESTERDAY  # noqa: F401
         self._unsub_dispatcher = async_dispatcher_connect(
-            self.hass, 
-            SIGNAL_UPDATE_YESTERDAY, 
+            self.hass,
+            SIGNAL_UPDATE_YESTERDAY,
             self._handle_yesterday_update
         )
-        
+
         # Schreibe den State sofort ins UI
         self.async_write_ha_state()
 
@@ -486,7 +476,6 @@ class LambdaCyclingSensor(SensorEntity):
 
     @property
     def device_info(self):
-        from .utils import build_device_info
         return build_device_info(self._entry, self._device_type, self._hp_index)
 
     @property
@@ -510,7 +499,7 @@ class LambdaCyclingSensor(SensorEntity):
 
 class LambdaYesterdaySensor(SensorEntity):
     """Yesterday cycling sensor (speichert Total-Werte für Daily-Berechnung)."""
-    
+
     def __init__(self, hass, entry, sensor_id, name, entity_id, unique_id, unit, state_class, device_class, device_type, hp_index, mode):
         self.hass = hass
         self._entry = entry
@@ -533,15 +522,12 @@ class LambdaYesterdaySensor(SensorEntity):
         self._yesterday_value = 0
         # Signal-Unsubscribe-Funktion
         self._unsub_dispatcher = None
-        
+
         if state_class == "total_increasing":
-            from homeassistant.components.sensor import SensorStateClass
             self._attr_state_class = SensorStateClass.TOTAL_INCREASING
         elif state_class == "total":
-            from homeassistant.components.sensor import SensorStateClass
             self._attr_state_class = SensorStateClass.TOTAL
         elif state_class == "measurement":
-            from homeassistant.components.sensor import SensorStateClass
             self._attr_state_class = SensorStateClass.MEASUREMENT
         else:
             self._attr_state_class = None
@@ -557,20 +543,20 @@ class LambdaYesterdaySensor(SensorEntity):
     async def async_added_to_hass(self):
         """Initialize the sensor when added to Home Assistant."""
         await super().async_added_to_hass()
-        
+
         # Initialisiere yesterday_value auf 0
         if not hasattr(self, '_yesterday_value') or self._yesterday_value is None:
             self._yesterday_value = 0
             _LOGGER.info(f"Yesterday sensor {self.entity_id} initialisiert mit Wert 0")
-        
+
         # Registriere Signal-Handler für Yesterday-Update
-        from .automations import SIGNAL_UPDATE_YESTERDAY
+        from .automations import SIGNAL_UPDATE_YESTERDAY  # noqa: F401
         self._unsub_dispatcher = async_dispatcher_connect(
-            self.hass, 
-            SIGNAL_UPDATE_YESTERDAY, 
+            self.hass,
+            SIGNAL_UPDATE_YESTERDAY,
             self._handle_yesterday_update
         )
-        
+
         # Schreibe den State sofort ins UI
         self.async_write_ha_state()
 
@@ -588,7 +574,6 @@ class LambdaYesterdaySensor(SensorEntity):
             # Hole den aktuellen Total-Wert vom entsprechenden Total-Sensor
             total_sensor_id = f"{self._mode}_cycling_total"
             device_prefix = f"hp{self._hp_index}"
-            from .utils import generate_sensor_names
             names = generate_sensor_names(
                 device_prefix,
                 CALCULATED_SENSOR_TEMPLATES[total_sensor_id]["name"],
@@ -597,7 +582,7 @@ class LambdaYesterdaySensor(SensorEntity):
                 self._entry.data.get("use_legacy_modbus_names", False)
             )
             total_entity_id = names["entity_id"]
-            
+
             # Hole den aktuellen Wert vom Total-Sensor
             total_state = self.hass.states.get(total_entity_id)
             if total_state and total_state.state not in (None, "unknown", "unavailable"):
@@ -629,7 +614,6 @@ class LambdaYesterdaySensor(SensorEntity):
 
     @property
     def device_info(self):
-        from .utils import build_device_info
         return build_device_info(self._entry, self._device_type, self._hp_index)
 
     @property
@@ -938,11 +922,11 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
                 self._state = None
                 return
             if isinstance(rendered_value, str) and (
-                rendered_value.startswith("{{") or 
-                "states(" in rendered_value
+                rendered_value.startswith("{{")
+                or "states(" in rendered_value
             ):
                 _LOGGER.debug(
-                    "Template not yet ready for sensor %s, waiting for dependencies", 
+                    "Template not yet ready for sensor %s, waiting for dependencies",
                     self._sensor_id
                 )
                 self._state = None
@@ -958,7 +942,7 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
                 )
             except (ValueError, TypeError):
                 _LOGGER.warning(
-                    "Could not convert template result to float for sensor %s: %s", 
+                    "Could not convert template result to float for sensor %s: %s",
                     self._sensor_id, rendered_value
                 )
                 self._state = None
@@ -969,7 +953,7 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
             self._state = None
         except Exception as err:
             _LOGGER.warning(
-                "Error rendering template for sensor %s: %s", 
+                "Error rendering template for sensor %s: %s",
                 self._sensor_id, err
             )
             self._state = None

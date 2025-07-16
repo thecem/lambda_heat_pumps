@@ -57,7 +57,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
 
     client = ModbusTcpClient(data[CONF_HOST], port=data[CONF_PORT])
     try:
-        if not await hass.async_add_executor_job(client.connect):
+        if not client.connect():
             raise CannotConnect("Could not connect to Modbus TCP")
 
         # Test read of a register to verify connection
@@ -65,7 +65,6 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
             client.read_holding_registers,
             0,  # Start address
             1,  # Number of registers to read
-            data[CONF_SLAVE_ID],
         )
 
         if result.isError():

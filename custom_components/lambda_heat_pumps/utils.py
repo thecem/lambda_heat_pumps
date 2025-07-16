@@ -1,10 +1,18 @@
 """Utility functions for Lambda Heat Pumps integration."""
+from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import yaml
 import aiofiles
+from typing import Any, Dict, List, Optional, Set
+
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
+from homeassistant.const import STATE_UNKNOWN
+from homeassistant.helpers.entity_component import async_update_entity
+
 from .const import (
     BASE_ADDRESSES,
     CALCULATED_SENSOR_TEMPLATES,
@@ -54,27 +62,27 @@ def build_device_info(entry, device_type, idx=None, sensor_id=None):
 
 async def migrate_lambda_config(hass: HomeAssistant) -> bool:
     """Migrate existing lambda_wp_config.yaml to include cycling_offsets.
-    
+
     Returns:
         bool: True if migration was performed, False otherwise
     """
     config_dir = hass.config.config_dir
     lambda_config_path = os.path.join(config_dir, "lambda_wp_config.yaml")
-    
+
     if not os.path.exists(lambda_config_path):
         _LOGGER.debug("No existing lambda_wp_config.yaml found, no migration needed")
         return False
-    
+
     try:
         # Read current config
         async with aiofiles.open(lambda_config_path, "r") as file:
             content = await file.read()
             current_config = yaml.safe_load(content)
-        
+
         if not current_config:
             _LOGGER.debug("Empty config file, no migration needed")
             return False
-        
+
         # Check if cycling_offsets already exists
         if "cycling_offsets" in current_config:
             _LOGGER.info(
@@ -82,15 +90,15 @@ async def migrate_lambda_config(hass: HomeAssistant) -> bool:
                 "no migration needed"
             )
             return False
-        
+
         _LOGGER.info("Migrating lambda_wp_config.yaml to include cycling_offsets")
-        
+
         # Create backup
         backup_path = lambda_config_path + ".backup"
         async with aiofiles.open(backup_path, "w") as backup_file:
             await backup_file.write(content)
         _LOGGER.info("Created backup at %s", backup_path)
-        
+
         # Add cycling_offsets section
         current_config["cycling_offsets"] = {
             "hp1": {
@@ -100,7 +108,7 @@ async def migrate_lambda_config(hass: HomeAssistant) -> bool:
                 "defrost_cycling_total": 0
             }
         }
-        
+
         # Add documentation comment
         if "# Cycling counter offsets" not in content:
             # Insert cycling_offsets documentation before the existing sections
@@ -126,21 +134,21 @@ async def migrate_lambda_config(hass: HomeAssistant) -> bool:
                 if line.strip().startswith('disabled_registers:'):
                     insert_pos = i
                     break
-            
+
             lines.insert(insert_pos, cycling_docs.rstrip())
             content = '\n'.join(lines)
-        
+
         # Write updated config
         async with aiofiles.open(lambda_config_path, "w") as file:
             await file.write(content)
-        
+
         _LOGGER.info(
             "Successfully migrated lambda_wp_config.yaml to version 1.1.0 - "
             "Added cycling_offsets section with default values for hp1. "
             "Backup created at %s.backup", lambda_config_path
         )
         return True
-        
+
     except Exception as e:
         _LOGGER.error("Error during config migration: %s", e)
         return False
@@ -150,33 +158,33 @@ async def load_lambda_config(hass: HomeAssistant) -> dict:
     """Load complete Lambda configuration from lambda_wp_config.yaml."""
     # First, try to migrate if needed
     await migrate_lambda_config(hass)
-    
+
     config_dir = hass.config.config_dir
     lambda_config_path = os.path.join(config_dir, "lambda_wp_config.yaml")
-    
+
     default_config = {
         "disabled_registers": set(),
         "sensors_names_override": {},
         "cycling_offsets": {}
     }
-    
+
     if not os.path.exists(lambda_config_path):
         _LOGGER.warning(
             "lambda_wp_config.yaml not found, using default configuration"
         )
         return default_config
-    
+
     try:
         async with aiofiles.open(lambda_config_path, "r") as file:
             content = await file.read()
             config = yaml.safe_load(content)
-            
+
             if not config:
                 _LOGGER.warning(
                     "lambda_wp_config.yaml is empty, using default configuration"
                 )
                 return default_config
-            
+
             # Load disabled registers
             disabled_registers = set()
             if "disabled_registers" in config:
@@ -187,7 +195,7 @@ async def load_lambda_config(hass: HomeAssistant) -> dict:
                         "Invalid disabled_registers format: %s", e
                     )
                     disabled_registers = set()
-            
+
             # Load sensor overrides
             sensors_names_override = {}
             if "sensors_names_override" in config:
@@ -202,7 +210,7 @@ async def load_lambda_config(hass: HomeAssistant) -> dict:
                         "Invalid sensors_names_override format: %s", e
                     )
                     sensors_names_override = {}
-            
+
             # Load cycling offsets
             cycling_offsets = {}
             if "cycling_offsets" in config:
@@ -212,14 +220,14 @@ async def load_lambda_config(hass: HomeAssistant) -> dict:
                     for device, offsets in cycling_offsets.items():
                         if not isinstance(offsets, dict):
                             _LOGGER.warning(
-                                "Invalid cycling_offsets format for device %s", 
+                                "Invalid cycling_offsets format for device %s",
                                 device
                             )
                             continue
                         for offset_type, value in offsets.items():
                             if not isinstance(value, (int, float)):
                                 _LOGGER.warning(
-                                    "Invalid cycling offset value for %s.%s: %s", 
+                                    "Invalid cycling offset value for %s.%s: %s",
                                     device, offset_type, value
                                 )
                                 cycling_offsets[device][offset_type] = 0
@@ -228,7 +236,7 @@ async def load_lambda_config(hass: HomeAssistant) -> dict:
                         "Invalid cycling_offsets format: %s", e
                     )
                     cycling_offsets = {}
-            
+
             _LOGGER.debug(
                 "Loaded Lambda config: %d disabled registers, %d sensor "
                 "overrides, %d device offsets",
@@ -236,13 +244,13 @@ async def load_lambda_config(hass: HomeAssistant) -> dict:
                 len(sensors_names_override),
                 len(cycling_offsets)
             )
-            
+
             return {
                 "disabled_registers": disabled_registers,
                 "sensors_names_override": sensors_names_override,
                 "cycling_offsets": cycling_offsets
             }
-            
+
     except Exception as e:
         _LOGGER.error(
             "Error loading configuration from lambda_wp_config.yaml: %s",
@@ -254,7 +262,7 @@ async def load_lambda_config(hass: HomeAssistant) -> dict:
 # Keep the old function for backward compatibility
 async def load_disabled_registers(hass: HomeAssistant) -> set[int]:
     """Load disabled registers from lambda_wp_config in config directory.
-    
+
     DEPRECATED: Use load_lambda_config() instead.
     """
     config = await load_lambda_config(hass)
@@ -346,14 +354,14 @@ def generate_sensor_names(
     use_legacy_modbus_names: bool
 ) -> dict:
     """Generate consistent sensor names, entity IDs, and unique IDs.
-    
+
     Args:
         device_prefix: Device prefix like "hp1", "boil1", etc. or sensor_id for general sensors
         sensor_name: Human readable sensor name like "COP Calculated"
         sensor_id: Sensor identifier like "cop_calc"
         name_prefix: Name prefix like "eu08l" (used in legacy mode)
         use_legacy_modbus_names: Whether to use legacy naming convention
-        
+
     Returns:
         dict: Contains 'name', 'entity_id', and 'unique_id'
     """
@@ -396,12 +404,12 @@ def generate_template_entity_prefix(
     use_legacy_modbus_names: bool
 ) -> str:
     """Generate entity prefix for templates based on naming mode.
-    
+
     Args:
         device_prefix: Device prefix like "hp1", "boil1", etc.
         name_prefix: Name prefix like "eu08l" (used in legacy mode)
         use_legacy_modbus_names: Whether to use legacy naming convention
-        
+
     Returns:
         str: Entity prefix for use in templates
     """
@@ -412,7 +420,6 @@ def generate_template_entity_prefix(
 
 
 # --- Cycling Counter Increment Function ---
-from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
 
 async def increment_cycling_counter(
     hass: HomeAssistant,
@@ -434,9 +441,6 @@ async def increment_cycling_counter(
         use_legacy_modbus_names: Use legacy entity naming
         cycling_offsets: Optional dict with cycling offsets from config
     """
-    from homeassistant.const import STATE_UNKNOWN
-    from homeassistant.helpers.entity_component import async_update_entity
-
 
     sensor_id = f"{mode}_cycling_total"
     device_prefix = f"hp{hp_index}"
@@ -473,7 +477,7 @@ async def increment_cycling_counter(
             offset = int(cycling_offsets[device_key].get(sensor_id, 0))
 
     new_value = int(current + 1)
-    
+
     # Versuche die Entity-Instanz zu finden
     cycling_entity = None
     try:
@@ -485,7 +489,7 @@ async def increment_cycling_counter(
                     break
     except Exception as e:
         _LOGGER.debug(f"Error searching for entity {entity_id}: {e}")
-    
+
     final_value = int(new_value + offset)
     if cycling_entity is not None and hasattr(cycling_entity, "set_cycling_value"):
         cycling_entity.set_cycling_value(final_value)
@@ -495,7 +499,7 @@ async def increment_cycling_counter(
         _LOGGER.warning(f"Cycling entity {entity_id} not found, using fallback state update")
         hass.states.async_set(entity_id, final_value, state_obj.attributes if state_obj else {})
         _LOGGER.info(f"Cycling counter incremented: {entity_id} = {final_value} (was {current}, offset {offset}) [state only]")
-    
+
     # Optional: Entity zum Update zwingen (z.B. für Recorder)
     try:
         await async_update_entity(hass, entity_id)

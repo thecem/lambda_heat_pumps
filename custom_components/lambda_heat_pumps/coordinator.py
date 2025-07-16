@@ -213,13 +213,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                 await self._connect()
 
             data = {}
-            now = datetime.now()
             interval = DEFAULT_UPDATE_INTERVAL / 3600.0  # Intervall in Stunden
             num_hps = self.entry.data.get("num_hps", 1)
             # Generische Flankenerkennung für alle relevanten Modi
             MODES = {
                 "heating": 1,   # CH
-                "hot_water": 2, # DHW
+                "hot_water": 2,  # DHW
                 "cooling": 3,   # CC
                 "defrost": 5,   # DEFROST
             }
@@ -241,7 +240,6 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         self.client.read_holding_registers,
                         address,
                         count,
-                        self.entry.data.get("slave_id", 1),
                     )
                     if hasattr(result, "isError") and result.isError():
                         _LOGGER.error(
@@ -290,7 +288,6 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             self.client.read_holding_registers,
                             address,
                             count,
-                            self.entry.data.get("slave_id", 1),
                         )
                         if hasattr(result, "isError") and result.isError():
                             _LOGGER.error(
@@ -335,7 +332,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                 op_state_val = data.get(f"hp{hp_idx}_operating_state")
                 if op_state_val is None:
                     continue
-                
+
                 # Debug-Log: Immer ausgeben
                 last_op_state = self._last_operating_state.get(hp_idx, "UNBEKANNT")
                 _LOGGER.debug(
@@ -365,13 +362,15 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         cycling_entities_ready = False
                         try:
                             # Prüfe, ob die Cycling-Entities in hass.data verfügbar sind
-                            if ("lambda_heat_pumps" in self.hass.data and 
-                                self.entry.entry_id in self.hass.data["lambda_heat_pumps"] and
-                                "cycling_entities" in self.hass.data["lambda_heat_pumps"][self.entry.entry_id]):
+                            if (
+                                "lambda_heat_pumps" in self.hass.data
+                                and self.entry.entry_id in self.hass.data["lambda_heat_pumps"]
+                                and "cycling_entities" in self.hass.data["lambda_heat_pumps"][self.entry.entry_id]
+                            ):
                                 cycling_entities_ready = True
                         except Exception:
                             pass
-                        
+
                         if cycling_entities_ready:
                             # Zentrale Funktion für total-Zähler aufrufen
                             await increment_cycling_counter(
@@ -407,10 +406,10 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             energy[hp_idx] = energy.get(hp_idx, 0.0) + power_val * interval
                     # Sensorwerte bereitstellen (inkl. Offset)
                     cycling_entity_id = self._generate_entity_id(
-                        f"{mode}_cycling_daily", hp_idx-1
+                        f"{mode}_cycling_daily", hp_idx - 1
                     )
                     energy_entity_id = self._generate_entity_id(
-                        f"{mode}_energy_daily", hp_idx-1
+                        f"{mode}_energy_daily", hp_idx - 1
                     )
                     cycling_offset = self._cycling_offsets.get(f"hp{hp_idx}", 0)
                     energy_offset = self._energy_offsets.get(f"hp{hp_idx}", 0.0)
@@ -440,7 +439,6 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             self.client.read_holding_registers,
                             address,
                             count,
-                            self.entry.data.get("slave_id", 1),
                         )
                         if hasattr(result, "isError") and result.isError():
                             _LOGGER.error(
@@ -502,7 +500,6 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             self.client.read_holding_registers,
                             address,
                             count,
-                            self.entry.data.get("slave_id", 1),
                         )
                         if hasattr(result, "isError") and result.isError():
                             _LOGGER.error(
@@ -562,7 +559,6 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             self.client.read_holding_registers,
                             address,
                             count,
-                            self.entry.data.get("slave_id", 1),
                         )
                         if hasattr(result, "isError") and result.isError():
                             _LOGGER.error(
@@ -622,7 +618,6 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             self.client.read_holding_registers,
                             address,
                             count,
-                            self.entry.data.get("slave_id", 1),
                         )
                         if hasattr(result, "isError") and result.isError():
                             _LOGGER.error(
@@ -664,7 +659,6 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
 
             # Dummy-Keys für Template-Sensoren einfügen
             # Erzeuge alle möglichen Template-Sensor-IDs
-            name_prefix = self.entry.data.get("name", "").lower().replace(" ", "")
             num_hps = self.entry.data.get("num_hps", 1)
             num_boil = self.entry.data.get("num_boil", 1)
             num_buff = self.entry.data.get("num_buff", 0)
@@ -715,9 +709,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
 
         self.client = ModbusTcpClient(self.host, port=self.port)
         try:
-            connected = await self.hass.async_add_executor_job(
-                self.client.connect
-            )
+            connected = self.client.connect()
             if not connected:
                 raise ConnectionError(
                     "Could not connect to Modbus TCP at "

@@ -207,7 +207,6 @@ async def _update_heating_circuit_temperature(
             coordinator.client.write_registers,
             register_address,
             [raw_value],
-            config_entry.data.get("slave_id", 1),
         )
 
         if result.isError():
@@ -259,7 +258,6 @@ async def _handle_read_modbus_register(hass: HomeAssistant, call: ServiceCall) -
                 coordinator.client.read_holding_registers,
                 register_address,
                 1,
-                entry_data.get("slave_id", 1),
             )
             if result.isError():
                 _LOGGER.error(
@@ -315,7 +313,6 @@ async def _handle_write_modbus_register(hass: HomeAssistant, call: ServiceCall) 
                 coordinator.client.write_registers,
                 register_address,
                 [value],
-                entry_data.get("slave_id", 1),
             )
             if result.isError():
                 _LOGGER.error(
@@ -407,7 +404,6 @@ async def _write_room_temperatures(hass: HomeAssistant, config_entry, coordinato
                 coordinator.client.write_registers,
                 register_address,
                 [raw_value],
-                config_entry.data.get("slave_id", 1),
             )
         except Exception as ex:
             _LOGGER.error(
@@ -450,7 +446,6 @@ async def _write_pv_surplus(hass: HomeAssistant, config_entry, coordinator, entr
             coordinator.client.write_registers,
             102,  # register_address for PV surplus
             [raw_value],
-            config_entry.data.get("slave_id", 1),
         )
     except Exception as ex:
         _LOGGER.error("Error writing PV surplus: %s", ex)
