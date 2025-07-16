@@ -1,0 +1,28 @@
+name: Validate
+on:
+  push:
+    branches:
+      - main
+      - template-sensoren
+  pull_request:
+    branches:
+      - main
+      - template-sensoren
+  schedule:
+    - cron: 0 0 * * *
+  workflow_dispatch:
+jobs:
+  hassfest:
+    name: with hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+  hacs:
+    name: with hacs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hacs/action@main
+        with:
+          category: integration
