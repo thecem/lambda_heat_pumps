@@ -124,13 +124,48 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    _LOGGER.debug("Unloading Lambda integration for entry %s", entry.entry_id)
+    
+    # Clean up automations first
+    try:
+        await cleanup_cycling_automations(hass, entry.entry_id)
+    except Exception as ex:
+        _LOGGER.error("Error cleaning up automations: %s", ex)
+    
+    # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(
         entry, PLATFORMS
     )
+    
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
-        # Clean up automations
-        await cleanup_cycling_automations(hass, entry)
+        # Clean up coordinator
+        if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+            coordinator_data = hass.data[DOMAIN][entry.entry_id]
+            if "coordinator" in coordinator_data:
+                coordinator = coordinator_data["coordinator"]
+                try:
+                    # Close Modbus connection
+                    if hasattr(coordinator, 'client') and coordinator.client:
+                        coordinator.client.close()
+                        coordinator.client = None
+                    # Stop coordinator
+                    if hasattr(coordinator, 'async_shutdown'):
+                        await coordinator.async_shutdown()
+                except Exception as ex:
+                    _LOGGER.error("Error cleaning up coordinator: %s", ex)
+            
+            # Remove entry from hass.data
+            hass.data[DOMAIN].pop(entry.entry_id)
+            
+        # Clean up services if this was the last entry
+        if DOMAIN in hass.data and len(hass.data[DOMAIN]) == 0:
+            try:
+                from .services import async_unload_services
+                await async_unload_services(hass)
+            except Exception as ex:
+                _LOGGER.error("Error unloading services: %s", ex)
+    
+    _LOGGER.debug("Lambda integration unload completed for entry %s", entry.entry_id)
     return unload_ok
 
 

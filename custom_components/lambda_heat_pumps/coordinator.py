@@ -732,6 +732,20 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             self.client = None
             raise UpdateFailed(f"Failed to connect to Modbus TCP: {ex}")
 
+    async def async_shutdown(self):
+        """Shutdown the coordinator."""
+        _LOGGER.debug("Shutting down Lambda coordinator")
+        try:
+            # Close Modbus connection
+            if self.client:
+                self.client.close()
+                self.client = None
+            # Stop the coordinator
+            if hasattr(self, '_async_stop'):
+                await self._async_stop()
+        except Exception as ex:
+            _LOGGER.error("Error during coordinator shutdown: %s", ex)
+
     async def _load_sensor_overrides(self) -> dict[str, str]:
         """Load sensor name overrides from YAML config file."""
         config_path = os.path.join(self._config_dir, "lambda_wp_config.yaml")
