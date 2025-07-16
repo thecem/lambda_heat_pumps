@@ -422,7 +422,21 @@ class LambdaCyclingSensor(SensorEntity, RestoreEntity):
         await super().async_added_to_hass()
 
         # Lade den letzten State aus der Datenbank
-        last_state = await self.async_get_last_state()
+        last_state = None
+        try:
+            # Versuche RestoreEntity Methode
+            if hasattr(self, 'async_get_last_state'):
+                last_state = await self.async_get_last_state()
+            else:
+                # Fallback: Versuche State aus hass.states zu holen
+                current_state = self.hass.states.async_get(self.entity_id)
+                if current_state and current_state.state not in (None, "unknown", "unavailable"):
+                    last_state = current_state
+                _LOGGER.info(f"Using fallback state loading for {self.entity_id}")
+        except Exception as e:
+            _LOGGER.warning(f"Could not load last state for {self.entity_id}: {e}")
+            last_state = None
+        
         await self.restore_state(last_state)
 
         # Registriere Signal-Handler für Yesterday-Update
@@ -564,7 +578,21 @@ class LambdaYesterdaySensor(SensorEntity, RestoreEntity):
         await super().async_added_to_hass()
 
         # Lade den letzten State aus der Datenbank
-        last_state = await self.async_get_last_state()
+        last_state = None
+        try:
+            # Versuche RestoreEntity Methode
+            if hasattr(self, 'async_get_last_state'):
+                last_state = await self.async_get_last_state()
+            else:
+                # Fallback: Versuche State aus hass.states zu holen
+                current_state = self.hass.states.async_get(self.entity_id)
+                if current_state and current_state.state not in (None, "unknown", "unavailable"):
+                    last_state = current_state
+                _LOGGER.info(f"Using fallback state loading for {self.entity_id}")
+        except Exception as e:
+            _LOGGER.warning(f"Could not load last state for {self.entity_id}: {e}")
+            last_state = None
+        
         await self.restore_state(last_state)
 
         # Registriere Signal-Handler für Yesterday-Update
