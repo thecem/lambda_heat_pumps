@@ -379,8 +379,15 @@ def generate_sensor_names(
     # Entity ID logic - only this differs between modes
     # Unique-ID immer mit Name-Prefix, HP-Index, Modus und Sensor-ID
     if use_legacy_modbus_names:
-        entity_id = f"sensor.{name_prefix_lc}_{device_prefix}_{sensor_id}"
-        unique_id = f"{name_prefix_lc}_{device_prefix}_{sensor_id}"
+        # Für General Sensors nur name_prefix_sensor_id verwenden
+        if device_prefix == sensor_id:
+            entity_id = f"sensor.{name_prefix_lc}_{sensor_id}"
+            unique_id = f"{name_prefix_lc}_{sensor_id}"
+        else:
+            entity_id = (
+                f"sensor.{name_prefix_lc}_{device_prefix}_{sensor_id}"
+            )
+            unique_id = f"{name_prefix_lc}_{device_prefix}_{sensor_id}"
     else:
         # Für General Sensors (device_prefix == sensor_id) nur sensor_id verwenden
         if device_prefix == sensor_id:

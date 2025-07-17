@@ -12,8 +12,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, CLIMATE_TEMPLATES
-from .utils import generate_base_addresses, build_device_info
+from .const import (
+    DOMAIN, 
+    CLIMATE_TEMPLATES,
+    DEFAULT_HOT_WATER_MIN_TEMP,
+    DEFAULT_HOT_WATER_MAX_TEMP,
+    DEFAULT_HEATING_CIRCUIT_MIN_TEMP,
+    DEFAULT_HEATING_CIRCUIT_MAX_TEMP,
+)
+from .utils import generate_base_addresses, build_device_info, generate_sensor_names
 from .modbus_utils import write_registers
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,34 +32,68 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
     _attr_should_poll = False
     _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
 
-    def __init__(self, coordinator, entry, device_type, idx, base_address):
+    def __init__(self, coordinator, entry, climate_type, idx, base_address):
         super().__init__(coordinator)
         self._entry = entry
-        self._device_type = device_type  # "hot_water" oder "heating_circuit"
+        self._climate_type = climate_type  # "hot_water" oder "heating_circuit"
         self._idx = idx
         self._base_address = base_address
-        self._template = CLIMATE_TEMPLATES[device_type]
+        self._template = CLIMATE_TEMPLATES[climate_type]
 
-        # Dynamische Namen und IDs
-        self._attr_name = f"{self._template['name']} {idx}"
-        self._attr_unique_id = f"{DOMAIN}_{device_type}_{idx}"
-        self.entity_id = f"climate.{DOMAIN}_{device_type}_{idx}"
+        # Hole den Legacy-Modbus-Namen-Switch aus der Config
+        use_legacy_modbus_names = entry.data.get("use_legacy_modbus_names", False)
+        name_prefix = entry.data.get("name", "").lower().replace(" ", "")
 
-        # Temperaturbereich und Schrittweite
-        self._attr_min_temp = 40 if device_type == "hot_water" else 20
-        self._attr_max_temp = 60 if device_type == "hot_water" else 45
+        # Verwende die Werte aus der CLIMATE_TEMPLATES Konfiguration
+        device_type = self._template["device_type"]  # "boil" oder "hc"
+        sensor_id = climate_type  # "hot_water" oder "heating_circuit"
+
+        # Verwende die zentrale Namensgenerierung
+        device_prefix = f"{device_type}{idx}"
+        names = generate_sensor_names(
+            device_prefix,
+            self._template["name"],
+            sensor_id,
+            name_prefix,
+            use_legacy_modbus_names
+        )
+
+        # Setze die Namen und IDs
+        self._attr_name = names["name"]
+        self._attr_unique_id = names["unique_id"]
+        self.entity_id = names["entity_id"]
+
+        # Temperaturbereich aus Entry-Optionen lesen
+        if climate_type == "hot_water":
+            self._attr_min_temp = entry.options.get(
+                "hot_water_min_temp", DEFAULT_HOT_WATER_MIN_TEMP
+            )
+            self._attr_max_temp = entry.options.get(
+                "hot_water_max_temp", DEFAULT_HOT_WATER_MAX_TEMP
+            )
+        else:  # heating_circuit
+            self._attr_min_temp = entry.options.get(
+                "heating_circuit_min_temp", DEFAULT_HEATING_CIRCUIT_MIN_TEMP
+            )
+            self._attr_max_temp = entry.options.get(
+                "heating_circuit_max_temp", DEFAULT_HEATING_CIRCUIT_MAX_TEMP
+            )
+
         self._attr_target_temperature_step = self._template.get(
             "precision", 0.5
         )
         self._attr_temperature_unit = self._template.get("unit", "°C")
-        self._attr_hvac_modes = [HVACMode.HEAT]
-        self._attr_hvac_mode = HVACMode.HEAT
+        
+        # HVAC-Modi aus CLIMATE_TEMPLATES lesen
+        hvac_modes_set = self._template.get("hvac_mode", {"heat"})
+        self._attr_hvac_modes = [HVACMode(mode) for mode in hvac_modes_set]
+        self._attr_hvac_mode = HVACMode.HEAT  # Default-Modus
 
     @property
     def current_temperature(self):
         key = (
             f"boil{self._idx}_actual_high_temperature"
-            if self._device_type == "hot_water"
+            if self._climate_type == "hot_water"
             else f"hc{self._idx}_room_device_temperature"
         )
         return self.coordinator.data.get(key)
@@ -61,7 +102,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
     def target_temperature(self):
         key = (
             f"boil{self._idx}_target_high_temperature"
-            if self._device_type == "hot_water"
+            if self._climate_type == "hot_water"
             else f"hc{self._idx}_target_room_temperature"
         )
         return self.coordinator.data.get(key)
@@ -101,7 +142,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
             return
         key = (
             f"boil{self._idx}_target_high_temperature"
-            if self._device_type == "hot_water"
+            if self._climate_type == "hot_water"
             else f"hc{self._idx}_target_room_temperature"
         )
         self.coordinator.data[key] = temperature
@@ -130,7 +171,7 @@ async def async_setup_entry(
             LambdaClimateEntity(
                 coordinator,
                 entry,
-                "hot_water",
+                "hot_water",  # climate_type aus CLIMATE_TEMPLATES
                 idx,
                 boil_addresses[idx]
             )
@@ -152,7 +193,7 @@ async def async_setup_entry(
             LambdaClimateEntity(
                 coordinator,
                 entry,
-                "heating_circuit",
+                "heating_circuit",  # climate_type aus CLIMATE_TEMPLATES
                 idx,
                 hc_addresses[idx]
             )
