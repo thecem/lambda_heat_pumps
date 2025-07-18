@@ -15,6 +15,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.template import Template, TemplateError
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
 
 from .const import (
     DOMAIN,
@@ -54,6 +55,18 @@ async def async_setup_entry(
 ) -> None:
     """Set up the Lambda Heat Pumps sensors."""
     _LOGGER.debug("Setting up Lambda sensors for entry %s", entry.entry_id)
+
+    # Migration bestehender Entitäten - entferne doppelte Sensoren mit "_2" Suffix
+    entity_registry = async_get_entity_registry(hass)
+    registry_entries = entity_registry.entities.get_entries_for_config_entry_id(entry.entry_id)
+    
+    for registry_entry in registry_entries:
+        if "_2" in registry_entry.entity_id:
+            _LOGGER.info(
+                "Removing duplicate entity with '_2' suffix: %s",
+                registry_entry.entity_id
+            )
+            entity_registry.async_remove(registry_entry.entity_id)
 
     # Get coordinator from hass.data
     coordinator_data = hass.data[DOMAIN][entry.entry_id]
@@ -734,7 +747,7 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
         self._entry = entry
         self._sensor_id = sensor_id
         self._attr_name = name
-        self._attr_unique_id = unique_id or sensor_id
+        self._attr_unique_id = unique_id  # Immer die generierte ID verwenden
         self.entity_id = entity_id or f"sensor.{sensor_id}"
         self._unit = unit
         self._address = address

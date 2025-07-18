@@ -376,8 +376,7 @@ def generate_sensor_names(
     # Always use lowercase for name_prefix to unify entity_id generation
     name_prefix_lc = name_prefix.lower() if name_prefix else ""
 
-    # Entity ID logic - only this differs between modes
-    # Unique-ID immer mit Name-Prefix, HP-Index, Modus und Sensor-ID
+    # Entity ID und unique_id wie in der alten Version generieren
     if use_legacy_modbus_names:
         # Für General Sensors nur name_prefix_sensor_id verwenden
         if device_prefix == sensor_id:
