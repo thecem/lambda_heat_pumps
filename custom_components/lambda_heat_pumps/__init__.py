@@ -43,7 +43,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 
-def setup_debug_logging(config: ConfigType) -> None:
+def setup_debug_logging(hass: HomeAssistant, config: ConfigType) -> None:
     """Set up debug logging for the integration."""
     if config.get("debug", False):
         logging.getLogger(DEBUG_PREFIX).setLevel(logging.DEBUG)
@@ -52,7 +52,7 @@ def setup_debug_logging(config: ConfigType) -> None:
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Lambda integration."""
-    setup_debug_logging(config)
+    setup_debug_logging(hass, config)
     return True
 
 
