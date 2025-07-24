@@ -16,7 +16,7 @@ from .const import (
     DEFAULT_WRITE_INTERVAL,
     CONF_PV_POWER_SENSOR_ENTITY,
 )
-from .modbus_utils import read_holding_registers, write_registers
+from .modbus_utils import async_read_holding_registers, async_write_registers
 
 # Konstanten für Zustandsarten definieren
 STATE_UNAVAILABLE = "unavailable"
@@ -204,8 +204,7 @@ async def _update_heating_circuit_temperature(
             entry_id,
         )
 
-        result = await hass.async_add_executor_job(
-            write_registers,
+        result = await async_write_registers(
             coordinator.client,
             register_address,
             [raw_value],
@@ -257,8 +256,7 @@ async def _handle_read_modbus_register(hass: HomeAssistant, call: ServiceCall) -
             continue
 
         try:
-            result = await hass.async_add_executor_job(
-                read_holding_registers,
+            result = await async_read_holding_registers(
                 coordinator.client,
                 register_address,
                 1,
@@ -313,8 +311,7 @@ async def _handle_write_modbus_register(hass: HomeAssistant, call: ServiceCall) 
             continue
 
         try:
-            result = await hass.async_add_executor_job(
-                write_registers,
+            result = await async_write_registers(
                 coordinator.client,
                 register_address,
                 [value],
@@ -408,8 +405,7 @@ async def _write_room_temperatures(hass: HomeAssistant, config_entry, coordinato
                 temperature,
                 hc_idx,
             )
-            await hass.async_add_executor_job(
-                write_registers,
+            await async_write_registers(
                 coordinator.client,
                 register_address,
                 [raw_value],
@@ -453,8 +449,7 @@ async def _write_pv_surplus(hass: HomeAssistant, config_entry, coordinator, entr
             unit,
         )
 
-        await hass.async_add_executor_job(
-            write_registers,
+        await async_write_registers(
             coordinator.client,
             102,  # register_address for PV surplus
             [raw_value],

@@ -47,23 +47,22 @@ from .const import (
     MAX_NUM_BUFFER,
     MAX_NUM_SOLAR,
 )
-from .modbus_utils import read_holding_registers
+from .modbus_utils import async_read_holding_registers
 
 _LOGGER = logging.getLogger(__name__)
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
     """Validate the user input allows us to connect."""
-    from pymodbus.client import ModbusTcpClient
+    from pymodbus.client import AsyncModbusTcpClient
 
-    client = ModbusTcpClient(data[CONF_HOST], port=data[CONF_PORT])
+    client = AsyncModbusTcpClient(data[CONF_HOST], port=data[CONF_PORT])
     try:
-        if not client.connect():
+        if not await client.connect():
             raise CannotConnect("Could not connect to Modbus TCP")
 
         # Test read of a register to verify connection
-        result = await hass.async_add_executor_job(
-            read_holding_registers,
+        result = await async_read_holding_registers(
             client,
             0,  # Start address
             1,  # Number of registers to read
@@ -77,7 +76,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
         _LOGGER.error("Connection test failed: %s", ex)
         raise CannotConnect("Failed to connect to device") from ex
     finally:
-        client.close()
+        if client:
+            await client.close()
 
 
 class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):

@@ -21,7 +21,7 @@ from .const import (
     DEFAULT_HEATING_CIRCUIT_MAX_TEMP,
 )
 from .utils import generate_base_addresses, build_device_info, generate_sensor_names
-from .modbus_utils import write_registers
+from .modbus_utils import async_write_registers
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -130,8 +130,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
             raw_value,
             temperature
         )
-        result = await self.hass.async_add_executor_job(
-            write_registers,
+        result = await async_write_registers(
             self.coordinator.client,
             reg_addr,
             [raw_value],

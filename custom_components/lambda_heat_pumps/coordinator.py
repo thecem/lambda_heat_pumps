@@ -30,7 +30,7 @@ from .utils import (
     to_signed_32bit,
     increment_cycling_counter,
 )
-from .modbus_utils import read_holding_registers
+from .modbus_utils import async_read_holding_registers
 import time
 import json
 
@@ -236,8 +236,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     count = (
                         2 if sensor_info.get("data_type") == "int32" else 1
                     )
-                    result = await self.hass.async_add_executor_job(
-                        read_holding_registers,
+                    result = await async_read_holding_registers(
                         self.client,
                         address,
                         count,
@@ -286,8 +285,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         count = (
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
-                        result = await self.hass.async_add_executor_job(
-                            read_holding_registers,
+                        result = await async_read_holding_registers(
                             self.client,
                             address,
                             count,
@@ -439,8 +437,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         count = (
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
-                        result = await self.hass.async_add_executor_job(
-                            read_holding_registers,
+                        result = await async_read_holding_registers(
                             self.client,
                             address,
                             count,
@@ -502,8 +499,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         count = (
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
-                        result = await self.hass.async_add_executor_job(
-                            read_holding_registers,
+                        result = await async_read_holding_registers(
                             self.client,
                             address,
                             count,
@@ -563,8 +559,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         count = (
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
-                        result = await self.hass.async_add_executor_job(
-                            read_holding_registers,
+                        result = await async_read_holding_registers(
                             self.client,
                             address,
                             count,
@@ -624,8 +619,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         count = (
                             2 if sensor_info.get("data_type") == "int32" else 1
                         )
-                        result = await self.hass.async_add_executor_job(
-                            read_holding_registers,
+                        result = await async_read_holding_registers(
                             self.client,
                             address,
                             count,
@@ -703,7 +697,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         except Exception as ex:
             _LOGGER.error("Error updating data: %s", ex)
             if self.client:
-                self.client.close()
+                await self.client.close()
                 self.client = None
             raise UpdateFailed(f"Error fetching Lambda data: {ex}")
 
@@ -717,11 +711,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _connect(self):
         """Connect to the Modbus device."""
-        from pymodbus.client import ModbusTcpClient
+        from pymodbus.client import AsyncModbusTcpClient
 
-        self.client = ModbusTcpClient(self.host, port=self.port)
+        self.client = AsyncModbusTcpClient(self.host, port=self.port)
         try:
-            connected = self.client.connect()
+            connected = await self.client.connect()
             if not connected:
                 raise ConnectionError(
                     "Could not connect to Modbus TCP at "
@@ -738,7 +732,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         try:
             # Close Modbus connection
             if self.client:
-                self.client.close()
+                await self.client.close()
                 self.client = None
             # Stop the coordinator
             if hasattr(self, '_async_stop'):
