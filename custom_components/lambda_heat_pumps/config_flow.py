@@ -56,8 +56,9 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
     """Validate the user input allows us to connect."""
     from pymodbus.client import AsyncModbusTcpClient
 
-    client = AsyncModbusTcpClient(data[CONF_HOST], port=data[CONF_PORT])
+    client = None
     try:
+        client = AsyncModbusTcpClient(data[CONF_HOST], port=data[CONF_PORT])
         if not await client.connect():
             raise CannotConnect("Could not connect to Modbus TCP")
 
