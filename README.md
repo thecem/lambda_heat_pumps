@@ -1,222 +1,185 @@
-# Lambda Heat Pumps Integration for Home Assistant
+# Lambda Heat Pumps Integration
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-[![maintainer](https://img.shields.io/badge/maintainer-%40GuidoJeuken--6512-blue.svg)](https://github.com/GuidoJeuken-6512)
-[![version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/GuidoJeuken-6512/lambda_wp_hacs/releases)
-[![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+Eine Home Assistant Integration für Lambda Wärmepumpen mit Modbus-Kommunikation.
 
-**Deutsche Version siehe unten / German version see below**
+## 🚀 **Features**
 
----
+- **Vollständig asynchrone Modbus-Kommunikation** - Keine Konflikte mit anderen Modbus-Integrationen
+- **Automatische pymodbus API-Kompatibilität** - Unterstützt Versionen 1.x, 2.x und 3.x
+- **Cycling-Counter** - Automatische Zählung der Betriebszyklen
+- **Energy-Integration** - Energieverbrauch-Berechnung
+- **Climate-Entities** - Temperaturregelung für Warmwasser und Heizkreise
+- **Service-API** - Direkter Modbus-Register-Zugriff
+- **State-Restoration** - Wiederherstellung der Zählerstände nach Neustart
 
-# 🇺🇸 English
+## 🔧 **Installation**
 
-## 🚀 Quickstart
+### HACS (Empfohlen)
+1. Fügen Sie dieses Repository zu HACS hinzu
+2. Installieren Sie die Integration über HACS
+3. Fügen Sie die Integration über die Home Assistant UI hinzu
 
-**Lambda Heat Pumps** is a Home Assistant custom integration for Lambda heat pumps via Modbus/TCP.
+### Manuelle Installation
+1. Kopieren Sie den `custom_components/lambda_heat_pumps` Ordner in Ihren `config/custom_components/` Ordner
+2. Starten Sie Home Assistant neu
+3. Fügen Sie die Integration über die Home Assistant UI hinzu
 
-### HACS Installation
-1. Install HACS (if not already done)
-2. Add this repo as a custom repository: `GuidoJeuken-6512/lambda_wp_hacs` (category: Integration)
-3. Search for "Lambda Heat Pumps" in HACS, install, and restart Home Assistant
+## ⚙️ **Konfiguration**
 
-## ✨ Features
+### Grundkonfiguration
+```yaml
+# configuration.yaml
+lambda_heat_pumps:
+  host: "192.168.1.100"  # IP-Adresse der Wärmepumpe
+  port: 502              # Modbus-Port (Standard: 502)
+  name: "eu08l"          # Name-Prefix für Entities
+  num_hps: 1             # Anzahl Wärmepumpen
+  num_boil: 1            # Anzahl Warmwasser-Speicher
+  num_hc: 1              # Anzahl Heizkreise
+  use_legacy_modbus_names: false  # Legacy-Namenskonvention
+```
 
-- **Full Modbus/TCP integration** for Lambda heat pumps
-- **Dynamic sensor/entity detection** based on firmware
-- **Configurable number of devices** (heat pumps, boilers, heating circuits, buffer tanks, solar modules)
-- **Room thermostat control** with external sensors
-- **PV surplus control** for solar power integration
-- **Centralized filtering and disabling of registers**
-- **Automatic YAML config for advanced options**
-- **Debug logging and troubleshooting tools**
-- **Counters for heat pump cycling by operating mode**
+### Erweiterte Optionen
+```yaml
+lambda_heat_pumps:
+  # ... Grundkonfiguration ...
+  hot_water_min_temp: 30.0    # Minimal-Temperatur Warmwasser
+  hot_water_max_temp: 70.0    # Maximal-Temperatur Warmwasser
+  heating_circuit_min_temp: 15.0  # Minimal-Temperatur Heizkreis
+  heating_circuit_max_temp: 35.0  # Maximal-Temperatur Heizkreis
+```
 
-## ⚙️ Initial Configuration
+## 📊 **Verfügbare Entities**
 
-When setting up the integration, you will need to provide:
+### Sensoren
+- **Betriebszustand** - Aktueller Betriebsmodus
+- **Temperaturen** - Vorlauf, Rücklauf, Außentemperatur
+- **Leistung** - Heizleistung, Kälteleistung
+- **Cycling-Counter** - Betriebszyklen (total, daily, yesterday)
+- **Energy-Counter** - Energieverbrauch (total, daily, yesterday)
 
-- **Name**: A name for your Lambda Heat Pump installation (e.g., "EU08L")
-- **Host**: IP address or hostname of your Lambda controller
-- **Port**: Modbus TCP port (default: 502)
-- **Slave ID**: Modbus Slave ID (default: 1)
-- **Number of devices**: Configure how many of each device type you have:
-  - Heat Pumps (1-3)
-  - Boilers (0-5)
-  - Heating Circuits (0-12)
-  - Buffers (0-5)
-  - Solar Systems (0-2)
-- **Firmware Version**: Select your Lambda controller's firmware version
+### Climate-Entities
+- **Warmwasser-Temperatur** - Regelung der Warmwasser-Temperatur
+- **Heizkreis-Temperatur** - Regelung der Heizkreis-Temperatur
 
-## 🔧 Integration Options
+## 🔌 **Services**
 
-After initial setup, you can modify additional settings in the integration options:
+### `lambda_heat_pumps.read_modbus_register`
+Liest einen einzelnen Modbus-Register.
 
-1. Go to Configuration → Integrations
-2. Find your Lambda Heat Pump integration and click "Configure"
-3. Here you can adjust:
-   - Hot water temperature range (min/max)
-   - Heating circuit temperature range (min/max)
-   - Temperature step size
-   - Room thermostat control (using external sensors)
-   - PV power sensor as input for PV surplus configuration → see documentation before enabling this feature
+```yaml
+service: lambda_heat_pumps.read_modbus_register
+data:
+  address: 1000
+  slave_id: 1
+```
 
-## 🌞 PV Surplus Control
+### `lambda_heat_pumps.write_modbus_register`
+Schreibt einen einzelnen Modbus-Register.
 
-The integration supports controlling the heat pump based on available PV surplus. This feature allows the heat pump to utilize excess solar power.
+```yaml
+service: lambda_heat_pumps.write_modbus_register
+data:
+  address: 1000
+  value: 500
+  slave_id: 1
+```
 
-### Features:
-- **PV Surplus Detection**: Automatic monitoring of PV power output
-- **Modbus Register 102**: Writing current PV power in watts
-- **Configurable Sensors**: Selection of any PV power sensors
-- **Automatic Updates**: Regular writing of PV data (default: every 10 seconds)
-- **Unit Conversion**: Automatic conversion from kW to W
+### `lambda_heat_pumps.write_room_temperatures`
+Schreibt Raumtemperaturen für mehrere Heizkreise.
 
-### Configuration:
-1. **Enable PV Surplus**: Activate "PV Surplus" in integration options
-2. **Select PV Sensor**: Choose a PV power sensor (e.g., template sensor for PV surplus)
-3. **Adjust Interval**: Configure the write interval in options
+```yaml
+service: lambda_heat_pumps.write_room_temperatures
+data:
+  temperatures:
+    - 21.5
+    - 20.0
+    - 22.0
+```
 
-### Supported Sensors:
-- **Watt Sensors**: Direct usage (e.g., 1500 W)
-- **Kilowatt Sensors**: Automatic conversion (e.g., 1.5 kW → 1500 W)
-- **Template Sensors**: For complex PV surplus calculations
+### `lambda_heat_pumps.write_pv_surplus`
+Schreibt PV-Überschuss für Wärmepumpen-Boost.
 
-### Modbus Register:
-- **Register 102**: E-Manager Actual Power (global register)
-- **Value Range**: -32768 to 32767 (int16)
-- **Unit**: Watts
+```yaml
+service: lambda_heat_pumps.write_pv_surplus
+data:
+  surplus: 2000  # Watt
+```
 
-## 🛠️ Troubleshooting & Support
+## 🔄 **Cycling-Counter**
 
-- **Log Analysis**: Enable debug logging for detailed error output
-- **Common Issues**: See troubleshooting section below
-- **Support:**
-  - [GitHub Issues](https://github.com/GuidoJeuken-6512/lambda_wp_hacs/issues)
-  - [Home Assistant Community](https://community.home-assistant.io/)
+Die Integration zählt automatisch die Betriebszyklen der Wärmepumpe:
 
-## 📚 Documentation
+- **Heating Cycles** - Heizbetrieb
+- **Hot Water Cycles** - Warmwasser-Bereitung
+- **Cooling Cycles** - Kühlbetrieb
+- **Defrost Cycles** - Abtauzyklen
 
-- [English Guide](docs/lambda_heat_pumps_en.md)
-- [Troubleshooting](docs/lambda_heat_pumps_troubleshooting.md)
-- [Modbus Register (EN)](docs/lambda_heat_pumps_modbus_register_en.md)
+### Automatische Updates
+- **Total Counter** - Wird bei jedem Zyklus-Start inkrementiert
+- **Daily Counter** - Wird täglich um Mitternacht zurückgesetzt
+- **Yesterday Counter** - Zeigt den Wert des Vortags
 
-## 📄 License
+## 🛠️ **Technische Details**
 
-MIT License. Use at your own risk. See [LICENSE](LICENSE).
+### Asynchrone Modbus-Implementierung
+Die Integration verwendet vollständig asynchrone Modbus-Clients für:
+- **Bessere Performance** - Keine Blocking-Operationen
+- **Kompatibilität** - Keine Konflikte mit anderen Modbus-Integrationen
+- **Skalierbarkeit** - Unterstützung mehrerer gleichzeitiger Verbindungen
 
----
+### API-Kompatibilität
+Automatische Erkennung und Anpassung an verschiedene `pymodbus` Versionen:
+- **pymodbus 1.x**: Keine Slave/Unit-Parameter
+- **pymodbus 2.x**: `unit` Parameter
+- **pymodbus 3.x**: `slave` Parameter
 
-# 🇩🇪 Deutsch
+### State-Restoration
+- **Automatische Wiederherstellung** der Zählerstände nach Neustart
+- **Persistierung** der Daten in JSON-Dateien
+- **Offset-Unterstützung** für manuelle Korrekturen
 
-## 🚀 Schnelleinstieg
+## 🐛 **Troubleshooting**
 
-> **HACS Custom Integration**  
-> Diese Integration verbindet Lambda Wärmepumpen mit Home Assistant via Modbus/TCP.
+### Häufige Probleme
 
-### HACS Installation
-1. **HACS installieren** (falls noch nicht geschehen)
-2. **Custom Repository hinzufügen:**
-   - HACS → Integrations → „⋮" → „Custom repositories"
-   - URL: `GuidoJeuken-6512/lambda_wp_hacs` (Kategorie: Integration)
-3. **Integration suchen & installieren:**
-   - „Lambda Heat Pumps" auswählen und installieren
-   - Home Assistant neu starten
+#### Modbus-Verbindung fehlschlägt
+- Prüfen Sie die IP-Adresse und den Port
+- Stellen Sie sicher, dass die Wärmepumpe erreichbar ist
+- Prüfen Sie Firewall-Einstellungen
 
-## ✨ Features
+#### Keine Daten empfangen
+- Prüfen Sie die Modbus-Register-Adressen
+- Stellen Sie sicher, dass die Slave-ID korrekt ist
+- Aktivieren Sie Debug-Logging für detaillierte Informationen
 
-- **Vollständige Modbus/TCP Integration** für Lambda Wärmepumpen
-- **Dynamische Sensor/Entity-Erkennung** basierend auf Firmware
-- **Konfigurierbare Anzahl von Geräten** (Wärmepumpen, Kessel, Heizkreise, Pufferspeicher, Solarmodule)
-- **Raumthermostat-Steuerung** mit externen Sensoren
-- **PV-Überschuss-Steuerung** für Solarstrom-Integration
-- **Zentrale Filterung und Deaktivierung von Registern**
-- **Automatische YAML-Konfiguration für erweiterte Optionen**
-- **Debug-Logging und Troubleshooting-Tools**
-- **Zähler für Wärmepumpen-Taktung nach Betriebsart**
+#### Konflikte mit anderen Modbus-Integrationen
+- Die Integration ist vollständig asynchron und sollte keine Konflikte verursachen
+- Falls Probleme auftreten, prüfen Sie die Modbus-Netzwerk-Konfiguration
 
-## ⚙️ Initial Configuration
+### Debug-Logging aktivieren
+```yaml
+# configuration.yaml
+logger:
+  default: info
+  logs:
+    custom_components.lambda_heat_pumps: debug
+```
 
-When setting up the integration, you will need to provide:
+## 📝 **Changelog**
 
-- **Name**: A name for your Lambda Heat Pump installation (e.g., "Main Heat Pump")
-- **Host**: IP address or hostname of your Lambda controller
-- **Port**: Modbus TCP port (default: 502)
-- **Slave ID**: Modbus Slave ID (default: 1)
-- **Number of devices**: Configure how many of each device type you have:
-  - Heat Pumps (1-3)
-  - Boilers (0-5)
-  - Heating Circuits (0-12)
-  - Buffers (0-5)
-  - Solar Systems (0-2)
-- **Firmware Version**: Select your Lambda controller's firmware version
+Siehe [CHANGELOG.md](CHANGELOG.md) für detaillierte Änderungsprotokolle.
 
-## 🔧 Integration Options
+## 🤝 **Beitragen**
 
-After initial setup, you can modify additional settings in the integration options:
+Beiträge sind willkommen! Bitte erstellen Sie einen Pull Request oder öffnen Sie ein Issue.
 
-1. Go to Configuration → Integrations
-2. Find your Lambda Heat Pump integration and click "Configure"
-3. Here you can adjust:
-   - Hot water temperature range (min/max)
-   - Heating circuit temperature range (min/max)
-   - Temperature step size
-   - Room thermostat control (using external sensors)
-   - PV power sensor as input for PV surplus configuration → siehe Dokumentation vor Aktivierung
+## 📄 **Lizenz**
 
-## 🌞 PV-Überschuss-Steuerung
+Dieses Projekt ist unter der MIT-Lizenz lizenziert. Siehe [LICENSE](LICENSE) für Details.
 
-Die Integration unterstützt die Steuerung der Wärmepumpe basierend auf verfügbarem PV-Überschuss. Diese Funktion ermöglicht es der Wärmepumpe, überschüssigen Solarstrom zu nutzen.
+## 🙏 **Danksagungen**
 
-### Funktionen:
-- **PV-Überschuss-Erkennung**: Automatische Überwachung der PV-Leistung
-- **Modbus-Register 102**: Schreiben der aktuellen PV-Leistung in Watt
-- **Konfigurierbare Sensoren**: Auswahl beliebiger PV-Leistungssensoren
-- **Automatische Aktualisierung**: Regelmäßiges Schreiben der PV-Daten (standardmäßig alle 10 Sekunden)
-- **Einheitenkonvertierung**: Automatische Umrechnung von kW in W
-
-### Konfiguration:
-1. **PV-Überschuss aktivieren**: In den Integration-Optionen "PV-Überschuss" aktivieren
-2. **PV-Sensor auswählen**: Einen PV-Leistungssensor auswählen (z.B. Template-Sensor für PV-Überschuss)
-3. **Intervall anpassen**: Das Schreibintervall in den Optionen konfigurieren
-
-### Unterstützte Sensoren:
-- **Watt-Sensoren**: Direkte Verwendung (z.B. 1500 W)
-- **Kilowatt-Sensoren**: Automatische Umrechnung (z.B. 1.5 kW → 1500 W)
-- **Template-Sensoren**: Für komplexe PV-Überschuss-Berechnungen
-
-### Modbus-Register:
-- **Register 102**: E-Manager Actual Power (globales Register)
-- **Wertebereich**: -32768 bis 32767 (int16)
-- **Einheit**: Watt
-
-## 🛠️ Troubleshooting & Support
-
-- **Log-Analyse**: Aktiviere Debug-Logging für detaillierte Fehlerausgabe
-- **Häufige Probleme**: Siehe Abschnitt „Troubleshooting" unten
-- **Support:**
-  - [GitHub Issues](https://github.com/GuidoJeuken-6512/lambda_wp_hacs/issues)
-  - [Home Assistant Community](https://community.home-assistant.io/)
-
-## 📚 Weitere Dokumentation
-
-- [Quick Start (DE)](docs/lambda_heat_pumps_quick_start.md)
-- [FAQ (DE)](docs/lambda_heat_pumps_faq.md)
-- [Entwickler-Guide](docs/lambda_heat_pumps_developer_guide.md)
-- [Modbus Register (DE)](docs/lambda_heat_pumps_modbus_register_de.md)
-- [Troubleshooting](docs/lambda_heat_pumps_troubleshooting.md)
-- [HACS Publishing Guide](docs/lambda_heat_pumps_hacs_publishing.md)
-
-## 📄 Lizenz & Haftung
-
-MIT License. Nutzung auf eigene Gefahr. Siehe [LICENSE](LICENSE).
-
----
-
-## 📝 Changelog
-
-Siehe [Releases](https://github.com/GuidoJeuken-6512/lambda_wp_hacs/releases) für Änderungen und Breaking Changes.
-
----
-
-**Developed with ❤️ for the Home Assistant Community**
+- Home Assistant Community für die großartige Plattform
+- pymodbus-Entwickler für die Modbus-Bibliothek
+- Lambda für die Wärmepumpen-Technologie
