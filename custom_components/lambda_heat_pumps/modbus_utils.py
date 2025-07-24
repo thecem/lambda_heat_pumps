@@ -1,50 +1,103 @@
 """Modbus utilities for Lambda Heat Pumps integration."""
 import logging
-import importlib.metadata as pkgMetadata
-from packaging import version
 from pymodbus.client import ModbusTcpClient
 
 _LOGGER = logging.getLogger(__name__)
 
-_PYMODBUS_VERSION = version.parse(pkgMetadata.version('pymodbus'))
-_PYMODBUS_3_0 = version.parse('3.0')
-_PYMODBUS_2_0 = version.parse('2.0')
+
+def _test_api_compatibility(client, method_name):
+    """Test which API version is available."""
+    method = getattr(client, method_name, None)
+    if not method:
+        return None
+    
+    # Test if method accepts keyword arguments (pymodbus >= 3.0)
+    import inspect
+    sig = inspect.signature(method)
+    params = list(sig.parameters.keys())
+    
+    # Check if method accepts 'slave' parameter (pymodbus >= 3.0)
+    if 'slave' in params:
+        return 'slave'
+    # Check if method accepts 'unit' parameter (pymodbus 2.x)
+    elif 'unit' in params:
+        return 'unit'
+    # Otherwise, no slave parameter (pymodbus < 2.0)
+    else:
+        return 'none'
+
 
 def read_holding_registers(client: ModbusTcpClient, address, count, slave_id=1):
     """Read holding registers with compatibility."""
-    if _PYMODBUS_VERSION >= _PYMODBUS_3_0:
-        return client.read_holding_registers(address, count=count, slave=slave_id)
-    elif _PYMODBUS_VERSION >= _PYMODBUS_2_0:
-        return client.read_holding_registers(address, count, slave_id)
-    else:
-        _LOGGER.error("Your pymodbus version is to old")
+    try:
+        api_type = _test_api_compatibility(client, 'read_holding_registers')
+        
+        if api_type == 'slave':
+            # pymodbus >= 3.0
+            return client.read_holding_registers(address, count=count, slave=slave_id)
+        elif api_type == 'unit':
+            # pymodbus 2.x
+            return client.read_holding_registers(address, count, unit=slave_id)
+        else:
+            # pymodbus < 2.0
+            return client.read_holding_registers(address, count)
+    except Exception as e:
+        _LOGGER.error("Modbus error in read_holding_registers: %s", str(e))
+        raise
 
 
 def write_register(client: ModbusTcpClient, address, value, slave_id=1):
     """Write single register with compatibility."""
-    if _PYMODBUS_VERSION >= _PYMODBUS_3_0:
-        return client.write_register(address, value, slave=slave_id)
-    elif _PYMODBUS_VERSION >= _PYMODBUS_2_0:
-        return client.write_register(address, value, slave_id)
-    else:
-        _LOGGER.error("Your pymodbus version is to old")
+    try:
+        api_type = _test_api_compatibility(client, 'write_register')
+        
+        if api_type == 'slave':
+            # pymodbus >= 3.0
+            return client.write_register(address, value, slave=slave_id)
+        elif api_type == 'unit':
+            # pymodbus 2.x
+            return client.write_register(address, value, unit=slave_id)
+        else:
+            # pymodbus < 2.0
+            return client.write_register(address, value)
+    except Exception as e:
+        _LOGGER.error("Modbus error in write_register: %s", str(e))
+        raise
 
 
 def write_registers(client: ModbusTcpClient, address, values, slave_id=1):
     """Write multiple registers with compatibility."""
-    if _PYMODBUS_VERSION >= _PYMODBUS_3_0:
-        return client.write_registers(address, values, slave=slave_id)
-    elif _PYMODBUS_VERSION >= _PYMODBUS_2_0:
-        return client.write_registers(address, values, slave_id)
-    else:
-        _LOGGER.error("Your pymodbus version is to old")
+    try:
+        api_type = _test_api_compatibility(client, 'write_registers')
+        
+        if api_type == 'slave':
+            # pymodbus >= 3.0
+            return client.write_registers(address, values, slave=slave_id)
+        elif api_type == 'unit':
+            # pymodbus 2.x
+            return client.write_registers(address, values, unit=slave_id)
+        else:
+            # pymodbus < 2.0
+            return client.write_registers(address, values)
+    except Exception as e:
+        _LOGGER.error("Modbus error in write_registers: %s", str(e))
+        raise
 
 
 def read_input_registers(client: ModbusTcpClient, address, count, slave_id=1):
     """Read input registers with compatibility."""
-    if _PYMODBUS_VERSION >= _PYMODBUS_3_0:
-        return client.read_input_registers(address, count=count, slave=slave_id)
-    elif _PYMODBUS_VERSION >= _PYMODBUS_2_0:
-        return client.read_input_registers(address, count, slave_id)
-    else:
-        _LOGGER.error("Your pymodbus version is to old")
+    try:
+        api_type = _test_api_compatibility(client, 'read_input_registers')
+        
+        if api_type == 'slave':
+            # pymodbus >= 3.0
+            return client.read_input_registers(address, count=count, slave=slave_id)
+        elif api_type == 'unit':
+            # pymodbus 2.x
+            return client.read_input_registers(address, count, unit=slave_id)
+        else:
+            # pymodbus < 2.0
+            return client.read_input_registers(address, count)
+    except Exception as e:
+        _LOGGER.error("Modbus error in read_input_registers: %s", str(e))
+        raise
