@@ -434,22 +434,8 @@ class LambdaCyclingSensor(RestoreEntity, SensorEntity):
         """Initialize the sensor when added to Home Assistant."""
         await super().async_added_to_hass()
         
-        last_state = None
-        try:
-            # Versuch 1: Standard-RestoreEntity Methode
-            if hasattr(super(), 'async_get_last_state'):
-                last_state = await super().async_get_last_state()
-            # Versuch 2: HA-Interne Methode (für ältere Versionen)
-            elif hasattr(self, 'async_get_last_state'):
-                last_state = await self.async_get_last_state()
-            # Fallback: Manueller State-Abruf
-            else:
-                current_state = self.hass.states.get(self.entity_id)
-                if current_state and current_state.state not in (None, "unknown", "unavailable"):
-                    last_state = current_state
-        except Exception as e:
-            _LOGGER.warning(f"State restore failed for {self.entity_id}: {e}")
-        
+        # RestoreEntity provides async_get_last_state() method
+        last_state = await self.async_get_last_state()
         await self.restore_state(last_state)
 
         # Registriere Signal-Handler für Yesterday-Update
@@ -590,22 +576,8 @@ class LambdaYesterdaySensor(RestoreEntity, SensorEntity):
         """Initialize the sensor when added to Home Assistant."""
         await super().async_added_to_hass()
         
-        last_state = None
-        try:
-            # Versuch 1: Standard-RestoreEntity Methode
-            if hasattr(super(), 'async_get_last_state'):
-                last_state = await super().async_get_last_state()
-            # Versuch 2: HA-Interne Methode (für ältere Versionen)
-            elif hasattr(self, 'async_get_last_state'):
-                last_state = await self.async_get_last_state()
-            # Fallback: Manueller State-Abruf
-            else:
-                current_state = self.hass.states.get(self.entity_id)
-                if current_state and current_state.state not in (None, "unknown", "unavailable"):
-                    last_state = current_state
-        except Exception as e:
-            _LOGGER.warning(f"State restore failed for {self.entity_id}: {e}")
-        
+        # RestoreEntity provides async_get_last_state() method
+        last_state = await self.async_get_last_state()
         await self.restore_state(last_state)
 
         # Registriere Signal-Handler für Yesterday-Update
