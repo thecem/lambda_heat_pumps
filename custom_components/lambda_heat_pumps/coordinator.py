@@ -80,8 +80,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         self._last_energy_update = {}
         self._cycling_offsets = {}
         self._energy_offsets = {}
-        self._use_legacy_names = entry.data.get("use_legacy_modbus_names", False)
-        self._persist_file = os.path.join(self._config_path, "cycle_energy_persist.json")
+        self._use_legacy_names = entry.data.get(
+            "use_legacy_modbus_names", False
+        )
+        self._persist_file = os.path.join(
+            self._config_path, "cycle_energy_persist.json"
+        )
         # self._load_offsets_and_persisted() ENTFERNT!
 
     async def _persist_counters(self):
@@ -366,8 +370,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             # Prüfe, ob die Cycling-Entities in hass.data verfügbar sind
                             if (
                                 "lambda_heat_pumps" in self.hass.data
-                                and self.entry.entry_id in self.hass.data["lambda_heat_pumps"]
-                                and "cycling_entities" in self.hass.data["lambda_heat_pumps"][self.entry.entry_id]
+                                and self.entry.entry_id in self.hass.data[
+                                    "lambda_heat_pumps"
+                                ]
+                                and "cycling_entities" in self.hass.data[
+                                    "lambda_heat_pumps"
+                                ][self.entry.entry_id]
                             ):
                                 cycling_entities_ready = True
                         except Exception:
@@ -384,12 +392,14 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                 cycling_offsets=self._cycling_offsets
                             )
                             _LOGGER.info(
-                                "Wärmepumpe %d: %s Modus aktiviert (Cycling total inkrementiert)",
+                                "Wärmepumpe %d: %s Modus aktiviert "
+                                "(Cycling total inkrementiert)",
                                 hp_idx, mode
                             )
                         else:
                             _LOGGER.debug(
-                                "Wärmepumpe %d: %s Modus aktiviert (Cycling-Entities noch nicht bereit)",
+                                "Wärmepumpe %d: %s Modus aktiviert "
+                                "(Cycling-Entities noch nicht bereit)",
                                 hp_idx, mode
                             )
                     # Nur für Debug-Zwecke, nicht als Info-Log:
@@ -399,13 +409,17 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     # )
                     self._last_mode_state[mode][hp_idx] = op_state_val
                     # Energieintegration für aktiven Modus
-                    power_info = HP_SENSOR_TEMPLATES.get("actual_heating_capacity")
+                    power_info = HP_SENSOR_TEMPLATES.get(
+                        "actual_heating_capacity"
+                    )
                     if power_info:
                         power_val = data.get(
                             f"hp{hp_idx}_actual_heating_capacity", 0.0
                         )
                         if op_state_val == mode_val:
-                            energy[hp_idx] = energy.get(hp_idx, 0.0) + power_val * interval
+                            energy[hp_idx] = energy.get(hp_idx, 0.0) + (
+                                power_val * interval
+                            )
                     # Sensorwerte bereitstellen (inkl. Offset)
                     cycling_entity_id = self._generate_entity_id(
                         f"{mode}_cycling_daily", hp_idx - 1
@@ -415,8 +429,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     )
                     cycling_offset = self._cycling_offsets.get(f"hp{hp_idx}", 0)
                     energy_offset = self._energy_offsets.get(f"hp{hp_idx}", 0.0)
-                    data[cycling_entity_id] = cycles.get(hp_idx, 0) + cycling_offset
-                    data[energy_entity_id] = energy.get(hp_idx, 0.0) + energy_offset
+                    data[cycling_entity_id] = (
+                        cycles.get(hp_idx, 0) + cycling_offset
+                    )
+                    data[energy_entity_id] = (
+                        energy.get(hp_idx, 0.0) + energy_offset
+                    )
             await self._persist_counters()
 
             # Read boiler sensors
