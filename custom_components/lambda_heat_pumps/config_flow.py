@@ -77,8 +77,11 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
         _LOGGER.error("Connection test failed: %s", ex)
         raise CannotConnect("Failed to connect to device") from ex
     finally:
-        if client:
-            await client.close()
+        try:
+            if client is not None:
+                await client.close()
+        except Exception as close_ex:
+            _LOGGER.debug("Error closing client: %s", close_ex)
 
 
 class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
