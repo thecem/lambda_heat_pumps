@@ -15,14 +15,13 @@ _LOGGER = logging.getLogger(__name__)
 SIGNAL_UPDATE_YESTERDAY = "lambda_heat_pumps_update_yesterday"
 
 
-async def setup_cycling_automations(hass: HomeAssistant, entry) -> None:
+def setup_cycling_automations(hass: HomeAssistant, entry_id: str) -> None:
     """Set up cycling-related automations for the integration."""
-    entry_id = entry.entry_id
     _LOGGER.info("Setting up cycling automations for entry %s", entry_id)
 
     # Tägliche Aktualisierung der Yesterday-Sensoren um Mitternacht
     @callback
-    async def update_yesterday_sensors(now: datetime) -> None:
+    def update_yesterday_sensors(now: datetime) -> None:
         """Update yesterday sensors at midnight."""
         _LOGGER.info("Updating yesterday cycling sensors at midnight")
 
@@ -49,7 +48,7 @@ async def setup_cycling_automations(hass: HomeAssistant, entry) -> None:
     _LOGGER.info("Cycling automations set up successfully")
 
 
-async def cleanup_cycling_automations(
+def cleanup_cycling_automations(
     hass: HomeAssistant, entry_id: str
 ) -> None:
     """Clean up cycling-related automations."""
