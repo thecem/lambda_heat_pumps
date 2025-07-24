@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    DOMAIN, 
+    DOMAIN,
     CLIMATE_TEMPLATES,
     DEFAULT_HOT_WATER_MIN_TEMP,
     DEFAULT_HOT_WATER_MAX_TEMP,
@@ -83,7 +83,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
             "precision", 0.5
         )
         self._attr_temperature_unit = self._template.get("unit", "°C")
-        
+
         # HVAC-Modi aus CLIMATE_TEMPLATES lesen
         hvac_modes_set = self._template.get("hvac_mode", {"heat"})
         self._attr_hvac_modes = [HVACMode(mode) for mode in hvac_modes_set]

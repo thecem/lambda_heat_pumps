@@ -358,7 +358,7 @@ async def test_async_reload_entry_cleanup_on_failure(mock_hass, mock_entry):
 def test_constants():
     """Test that constants are properly defined."""
     assert PLATFORMS == [Platform.SENSOR, Platform.CLIMATE]
-    assert VERSION == "1.0.0"
+    assert VERSION == "1.1.0"
     assert TRANSLATION_SOURCES == {DOMAIN: "translations"}
 
 
