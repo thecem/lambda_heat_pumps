@@ -154,8 +154,9 @@ Automatische Erkennung und Anpassung an verschiedene `pymodbus` Versionen:
 - Aktivieren Sie Debug-Logging für detaillierte Informationen
 
 #### Konflikte mit anderen Modbus-Integrationen
-- Die Integration ist vollständig asynchron und sollte keine Konflikte verursachen
+- Die Integration verwendet asynchrone Modbus-Clients und sollte keine Konflikte verursachen
 - Falls Probleme auftreten, prüfen Sie die Modbus-Netzwerk-Konfiguration
+- Asynchrone Clients bieten bessere Kompatibilität mit anderen Modbus-Integrationen
 
 ### Debug-Logging aktivieren
 ```yaml

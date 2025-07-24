@@ -5,15 +5,16 @@
 ### 🚀 **Major Changes - Asynchronous Modbus Clients**
 
 #### **Problem**
-Die Lambda-Integration verursachte Konflikte mit der SolaX Modbus Integration aufgrund unterschiedlicher `pymodbus` Client-Typen:
+Die Lambda-Integration verwendete synchrone Modbus-Clients, was zu Kompatibilitätsproblemen mit anderen Modbus-Integrationen führen konnte:
 - **Lambda**: Synchrone `ModbusTcpClient` 
-- **SolaX**: Asynchrone `AsyncModbusTcpClient`
-- **Ergebnis**: Inkompatibilität beim gleichzeitigen Betrieb
+- **Andere Integrationen**: Asynchrone `AsyncModbusTcpClient`
+- **Ergebnis**: Potentielle Inkompatibilitäten beim gleichzeitigen Betrieb
 
 #### **Lösung: Vollständige Umstellung auf asynchrone Clients**
 - **Alle Modbus-Operationen** auf `AsyncModbusTcpClient` umgestellt
 - **Neue async Wrapper-Funktionen** in `modbus_utils.py` implementiert
 - **Runtime API-Kompatibilität** für verschiedene `pymodbus` Versionen
+- **Besserer Ansatz**: Asynchrone Modbus-Clients für höhere Kompatibilität
 
 ### 📁 **Geänderte Dateien**
 
