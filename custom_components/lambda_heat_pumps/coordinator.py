@@ -749,12 +749,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Shutting down Lambda coordinator")
         try:
             # Close Modbus connection
-            if self.client:
+            if self.client is not None:
                 await self.client.close()
                 self.client = None
-            # Stop the coordinator
-            if hasattr(self, '_async_stop'):
-                await self._async_stop()
+            # Stop the coordinator properly
+            if hasattr(self, 'stop'):
+                self.stop()
         except Exception as ex:
             _LOGGER.error("Error during coordinator shutdown: %s", ex)
 

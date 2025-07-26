@@ -237,8 +237,15 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
                 self._template_str
             )
 
+            # Handle unavailable or None states
+            if self._state is None or self._state == "unavailable" or self._state == "unknown":
+                self._state = None
+                self.async_write_ha_state()
+                return
+
             # Convert to appropriate type and apply precision
-            if self._state is not None and self._state != "unavailable":
+            if isinstance(self._state, str):
+                # Try to convert string to float
                 try:
                     float_value = float(self._state)
                     if self._precision is not None:
@@ -252,10 +259,24 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
                 except (ValueError, TypeError):
                     # Keep as string if conversion fails
                     pass
+            elif isinstance(self._state, (int, float)):
+                # Apply precision to numeric values
+                if self._precision is not None:
+                    if self._precision == 0:
+                        self._state = int(round(self._state, 0))
+                    else:
+                        self._state = round(self._state, self._precision)
 
         except TemplateError as err:
             _LOGGER.warning(
-                "Template error for sensor %s: %s", self._sensor_id, err
+                "Template error for sensor %s: %s (template: %s)", 
+                self._sensor_id, err, self._template_str
+            )
+            self._state = None
+        except Exception as err:
+            _LOGGER.error(
+                "Unexpected error in template sensor %s: %s (template: %s)", 
+                self._sensor_id, err, self._template_str
             )
             self._state = None
 

@@ -56,17 +56,49 @@ async def async_setup_entry(
     """Set up the Lambda Heat Pumps sensors."""
     _LOGGER.debug("Setting up Lambda sensors for entry %s", entry.entry_id)
 
-    # Migration bestehender Entitäten - entferne doppelte Sensoren mit "_2" Suffix
+    # Erweiterte Migration bestehender Entitäten - entferne doppelte Sensoren
     entity_registry = async_get_entity_registry(hass)
     registry_entries = entity_registry.entities.get_entries_for_config_entry_id(entry.entry_id)
     
+    # Sammle alle Entity-IDs für Duplikat-Erkennung
+    existing_entities = {}
     for registry_entry in registry_entries:
-        if "_2" in registry_entry.entity_id:
-            _LOGGER.info(
-                "Removing duplicate entity with '_2' suffix: %s",
-                registry_entry.entity_id
-            )
-            entity_registry.async_remove(registry_entry.entity_id)
+        entity_id = registry_entry.entity_id
+        if entity_id.startswith("sensor."):
+            # Extrahiere den Basis-Namen ohne Präfix
+            base_name = entity_id.replace("sensor.", "")
+            
+            # Gruppiere nach Basis-Namen
+            if base_name not in existing_entities:
+                existing_entities[base_name] = []
+            existing_entities[base_name].append(registry_entry)
+    
+    # Entferne Duplikate basierend auf verschiedenen Mustern
+    removed_count = 0
+    for base_name, entries in existing_entities.items():
+        if len(entries) > 1:
+            # Sortiere nach Priorität: behalte die neueste/aktivste Entität
+            # Entferne Entitäten mit "_2", "_3", etc. Suffix
+            for entry in entries:
+                entity_id = entry.entity_id
+                if any(suffix in entity_id for suffix in ["_2", "_3", "_4", "_5"]):
+                    _LOGGER.info(
+                        "Removing duplicate entity with numeric suffix: %s",
+                        entity_id
+                    )
+                    entity_registry.async_remove(entity_id)
+                    removed_count += 1
+                elif "_ambient_" in entity_id and entity_id.endswith("_ambient_" + base_name.split("_")[-1]):
+                    # Entferne doppelte ambient Sensoren (z.B. ambient_error_number_ambient_error_number)
+                    _LOGGER.info(
+                        "Removing duplicate ambient entity: %s",
+                        entity_id
+                    )
+                    entity_registry.async_remove(entity_id)
+                    removed_count += 1
+    
+    if removed_count > 0:
+        _LOGGER.info("Migration completed: removed %d duplicate entities", removed_count)
 
     # Get coordinator from hass.data
     coordinator_data = hass.data[DOMAIN][entry.entry_id]
