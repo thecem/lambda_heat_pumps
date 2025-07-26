@@ -2,7 +2,30 @@
 
 **Deutsche Version siehe unten / German version see below**
 
-## [1.1.0] - 2024-12-19
+## [1.1.0] - 2025-07-24
+
+### Major Changes
+- **Switch to asynchronous Modbus clients** - Complete migration from synchronous to asynchronous Modbus communication for better compatibility with other integrations
+- **Runtime API compatibility** - Automatic detection and adaptation to different pymodbus versions (1.x, 2.x, 3.x)
+- **Performance improvements** - Non-blocking Modbus operations for better system performance
+
+### Added
+- Asynchronous Modbus wrapper functions in `modbus_utils.py`
+- Runtime API compatibility detection for pymodbus versions
+- Comprehensive error handling for async Modbus operations
+- Extended cycling counters with daily, yesterday and total values for all operating modes
+
+### Changed
+- All Modbus operations migrated to `AsyncModbusTcpClient`
+- Coordinator, config_flow, services, and climate modules updated for async operations
+- Removed `async_add_executor_job` wrappers in favor of direct async calls
+
+### Fixed
+- RuntimeWarning: "coroutine was never awaited" in automation setup
+- Callback function implementation corrected
+- Code quality improvements and linting issues resolved
+
+## [1.0.9] - 2024-12-19
 
 ### Added
 - Compatibility with pymodbus >= 3.6.0
@@ -21,21 +44,6 @@
 - HACS validation errors corrected
 - Manifest keys properly sorted
 
-## [1.0.9] - 2024-12-19
-
-### Added
-- PV surplus control for heat pumps
-- Modbus register 102 support for E-Manager Actual Power
-- Configurable PV sensors (Watt/kW)
-- Automatic unit conversion
-- Write interval configuration for PV data
-- YAML configuration file `lambda_wp_config.yaml` for advanced settings
-- Calculated COP sensor based on thermal energy output and power consumption
-
-### Changed
-- Improved error handling for Modbus connections
-- Extended integration options for PV control
-
 ## [1.0.0] - Initial Release
 
 ### Added
@@ -48,7 +56,30 @@
 
 # Changelog (Deutsch)
 
-## [1.1.0] - 2024-12-19
+## [1.1.0] - 2025-07-24
+
+### Major Changes
+- **Umstellung auf asynchrone Modbus-Clients** - Vollständige Migration von synchroner zu asynchroner Modbus-Kommunikation für bessere Kompatibilität mit anderen Integrationen
+- **Runtime API-Kompatibilität** - Automatische Erkennung und Anpassung an verschiedene pymodbus Versionen (1.x, 2.x, 3.x)
+- **Performance-Verbesserungen** - Nicht-blockierende Modbus-Operationen für bessere Systemleistung
+
+### Added
+- Asynchrone Modbus-Wrapper-Funktionen in `modbus_utils.py`
+- Runtime API-Kompatibilitätserkennung für pymodbus Versionen
+- Umfassende Fehlerbehandlung für asynchrone Modbus-Operationen
+- Erweiterte Zyklenzähler mit täglichen, gestern und insgesamt Werten für alle Betriebsarten
+
+### Changed
+- Alle Modbus-Operationen auf `AsyncModbusTcpClient` migriert
+- Coordinator, config_flow, services und climate Module für asynchrone Operationen aktualisiert
+- Entfernung von `async_add_executor_job` Wrappern zugunsten direkter async Aufrufe
+
+### Fixed
+- RuntimeWarning: "coroutine was never awaited" in Automation-Setup
+- Callback-Funktionsimplementierung korrigiert
+- Code-Qualitätsverbesserungen und Linting-Probleme behoben
+
+## [1.0.9] - 2024-12-19
 
 ### Added
 - Kompatibilität mit pymodbus >= 3.6.0
@@ -66,21 +97,6 @@
 - Whitespace-Probleme bereinigt
 - HACS-Validierungsfehler korrigiert
 - Manifest-Schlüssel korrekt sortiert
-
-## [1.0.9] - 2024-12-19
-
-### Added
-- PV-Überschuss-Steuerung für Wärmepumpen
-- Modbus-Register 102 Unterstützung für E-Manager Actual Power
-- Konfigurierbare PV-Sensoren (Watt/kW)
-- Automatische Einheitenkonvertierung
-- Schreibintervall-Konfiguration für PV-Daten
-- YAML-Konfigurationsdatei `lambda_wp_config.yaml` für erweiterte Einstellungen
-- Berechneter COP-Sensor basierend auf thermischer Energieausgabe und Stromverbrauch
-
-### Changed
-- Verbesserte Fehlerbehandlung für Modbus-Verbindungen
-- Erweiterte Integration-Optionen für PV-Steuerung
 
 ## [1.0.0] - Initial Release
 
