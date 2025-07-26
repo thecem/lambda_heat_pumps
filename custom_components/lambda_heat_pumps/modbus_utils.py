@@ -13,24 +13,40 @@ def _test_api_compatibility(client, method_name):
 
     # Test if method accepts keyword arguments (pymodbus >= 3.0)
     import inspect
-    sig = inspect.signature(method)
-    params = list(sig.parameters.keys())
-
-    # Check if method accepts 'slave' parameter (pymodbus >= 3.0)
-    if 'slave' in params:
-        return 'slave'
-    # Check if method accepts 'unit' parameter (pymodbus 2.x)
-    elif 'unit' in params:
-        return 'unit'
-    # Otherwise, no slave parameter (pymodbus < 2.0)
-    else:
-        return 'none'
+    try:
+        sig = inspect.signature(method)
+        params = list(sig.parameters.keys())
+        
+        # Check if method accepts 'slave' parameter (pymodbus >= 3.0)
+        if 'slave' in params:
+            return 'slave'
+        # Check if method accepts 'unit' parameter (pymodbus 2.x)
+        elif 'unit' in params:
+            return 'unit'
+        # Otherwise, no slave parameter (pymodbus < 2.0)
+        else:
+            return 'none'
+    except (ValueError, TypeError):
+        # Fallback: try to determine by pymodbus version
+        try:
+            import pymodbus
+            version = pymodbus.__version__
+            if version.startswith('3'):
+                return 'slave'
+            elif version.startswith('2'):
+                return 'unit'
+            else:
+                return 'none'
+        except (ImportError, AttributeError):
+            # Last resort: assume older version
+            return 'none'
 
 
 def read_holding_registers(client: ModbusTcpClient, address, count, slave_id=1):
     """Read holding registers with compatibility."""
     try:
         api_type = _test_api_compatibility(client, 'read_holding_registers')
+        _LOGGER.debug("API type detected: %s for read_holding_registers", api_type)
 
         if api_type == 'slave':
             # pymodbus >= 3.0
@@ -47,6 +63,11 @@ def read_holding_registers(client: ModbusTcpClient, address, count, slave_id=1):
             return client.read_holding_registers(address, count)
     except Exception as e:
         _LOGGER.error("Modbus error in read_holding_registers: %s", str(e))
+        _LOGGER.error(
+            "API type was: %s, address: %s, count: %s, slave_id: %s",
+            _test_api_compatibility(client, 'read_holding_registers'),
+            address, count, slave_id
+        )
         raise
 
 
@@ -121,18 +142,33 @@ def _test_async_api_compatibility(client, method_name):
 
     # Test if method accepts keyword arguments (pymodbus >= 3.0)
     import inspect
-    sig = inspect.signature(method)
-    params = list(sig.parameters.keys())
-
-    # Check if method accepts 'slave' parameter (pymodbus >= 3.0)
-    if 'slave' in params:
-        return 'slave'
-    # Check if method accepts 'unit' parameter (pymodbus 2.x)
-    elif 'unit' in params:
-        return 'unit'
-    # Otherwise, no slave parameter (pymodbus < 2.0)
-    else:
-        return 'none'
+    try:
+        sig = inspect.signature(method)
+        params = list(sig.parameters.keys())
+        
+        # Check if method accepts 'slave' parameter (pymodbus >= 3.0)
+        if 'slave' in params:
+            return 'slave'
+        # Check if method accepts 'unit' parameter (pymodbus 2.x)
+        elif 'unit' in params:
+            return 'unit'
+        # Otherwise, no slave parameter (pymodbus < 2.0)
+        else:
+            return 'none'
+    except (ValueError, TypeError):
+        # Fallback: try to determine by pymodbus version
+        try:
+            import pymodbus
+            version = pymodbus.__version__
+            if version.startswith('3'):
+                return 'slave'
+            elif version.startswith('2'):
+                return 'unit'
+            else:
+                return 'none'
+        except (ImportError, AttributeError):
+            # Last resort: assume older version
+            return 'none'
 
 
 async def async_read_holding_registers(
@@ -142,6 +178,9 @@ async def async_read_holding_registers(
     try:
         api_type = _test_async_api_compatibility(
             client, 'read_holding_registers'
+        )
+        _LOGGER.debug(
+            "Async API type detected: %s for read_holding_registers", api_type
         )
 
         if api_type == 'slave':
@@ -160,6 +199,11 @@ async def async_read_holding_registers(
     except Exception as e:
         _LOGGER.error(
             "Modbus error in async_read_holding_registers: %s", str(e)
+        )
+        _LOGGER.error(
+            "Async API type was: %s, address: %s, count: %s, slave_id: %s",
+            _test_async_api_compatibility(client, 'read_holding_registers'),
+            address, count, slave_id
         )
         raise
 
