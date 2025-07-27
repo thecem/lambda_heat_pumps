@@ -44,12 +44,8 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         """Initialize."""
         # Lese update_interval aus den Optionen, falls vorhanden
-        update_interval = entry.options.get(
-            "update_interval", DEFAULT_UPDATE_INTERVAL
-        )
-        _LOGGER.debug(
-            "Update interval from options: %s seconds", update_interval
-        )
+        update_interval = entry.options.get("update_interval", DEFAULT_UPDATE_INTERVAL)
+        _LOGGER.debug("Update interval from options: %s seconds", update_interval)
         _LOGGER.debug("Entry options: %s", entry.options)
         _LOGGER.debug(
             "Room thermostat control: %s",
@@ -80,9 +76,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         self._last_energy_update = {}
         self._cycling_offsets = {}
         self._energy_offsets = {}
-        self._use_legacy_names = entry.data.get(
-            "use_legacy_modbus_names", False
-        )
+        self._use_legacy_names = entry.data.get("use_legacy_modbus_names", False)
         self._persist_file = os.path.join(
             self._config_path, "cycle_energy_persist.json"
         )
@@ -102,6 +96,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         if os.path.exists(config_path):
             async with aiofiles.open(config_path, "r") as f:
                 import yaml
+
                 content = await f.read()
                 config = yaml.safe_load(content) or {}
                 self._cycling_offsets = config.get("cycling_offsets", {})
@@ -131,15 +126,11 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Config directory ensured")
 
             self.disabled_registers = await load_disabled_registers(self.hass)
-            _LOGGER.debug(
-                "Loaded disabled registers: %s", self.disabled_registers
-            )
+            _LOGGER.debug("Loaded disabled registers: %s", self.disabled_registers)
 
             # Lade sensor_overrides direkt beim Init
             self.sensor_overrides = await self._load_sensor_overrides()
-            _LOGGER.debug(
-                "Loaded sensor name overrides: %s", self.sensor_overrides
-            )
+            _LOGGER.debug("Loaded sensor name overrides: %s", self.sensor_overrides)
 
             # Initialize HA started flag
             self._ha_started = False
@@ -221,14 +212,14 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             num_hps = self.entry.data.get("num_hps", 1)
             # Generische Flankenerkennung für alle relevanten Modi
             MODES = {
-                "heating": 1,   # CH
+                "heating": 1,  # CH
                 "hot_water": 2,  # DHW
-                "cooling": 3,   # CC
-                "defrost": 5,   # DEFROST
+                "cooling": 3,  # CC
+                "defrost": 5,  # DEFROST
             }
-            if not hasattr(self, '_last_mode_state'):
+            if not hasattr(self, "_last_mode_state"):
                 self._last_mode_state = {mode: {} for mode in MODES}
-            if not hasattr(self, '_last_operating_state'):
+            if not hasattr(self, "_last_operating_state"):
                 self._last_operating_state = {}
 
             # Read general sensors
@@ -237,9 +228,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     continue
                 try:
                     address = sensor_info["address"]
-                    count = (
-                        2 if sensor_info.get("data_type") == "int32" else 1
-                    )
+                    count = 2 if sensor_info.get("data_type") == "int32" else 1
                     result = await async_read_holding_registers(
                         self.client,
                         address,
@@ -254,9 +243,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         )
                         continue
                     if count == 2:
-                        value = (
-                            result.registers[0] << 16
-                        ) | result.registers[1]
+                        value = (result.registers[0] << 16) | result.registers[1]
                         if sensor_info.get("data_type") == "int32":
                             value = to_signed_32bit(value)
                     else:
@@ -283,12 +270,8 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     ):
                         continue
                     try:
-                        address = (
-                            base_address + sensor_info["relative_address"]
-                        )
-                        count = (
-                            2 if sensor_info.get("data_type") == "int32" else 1
-                        )
+                        address = base_address + sensor_info["relative_address"]
+                        count = 2 if sensor_info.get("data_type") == "int32" else 1
                         result = await async_read_holding_registers(
                             self.client,
                             address,
@@ -303,9 +286,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             )
                             continue
                         if count == 2:
-                            value = (
-                                result.registers[0] << 16
-                            ) | result.registers[1]
+                            value = (result.registers[0] << 16) | result.registers[1]
                             if sensor_info.get("data_type") == "int32":
                                 value = to_signed_32bit(value)
                         else:
@@ -343,13 +324,17 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                 last_op_state = self._last_operating_state.get(hp_idx, "UNBEKANNT")
                 _LOGGER.debug(
                     "DEBUG: HP %d, last_op_state=%s, op_state_val=%s",
-                    hp_idx, last_op_state, op_state_val
+                    hp_idx,
+                    last_op_state,
+                    op_state_val,
                 )
                 # Info-Meldung bei Änderung
                 if last_op_state != op_state_val:
                     _LOGGER.info(
                         "Wärmepumpe %d: operating_state geändert von %s auf %s",
-                        hp_idx, last_op_state, op_state_val
+                        hp_idx,
+                        last_op_state,
+                        op_state_val,
                     )
                 self._last_operating_state[hp_idx] = op_state_val
                 for mode, mode_val in MODES.items():
@@ -370,12 +355,12 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             # Prüfe, ob die Cycling-Entities in hass.data verfügbar sind
                             if (
                                 "lambda_heat_pumps" in self.hass.data
-                                and self.entry.entry_id in self.hass.data[
-                                    "lambda_heat_pumps"
+                                and self.entry.entry_id
+                                in self.hass.data["lambda_heat_pumps"]
+                                and "cycling_entities"
+                                in self.hass.data["lambda_heat_pumps"][
+                                    self.entry.entry_id
                                 ]
-                                and "cycling_entities" in self.hass.data[
-                                    "lambda_heat_pumps"
-                                ][self.entry.entry_id]
                             ):
                                 cycling_entities_ready = True
                         except Exception:
@@ -389,18 +374,20 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                                 hp_index=hp_idx,
                                 name_prefix=self.entry.data.get("name", "eu08l"),
                                 use_legacy_modbus_names=self._use_legacy_names,
-                                cycling_offsets=self._cycling_offsets
+                                cycling_offsets=self._cycling_offsets,
                             )
                             _LOGGER.info(
                                 "Wärmepumpe %d: %s Modus aktiviert "
                                 "(Cycling total inkrementiert)",
-                                hp_idx, mode
+                                hp_idx,
+                                mode,
                             )
                         else:
                             _LOGGER.debug(
                                 "Wärmepumpe %d: %s Modus aktiviert "
                                 "(Cycling-Entities noch nicht bereit)",
-                                hp_idx, mode
+                                hp_idx,
+                                mode,
                             )
                     # Nur für Debug-Zwecke, nicht als Info-Log:
                     # _LOGGER.debug(
@@ -409,13 +396,9 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     # )
                     self._last_mode_state[mode][hp_idx] = op_state_val
                     # Energieintegration für aktiven Modus
-                    power_info = HP_SENSOR_TEMPLATES.get(
-                        "actual_heating_capacity"
-                    )
+                    power_info = HP_SENSOR_TEMPLATES.get("actual_heating_capacity")
                     if power_info:
-                        power_val = data.get(
-                            f"hp{hp_idx}_actual_heating_capacity", 0.0
-                        )
+                        power_val = data.get(f"hp{hp_idx}_actual_heating_capacity", 0.0)
                         if op_state_val == mode_val:
                             energy[hp_idx] = energy.get(hp_idx, 0.0) + (
                                 power_val * interval
@@ -429,32 +412,22 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     )
                     cycling_offset = self._cycling_offsets.get(f"hp{hp_idx}", 0)
                     energy_offset = self._energy_offsets.get(f"hp{hp_idx}", 0.0)
-                    data[cycling_entity_id] = (
-                        cycles.get(hp_idx, 0) + cycling_offset
-                    )
-                    data[energy_entity_id] = (
-                        energy.get(hp_idx, 0.0) + energy_offset
-                    )
+                    data[cycling_entity_id] = cycles.get(hp_idx, 0) + cycling_offset
+                    data[energy_entity_id] = energy.get(hp_idx, 0.0) + energy_offset
             await self._persist_counters()
 
             # Read boiler sensors
             num_boil = self.entry.data.get("num_boil", 1)
             for boil_idx in range(1, num_boil + 1):
-                base_address = generate_base_addresses("boil", num_boil)[
-                    boil_idx
-                ]
+                base_address = generate_base_addresses("boil", num_boil)[boil_idx]
                 for sensor_id, sensor_info in BOIL_SENSOR_TEMPLATES.items():
                     if self.is_register_disabled(
                         base_address + sensor_info["relative_address"]
                     ):
                         continue
                     try:
-                        address = (
-                            base_address + sensor_info["relative_address"]
-                        )
-                        count = (
-                            2 if sensor_info.get("data_type") == "int32" else 1
-                        )
+                        address = base_address + sensor_info["relative_address"]
+                        count = 2 if sensor_info.get("data_type") == "int32" else 1
                         result = await async_read_holding_registers(
                             self.client,
                             address,
@@ -469,9 +442,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             )
                             continue
                         if count == 2:
-                            value = (
-                                result.registers[0] << 16
-                            ) | result.registers[1]
+                            value = (result.registers[0] << 16) | result.registers[1]
                             if sensor_info.get("data_type") == "int32":
                                 value = to_signed_32bit(value)
                         else:
@@ -502,21 +473,15 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             # Read buffer sensors
             num_buff = self.entry.data.get("num_buff", 0)
             for buff_idx in range(1, num_buff + 1):
-                base_address = generate_base_addresses("buff", num_buff)[
-                    buff_idx
-                ]
+                base_address = generate_base_addresses("buff", num_buff)[buff_idx]
                 for sensor_id, sensor_info in BUFF_SENSOR_TEMPLATES.items():
                     if self.is_register_disabled(
                         base_address + sensor_info["relative_address"]
                     ):
                         continue
                     try:
-                        address = (
-                            base_address + sensor_info["relative_address"]
-                        )
-                        count = (
-                            2 if sensor_info.get("data_type") == "int32" else 1
-                        )
+                        address = base_address + sensor_info["relative_address"]
+                        count = 2 if sensor_info.get("data_type") == "int32" else 1
                         result = await async_read_holding_registers(
                             self.client,
                             address,
@@ -531,9 +496,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             )
                             continue
                         if count == 2:
-                            value = (
-                                result.registers[0] << 16
-                            ) | result.registers[1]
+                            value = (result.registers[0] << 16) | result.registers[1]
                             if sensor_info.get("data_type") == "int32":
                                 value = to_signed_32bit(value)
                         else:
@@ -571,12 +534,8 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     ):
                         continue
                     try:
-                        address = (
-                            base_address + sensor_info["relative_address"]
-                        )
-                        count = (
-                            2 if sensor_info.get("data_type") == "int32" else 1
-                        )
+                        address = base_address + sensor_info["relative_address"]
+                        count = 2 if sensor_info.get("data_type") == "int32" else 1
                         result = await async_read_holding_registers(
                             self.client,
                             address,
@@ -591,9 +550,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             )
                             continue
                         if count == 2:
-                            value = (
-                                result.registers[0] << 16
-                            ) | result.registers[1]
+                            value = (result.registers[0] << 16) | result.registers[1]
                             if sensor_info.get("data_type") == "int32":
                                 value = to_signed_32bit(value)
                         else:
@@ -631,12 +588,8 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                     ):
                         continue
                     try:
-                        address = (
-                            base_address + sensor_info["relative_address"]
-                        )
-                        count = (
-                            2 if sensor_info.get("data_type") == "int32" else 1
-                        )
+                        address = base_address + sensor_info["relative_address"]
+                        count = 2 if sensor_info.get("data_type") == "int32" else 1
                         result = await async_read_holding_registers(
                             self.client,
                             address,
@@ -651,9 +604,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             )
                             continue
                         if count == 2:
-                            value = (
-                                result.registers[0] << 16
-                            ) | result.registers[1]
+                            value = (result.registers[0] << 16) | result.registers[1]
                             if sensor_info.get("data_type") == "int32":
                                 value = to_signed_32bit(value)
                         else:
@@ -706,7 +657,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
 
             # Update room temperature and PV surplus only after Home Assistant
             # has started. This prevents timing issues with template sensors
-            if hasattr(self, '_ha_started') and self._ha_started:
+            if hasattr(self, "_ha_started") and self._ha_started:
                 # Note: Writing operations moved to services.py
                 pass
 
@@ -736,8 +687,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             connected = await self.client.connect()
             if not connected:
                 raise ConnectionError(
-                    "Could not connect to Modbus TCP at "
-                    f"{self.host}:{self.port}"
+                    "Could not connect to Modbus TCP at " f"{self.host}:{self.port}"
                 )
         except Exception as ex:
             _LOGGER.error("Failed to connect to Modbus TCP: %s", ex)
@@ -753,7 +703,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                 await self.client.close()
                 self.client = None
             # Stop the coordinator properly
-            if hasattr(self, 'stop'):
+            if hasattr(self, "stop"):
                 self.stop()
         except Exception as ex:
             _LOGGER.error("Error during coordinator shutdown: %s", ex)
@@ -773,7 +723,5 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                         overrides[sensor["id"]] = sensor["override_name"]
                 return overrides
         except Exception as e:
-            _LOGGER.error(
-                f"Fehler beim Laden der Sensor-Namen-Überschreibungen: {e}"
-            )
+            _LOGGER.error(f"Fehler beim Laden der Sensor-Namen-Überschreibungen: {e}")
             return {}

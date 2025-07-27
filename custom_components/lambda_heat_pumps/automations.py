@@ -31,11 +31,7 @@ def setup_cycling_automations(hass: HomeAssistant, entry_id: str) -> None:
     # Registriere die Zeit-basierte Automatisierung
     # async_track_time_change ist KEINE Coroutine, daher KEIN await!
     listener = async_track_time_change(
-        hass,
-        update_yesterday_sensors,
-        hour=0,
-        minute=0,
-        second=0
+        hass, update_yesterday_sensors, hour=0, minute=0, second=0
     )
 
     # Speichere den Listener für späteres Cleanup
@@ -48,9 +44,7 @@ def setup_cycling_automations(hass: HomeAssistant, entry_id: str) -> None:
     _LOGGER.info("Cycling automations set up successfully")
 
 
-def cleanup_cycling_automations(
-    hass: HomeAssistant, entry_id: str
-) -> None:
+def cleanup_cycling_automations(hass: HomeAssistant, entry_id: str) -> None:
     """Clean up cycling-related automations."""
     _LOGGER.info("Cleaning up cycling automations for entry %s", entry_id)
 

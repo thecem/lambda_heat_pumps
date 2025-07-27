@@ -1,4 +1,5 @@
 """Climate platform for Lambda integration (template-basiert)."""
+
 from __future__ import annotations
 import logging
 
@@ -55,7 +56,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
             self._template["name"],
             sensor_id,
             name_prefix,
-            use_legacy_modbus_names
+            use_legacy_modbus_names,
         )
 
         # Setze die Namen und IDs
@@ -79,9 +80,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
                 "heating_circuit_max_temp", DEFAULT_HEATING_CIRCUIT_MAX_TEMP
             )
 
-        self._attr_target_temperature_step = self._template.get(
-            "precision", 0.5
-        )
+        self._attr_target_temperature_step = self._template.get("precision", 0.5)
         self._attr_temperature_unit = self._template.get("unit", "°C")
 
         # HVAC-Modi aus CLIMATE_TEMPLATES lesen
@@ -128,7 +127,7 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
             self.entity_id,
             reg_addr,
             raw_value,
-            temperature
+            temperature,
         )
         result = await async_write_registers(
             self.coordinator.client,
@@ -150,14 +149,11 @@ class LambdaClimateEntity(CoordinatorEntity, ClimateEntity):
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up the Lambda Heat Pumps climate entities (template-basiert)."""
-    _LOGGER.debug(
-        "Setting up Lambda climate entities for entry %s", entry.entry_id
-    )
+    _LOGGER.debug("Setting up Lambda climate entities for entry %s", entry.entry_id)
+
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     num_boil = entry.data.get("num_boil", 1)
     num_hc = entry.data.get("num_hc", 1)
@@ -172,7 +168,7 @@ async def async_setup_entry(
                 entry,
                 "hot_water",  # climate_type aus CLIMATE_TEMPLATES
                 idx,
-                boil_addresses[idx]
+                boil_addresses[idx],
             )
         )
 
@@ -185,7 +181,7 @@ async def async_setup_entry(
                 "No room temperature entity configured for heating circuit %s "
                 "in entry %s, skipping entity creation.",
                 idx,
-                entry.entry_id
+                entry.entry_id,
             )
             continue
         entities.append(
@@ -194,7 +190,7 @@ async def async_setup_entry(
                 entry,
                 "heating_circuit",  # climate_type aus CLIMATE_TEMPLATES
                 idx,
-                hc_addresses[idx]
+                hc_addresses[idx],
             )
         )
 

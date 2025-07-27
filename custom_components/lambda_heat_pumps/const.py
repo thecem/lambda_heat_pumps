@@ -1,4 +1,5 @@
 """Constants for Lambda WP integration."""
+
 from __future__ import annotations
 
 # Integration Constants
@@ -19,11 +20,11 @@ DEFAULT_NUM_BUFFER = 0
 DEFAULT_NUM_SOLAR = 0
 
 # Maximum counts for devices (from Modbus documentation)
-MAX_NUM_HPS = 3         # Heat pumps
-MAX_NUM_BOIL = 5        # Boilers
-MAX_NUM_HC = 12         # Heating circuits
-MAX_NUM_BUFFER = 5      # Buffers
-MAX_NUM_SOLAR = 2       # Solar modules
+MAX_NUM_HPS = 3  # Heat pumps
+MAX_NUM_BOIL = 5  # Boilers
+MAX_NUM_HC = 12  # Heating circuits
+MAX_NUM_BUFFER = 5  # Buffers
+MAX_NUM_SOLAR = 2  # Solar modules
 
 # Default temperature settings
 DEFAULT_HOT_WATER_MIN_TEMP = 40
@@ -43,12 +44,7 @@ CONF_PORT = "port"
 # Debug and Logging
 DEBUG = False
 DEBUG_PREFIX = "lambda_wp"
-LOG_LEVELS = {
-    "error": "ERROR",
-    "warning": "WARNING",
-    "info": "INFO",
-    "debug": "DEBUG"
-}
+LOG_LEVELS = {"error": "ERROR", "warning": "WARNING", "info": "INFO", "debug": "DEBUG"}
 
 # Firmware Versions
 FIRMWARE_VERSION = {
@@ -958,11 +954,11 @@ DEFAULT_HEATING_CIRCUIT_TEMP_STEP = 0.5
 
 # Base addresses for all device types
 BASE_ADDRESSES = {
-    'hp': 1000,    # Heat pumps start at 1000
-    'boil': 2000,  # Boilers start at 2000
-    'buff': 3000,  # Buffers start at 3000
-    'sol': 4000,   # Solar starts at 4000
-    'hc': 5000     # Heating circuits start at 5000
+    "hp": 1000,  # Heat pumps start at 1000
+    "boil": 2000,  # Boilers start at 2000
+    "buff": 3000,  # Buffers start at 3000
+    "sol": 4000,  # Solar starts at 4000
+    "hc": 5000,  # Heating circuits start at 5000
 }
 
 # Calculated Sensor Templates
@@ -984,7 +980,6 @@ CALCULATED_SENSOR_TEMPLATES = {
             "{{{{ (thermal / power) | round(2) if power > 0 else 0 }}}}"
         ),
     },
-
     # Statuswechsel-Sensoren (Flankenerkennung) - TOTAL
     # Diese Sensoren werden dynamisch für jede HP (und ggf. andere Geräte) erzeugt
     # und zählen, wie oft in einen bestimmten Modus gewechselt wurde (z.B. CH, DHW, CC, DEFROST)
@@ -1001,7 +996,7 @@ CALCULATED_SENSOR_TEMPLATES = {
         "state_class": "total_increasing",
         "device_class": None,
         "mode_value": 1,  # CH
-        "description": "Zählt, wie oft in den Modus Heizen (CH) gewechselt wurde."
+        "description": "Zählt, wie oft in den Modus Heizen (CH) gewechselt wurde.",
     },
     "hot_water_cycling_total": {
         "name": "Hot Water Cycling Total",
@@ -1014,7 +1009,7 @@ CALCULATED_SENSOR_TEMPLATES = {
         "state_class": "total_increasing",
         "device_class": None,
         "mode_value": 2,  # DHW
-        "description": "Zählt, wie oft in den Modus Warmwasser (DHW) gewechselt wurde."
+        "description": "Zählt, wie oft in den Modus Warmwasser (DHW) gewechselt wurde.",
     },
     "cooling_cycling_total": {
         "name": "Cooling Cycling Total",
@@ -1027,7 +1022,7 @@ CALCULATED_SENSOR_TEMPLATES = {
         "state_class": "total_increasing",
         "device_class": None,
         "mode_value": 3,  # CC
-        "description": "Zählt, wie oft in den Modus Kühlen (CC) gewechselt wurde."
+        "description": "Zählt, wie oft in den Modus Kühlen (CC) gewechselt wurde.",
     },
     "defrost_cycling_total": {
         "name": "Defrost Cycling Total",
@@ -1040,9 +1035,8 @@ CALCULATED_SENSOR_TEMPLATES = {
         "state_class": "total_increasing",
         "device_class": None,
         "mode_value": 5,  # DEFROST
-        "description": "Zählt, wie oft in den Modus Abtauen (DEFROST) gewechselt wurde."
+        "description": "Zählt, wie oft in den Modus Abtauen (DEFROST) gewechselt wurde.",
     },
-
     # Yesterday Cycling Sensoren (echte Entities für Daily-Berechnung)
     "heating_cycling_yesterday": {
         "name": "Heating Cycling Yesterday",
@@ -1054,7 +1048,7 @@ CALCULATED_SENSOR_TEMPLATES = {
         "writeable": False,
         "state_class": "total",
         "device_class": None,
-        "description": "Speichert den Total-Wert von gestern für Daily-Berechnung."
+        "description": "Speichert den Total-Wert von gestern für Daily-Berechnung.",
     },
     "hot_water_cycling_yesterday": {
         "name": "Hot Water Cycling Yesterday",
@@ -1066,7 +1060,7 @@ CALCULATED_SENSOR_TEMPLATES = {
         "writeable": False,
         "state_class": "total",
         "device_class": None,
-        "description": "Speichert den Total-Wert von gestern für Daily-Berechnung."
+        "description": "Speichert den Total-Wert von gestern für Daily-Berechnung.",
     },
     "cooling_cycling_yesterday": {
         "name": "Cooling Cycling Yesterday",
@@ -1078,7 +1072,7 @@ CALCULATED_SENSOR_TEMPLATES = {
         "writeable": False,
         "state_class": "total",
         "device_class": None,
-        "description": "Speichert den Total-Wert von gestern für Daily-Berechnung."
+        "description": "Speichert den Total-Wert von gestern für Daily-Berechnung.",
     },
     "defrost_cycling_yesterday": {
         "name": "Defrost Cycling Yesterday",
@@ -1090,9 +1084,8 @@ CALCULATED_SENSOR_TEMPLATES = {
         "writeable": False,
         "state_class": "total",
         "device_class": None,
-        "description": "Speichert den Total-Wert von gestern für Daily-Berechnung."
+        "description": "Speichert den Total-Wert von gestern für Daily-Berechnung.",
     },
-
     # Daily Cycling Sensoren - Template-basiert
     # Diese Sensoren berechnen die täglichen Cycling-Werte basierend auf den Total-Sensoren
     "heating_cycling_daily": {
@@ -1110,7 +1103,7 @@ CALCULATED_SENSOR_TEMPLATES = {
             "{{% set yesterday = states('sensor.{full_entity_prefix}_heating_cycling_yesterday') | float(0) %}}"
             "{{{{ ((total - yesterday) | round(0)) | int }}}}"
         ),
-        "description": "Tägliche Cycling-Zähler für Heizen, berechnet aus Total minus gestrigem Wert."
+        "description": "Tägliche Cycling-Zähler für Heizen, berechnet aus Total minus gestrigem Wert.",
     },
     "hot_water_cycling_daily": {
         "name": "Hot Water Cycling Daily",
@@ -1127,7 +1120,7 @@ CALCULATED_SENSOR_TEMPLATES = {
             "{{% set yesterday = states('sensor.{full_entity_prefix}_hot_water_cycling_yesterday') | float(0) %}}"
             "{{{{ ((total - yesterday) | round(0)) | int }}}}"
         ),
-        "description": "Tägliche Cycling-Zähler für Warmwasser, berechnet aus Total minus gestrigem Wert."
+        "description": "Tägliche Cycling-Zähler für Warmwasser, berechnet aus Total minus gestrigem Wert.",
     },
     "cooling_cycling_daily": {
         "name": "Cooling Cycling Daily",
@@ -1144,7 +1137,7 @@ CALCULATED_SENSOR_TEMPLATES = {
             "{{% set yesterday = states('sensor.{full_entity_prefix}_cooling_cycling_yesterday') | float(0) %}}"
             "{{{{ ((total - yesterday) | round(0)) | int }}}}"
         ),
-        "description": "Tägliche Cycling-Zähler für Kühlen, berechnet aus Total minus gestrigem Wert."
+        "description": "Tägliche Cycling-Zähler für Kühlen, berechnet aus Total minus gestrigem Wert.",
     },
     "defrost_cycling_daily": {
         "name": "Defrost Cycling Daily",
@@ -1161,9 +1154,8 @@ CALCULATED_SENSOR_TEMPLATES = {
             "{{% set yesterday = states('sensor.{full_entity_prefix}_defrost_cycling_yesterday') | float(0) %}}"
             "{{{{ ((total - yesterday) | round(0)) | int }}}}"
         ),
-        "description": "Tägliche Cycling-Zähler für Abtauen, berechnet aus Total minus gestrigem Wert."
+        "description": "Tägliche Cycling-Zähler für Abtauen, berechnet aus Total minus gestrigem Wert.",
     },
-
     # Weitere Modi können nach Bedarf ergänzt werden (siehe Statusmapping unten)
 }
 

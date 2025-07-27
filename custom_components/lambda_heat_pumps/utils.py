@@ -1,4 +1,5 @@
 """Utility functions for Lambda Heat Pumps integration."""
+
 from __future__ import annotations
 
 import logging
@@ -7,9 +8,7 @@ import yaml
 import aiofiles
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_registry import (
-    async_get as async_get_entity_registry
-)
+from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
 from homeassistant.const import STATE_UNKNOWN
 from homeassistant.helpers.entity_component import async_update_entity
 
@@ -104,7 +103,7 @@ async def migrate_lambda_config(hass: HomeAssistant) -> bool:
                 "heating_cycling_total": 0,
                 "hot_water_cycling_total": 0,
                 "cooling_cycling_total": 0,
-                "defrost_cycling_total": 0
+                "defrost_cycling_total": 0,
             }
         }
 
@@ -127,15 +126,15 @@ async def migrate_lambda_config(hass: HomeAssistant) -> bool:
 
 """
             # Find a good place to insert the documentation
-            lines = content.split('\n')
+            lines = content.split("\n")
             insert_pos = 0
             for i, line in enumerate(lines):
-                if line.strip().startswith('disabled_registers:'):
+                if line.strip().startswith("disabled_registers:"):
                     insert_pos = i
                     break
 
             lines.insert(insert_pos, cycling_docs.rstrip())
-            content = '\n'.join(lines)
+            content = "\n".join(lines)
 
         # Write updated config
         async with aiofiles.open(lambda_config_path, "w") as file:
@@ -144,7 +143,8 @@ async def migrate_lambda_config(hass: HomeAssistant) -> bool:
         _LOGGER.info(
             "Successfully migrated lambda_wp_config.yaml to version 1.1.0 - "
             "Added cycling_offsets section with default values for hp1. "
-            "Backup created at %s.backup", lambda_config_path
+            "Backup created at %s.backup",
+            lambda_config_path,
         )
         return True
 
@@ -164,13 +164,11 @@ async def load_lambda_config(hass: HomeAssistant) -> dict:
     default_config = {
         "disabled_registers": set(),
         "sensors_names_override": {},
-        "cycling_offsets": {}
+        "cycling_offsets": {},
     }
 
     if not os.path.exists(lambda_config_path):
-        _LOGGER.warning(
-            "lambda_wp_config.yaml not found, using default configuration"
-        )
+        _LOGGER.warning("lambda_wp_config.yaml not found, using default configuration")
         return default_config
 
     try:
@@ -188,11 +186,11 @@ async def load_lambda_config(hass: HomeAssistant) -> dict:
             disabled_registers = set()
             if "disabled_registers" in config:
                 try:
-                    disabled_registers = set(int(x) for x in config["disabled_registers"])
-                except (ValueError, TypeError) as e:
-                    _LOGGER.error(
-                        "Invalid disabled_registers format: %s", e
+                    disabled_registers = set(
+                        int(x) for x in config["disabled_registers"]
                     )
+                except (ValueError, TypeError) as e:
+                    _LOGGER.error("Invalid disabled_registers format: %s", e)
                     disabled_registers = set()
 
             # Load sensor overrides
@@ -201,13 +199,11 @@ async def load_lambda_config(hass: HomeAssistant) -> dict:
                 try:
                     for override in config["sensors_names_override"]:
                         if "id" in override and "override_name" in override:
-                            sensors_names_override[override["id"]] = (
-                                override["override_name"]
-                            )
+                            sensors_names_override[override["id"]] = override[
+                                "override_name"
+                            ]
                 except (TypeError, KeyError) as e:
-                    _LOGGER.error(
-                        "Invalid sensors_names_override format: %s", e
-                    )
+                    _LOGGER.error("Invalid sensors_names_override format: %s", e)
                     sensors_names_override = {}
 
             # Load cycling offsets
@@ -219,21 +215,20 @@ async def load_lambda_config(hass: HomeAssistant) -> dict:
                     for device, offsets in cycling_offsets.items():
                         if not isinstance(offsets, dict):
                             _LOGGER.warning(
-                                "Invalid cycling_offsets format for device %s",
-                                device
+                                "Invalid cycling_offsets format for device %s", device
                             )
                             continue
                         for offset_type, value in offsets.items():
                             if not isinstance(value, (int, float)):
                                 _LOGGER.warning(
                                     "Invalid cycling offset value for %s.%s: %s",
-                                    device, offset_type, value
+                                    device,
+                                    offset_type,
+                                    value,
                                 )
                                 cycling_offsets[device][offset_type] = 0
                 except (TypeError, KeyError) as e:
-                    _LOGGER.error(
-                        "Invalid cycling_offsets format: %s", e
-                    )
+                    _LOGGER.error("Invalid cycling_offsets format: %s", e)
                     cycling_offsets = {}
 
             _LOGGER.debug(
@@ -241,13 +236,13 @@ async def load_lambda_config(hass: HomeAssistant) -> dict:
                 "overrides, %d device offsets",
                 len(disabled_registers),
                 len(sensors_names_override),
-                len(cycling_offsets)
+                len(cycling_offsets),
             )
 
             return {
                 "disabled_registers": disabled_registers,
                 "sensors_names_override": sensors_names_override,
-                "cycling_offsets": cycling_offsets
+                "cycling_offsets": cycling_offsets,
             }
 
     except Exception as e:
@@ -332,13 +327,15 @@ def clamp_to_int16(value: float, context: str = "value") -> int:
     if raw_value < -32768:
         _LOGGER.warning(
             "%s value %d is below int16 minimum (-32768), clamping to -32768",
-            context.capitalize(), raw_value
+            context.capitalize(),
+            raw_value,
         )
         return -32768
     elif raw_value > 32767:
         _LOGGER.warning(
             "%s value %d is above int16 maximum (32767), clamping to 32767",
-            context.capitalize(), raw_value
+            context.capitalize(),
+            raw_value,
         )
         return 32767
     else:
@@ -350,7 +347,7 @@ def generate_sensor_names(
     sensor_name: str,
     sensor_id: str,
     name_prefix: str,
-    use_legacy_modbus_names: bool
+    use_legacy_modbus_names: bool,
 ) -> dict:
     """Generate consistent sensor names, entity IDs, and unique IDs.
 
@@ -383,9 +380,7 @@ def generate_sensor_names(
             entity_id = f"sensor.{name_prefix_lc}_{sensor_id}"
             unique_id = f"{name_prefix_lc}_{sensor_id}"
         else:
-            entity_id = (
-                f"sensor.{name_prefix_lc}_{device_prefix}_{sensor_id}"
-            )
+            entity_id = f"sensor.{name_prefix_lc}_{device_prefix}_{sensor_id}"
             unique_id = f"{name_prefix_lc}_{device_prefix}_{sensor_id}"
     else:
         # Für General Sensors (device_prefix == sensor_id) nur sensor_id verwenden
@@ -396,17 +391,11 @@ def generate_sensor_names(
             entity_id = f"sensor.{device_prefix}_{sensor_id}"
             unique_id = f"{device_prefix}_{sensor_id}"
 
-    return {
-        "name": display_name,
-        "entity_id": entity_id,
-        "unique_id": unique_id
-    }
+    return {"name": display_name, "entity_id": entity_id, "unique_id": unique_id}
 
 
 def generate_template_entity_prefix(
-    device_prefix: str,
-    name_prefix: str,
-    use_legacy_modbus_names: bool
+    device_prefix: str, name_prefix: str, use_legacy_modbus_names: bool
 ) -> str:
     """Generate entity prefix for templates based on naming mode.
 
@@ -425,6 +414,7 @@ def generate_template_entity_prefix(
 
 
 # --- Cycling Counter Increment Function ---
+
 
 async def increment_cycling_counter(
     hass: HomeAssistant,
@@ -449,20 +439,30 @@ async def increment_cycling_counter(
 
     sensor_id = f"{mode}_cycling_total"
     device_prefix = f"hp{hp_index}"
-    names = generate_sensor_names(device_prefix, CALCULATED_SENSOR_TEMPLATES[sensor_id]["name"], sensor_id, name_prefix, use_legacy_modbus_names)
+    names = generate_sensor_names(
+        device_prefix,
+        CALCULATED_SENSOR_TEMPLATES[sensor_id]["name"],
+        sensor_id,
+        name_prefix,
+        use_legacy_modbus_names,
+    )
     entity_id = names["entity_id"]
 
     # Check if entity is already registered
     entity_registry = async_get_entity_registry(hass)
     entity_entry = entity_registry.async_get(entity_id)
     if entity_entry is None:
-        _LOGGER.warning(f"Skipping cycling counter increment: {entity_id} not yet registered")
+        _LOGGER.warning(
+            f"Skipping cycling counter increment: {entity_id} not yet registered"
+        )
         return
 
     # Zusätzliche Prüfung: Ist die Entity tatsächlich verfügbar?
     state_obj = hass.states.get(entity_id)
     if state_obj is None:
-        _LOGGER.warning(f"Skipping cycling counter increment: {entity_id} state not available yet")
+        _LOGGER.warning(
+            f"Skipping cycling counter increment: {entity_id} state not available yet"
+        )
         return
 
     # Get current state
@@ -498,12 +498,20 @@ async def increment_cycling_counter(
     final_value = int(new_value + offset)
     if cycling_entity is not None and hasattr(cycling_entity, "set_cycling_value"):
         cycling_entity.set_cycling_value(final_value)
-        _LOGGER.info(f"Cycling counter incremented: {entity_id} = {final_value} (was {current}, offset {offset}) [entity updated]")
+        _LOGGER.info(
+            f"Cycling counter incremented: {entity_id} = {final_value} (was {current}, offset {offset}) [entity updated]"
+        )
     else:
         # Fallback: State setzen wie bisher
-        _LOGGER.warning(f"Cycling entity {entity_id} not found, using fallback state update")
-        hass.states.async_set(entity_id, final_value, state_obj.attributes if state_obj else {})
-        _LOGGER.info(f"Cycling counter incremented: {entity_id} = {final_value} (was {current}, offset {offset}) [state only]")
+        _LOGGER.warning(
+            f"Cycling entity {entity_id} not found, using fallback state update"
+        )
+        hass.states.async_set(
+            entity_id, final_value, state_obj.attributes if state_obj else {}
+        )
+        _LOGGER.info(
+            f"Cycling counter incremented: {entity_id} = {final_value} (was {current}, offset {offset}) [state only]"
+        )
 
     # Optional: Entity zum Update zwingen (z.B. für Recorder)
     try:

@@ -6,8 +6,10 @@ import pytest
 from homeassistant.components.climate import HVACMode
 from homeassistant.const import UnitOfTemperature
 
-from custom_components.lambda_heat_pumps.climate import (LambdaClimateEntity,
-                                                         async_setup_entry)
+from custom_components.lambda_heat_pumps.climate import (
+    LambdaClimateEntity,
+    async_setup_entry,
+)
 from custom_components.lambda_heat_pumps.const import DOMAIN
 
 pytestmark = pytest.mark.asyncio
@@ -57,9 +59,7 @@ def mock_coordinator():
 async def test_climate_setup(hass, mock_config_entry, mock_coordinator):
     """Test climate entity setup."""
     hass.data = {
-        DOMAIN: {
-            mock_config_entry.entry_id: {"coordinator": mock_coordinator}
-        }
+        DOMAIN: {mock_config_entry.entry_id: {"coordinator": mock_coordinator}}
     }
 
     with patch(
@@ -104,8 +104,8 @@ async def test_lambda_climate_entity_properties():
         base_address,
     )
     assert entity is not None
-    assert entity._attr_name == "Hot Water 1"
-    assert entity._attr_unique_id == "lambda_heat_pumps_hot_water_1"
+    assert entity._attr_name == "BOIL1 Hot Water"
+    assert entity._attr_unique_id == "boil1_hot_water"
     assert entity._attr_min_temp == 40
     assert entity._attr_max_temp == 60
     assert entity.current_temperature == 60
@@ -150,7 +150,7 @@ async def test_lambda_climate_entity_set_temperature():
     entity.hass = hass_mock
 
     # Mock async_write_ha_state um Home Assistant Konfiguration zu vermeiden
-    with patch.object(entity, 'async_write_ha_state'):
+    with patch.object(entity, "async_write_ha_state"):
         await entity.async_set_temperature(temperature=60)
 
     # Überprüfe, ob async_add_executor_job mit den korrekten Parametern aufgerufen wurde
@@ -158,6 +158,7 @@ async def test_lambda_climate_entity_set_temperature():
     call_args = hass_mock.async_add_executor_job.call_args[0]
     # Jetzt wird write_registers aus modbus_utils verwendet
     from custom_components.lambda_heat_pumps.modbus_utils import write_registers
+
     assert call_args[0] == write_registers
     # client (coordinator_mock.client)
     assert call_args[1] == coordinator_mock.client
@@ -201,4 +202,3 @@ async def test_lambda_climate_entity_device_info():
     device_info = entity.device_info
     assert device_info is not None
     assert device_info["identifiers"] == {("lambda_heat_pumps", "test_entry")}
-

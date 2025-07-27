@@ -1,9 +1,14 @@
 """Test constants."""
+
 import unittest
 
 from custom_components.lambda_heat_pumps.const import (
-    BOIL_SENSOR_TEMPLATES, CALCULATED_SENSOR_TEMPLATES, DEFAULT_NAME, DOMAIN,
-    HP_SENSOR_TEMPLATES)
+    BOIL_SENSOR_TEMPLATES,
+    CALCULATED_SENSOR_TEMPLATES,
+    DEFAULT_NAME,
+    DOMAIN,
+    HP_SENSOR_TEMPLATES,
+)
 
 
 class TestConst(unittest.TestCase):
@@ -48,19 +53,16 @@ class TestConst(unittest.TestCase):
 
     def test_calculated_sensor_templates_content(self):
         """Test that calculated sensor templates contain expected sensors."""
-        expected_sensors = [
-            'cop_calc'  # Only cop_calc is currently defined
-        ]
-        
+        expected_sensors = ["cop_calc"]  # Only cop_calc is currently defined
+
         for sensor in expected_sensors:
-            assert sensor in CALCULATED_SENSOR_TEMPLATES, f"'{sensor}' not found in CALCULATED_SENSOR_TEMPLATES"
+            assert (
+                sensor in CALCULATED_SENSOR_TEMPLATES
+            ), f"'{sensor}' not found in CALCULATED_SENSOR_TEMPLATES"
 
     def test_sensor_templates_device_class(self):
         """Test that all sensor templates have device_class field."""
-        all_templates = {
-            **HP_SENSOR_TEMPLATES,
-            **BOIL_SENSOR_TEMPLATES
-        }
+        all_templates = {**HP_SENSOR_TEMPLATES, **BOIL_SENSOR_TEMPLATES}
 
         for sensor_id, template_info in all_templates.items():
             self.assertIn("device_class", template_info)
@@ -75,7 +77,7 @@ class TestConst(unittest.TestCase):
             "flow_line_temperature",
             "return_line_temperature",
             "energy_source_inlet_temperature",
-            "energy_source_outlet_temperature"
+            "energy_source_outlet_temperature",
         ]
 
         for sensor_id in temperature_sensors:
@@ -89,7 +91,7 @@ class TestConst(unittest.TestCase):
         power_sensors = [
             "emgr_actual_power",
             "emgr_actual_power_consumption",
-            "emgr_power_consumption_setpoint"
+            "emgr_power_consumption_setpoint",
         ]
 
         for sensor_id in power_sensors:

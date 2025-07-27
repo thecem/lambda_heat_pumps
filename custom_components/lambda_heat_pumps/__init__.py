@@ -1,6 +1,7 @@
 """The Lambda Heat Pumps integration."""
 from __future__ import annotations
 from datetime import timedelta
+
 import logging
 import asyncio
 import os
@@ -11,6 +12,9 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.entity_registry import (
+    async_get as async_get_entity_registry
+)
 
 from .const import (
     DOMAIN,
@@ -53,6 +57,183 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Lambda integration."""
     setup_debug_logging(hass, config)
     return True
+
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Migrate config entry to new version."""
+    _LOGGER.debug("Migrating config entry from version %s", config_entry.version)
+    
+    if config_entry.version < 3:
+        # Migration von Version 1 auf 2: Entity Registry Migration
+        _LOGGER.info("Starting Entity Registry migration from version 1 to 2")
+        
+        # Führe Entity Registry Migration durch
+        migration_success = await migrate_entity_registry(hass, config_entry)
+        
+        if migration_success:
+            # Aktualisiere Config Entry Version
+            new_data = {**config_entry.data}
+            hass.config_entries.async_update_entry(
+                config_entry,
+                data=new_data,
+                version=3
+            )
+            _LOGGER.info("Successfully migrated config entry to version 3")
+            return True
+        else:
+            _LOGGER.error("Entity Registry migration failed")
+            return False
+    
+    return True
+
+
+async def migrate_entity_registry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate Entity Registry entries for unique_id consistency."""
+    entity_registry = async_get_entity_registry(hass)
+    registry_entries = entity_registry.entities.get_entries_for_config_entry_id(entry.entry_id)
+    
+    # Hole Config-Informationen für Migration
+    name_prefix = entry.data.get("name", "").lower().replace(" ", "")
+    
+    migration_count = 0
+    removed_count = 0
+
+    try:
+        # Sammle alle Entity-IDs für Duplikat-Erkennung
+        existing_entities = {}
+        for registry_entry in registry_entries:
+            entity_id = registry_entry.entity_id
+            if entity_id.startswith("sensor.") or entity_id.startswith("climate."):
+                base_name = entity_id.replace("sensor.", "").replace("climate.", "")
+                
+                if base_name not in existing_entities:
+                    existing_entities[base_name] = []
+                existing_entities[base_name].append(registry_entry)
+        
+        # Entferne Duplikate
+        for base_name, entries in existing_entities.items():
+            if len(entries) > 1:
+                for registry_entry in entries:
+                    entity_id = registry_entry.entity_id
+                    if any(suffix in entity_id for suffix in ["_2", "_3", "_4", "_5"]):
+                        _LOGGER.info(
+                            "Removing duplicate entity with numeric suffix: %s",
+                            entity_id
+                        )
+                        entity_registry.async_remove(entity_id)
+                        removed_count += 1
+
+        # Migration für General-Sensoren
+        for registry_entry in registry_entries:
+            entity_id = registry_entry.entity_id
+            if (entity_id.startswith("sensor.") and 
+                not any(suffix in entity_id for suffix in ["_2", "_3", "_4", "_5"])):
+                
+                entity_parts = entity_id.replace("sensor.", "").split("_")
+                
+                # General-Sensor Migration
+                if (len(entity_parts) >= 2 and 
+                    entity_parts[0] == name_prefix and 
+                    registry_entry.unique_id and 
+                    not registry_entry.unique_id.startswith(name_prefix)):
+                    
+                    new_unique_id = f"{name_prefix}_{registry_entry.unique_id}"
+                    _LOGGER.info(
+                        "Migrating general sensor unique_id from '%s' to '%s' for entity: %s",
+                        registry_entry.unique_id,
+                        new_unique_id,
+                        entity_id
+                    )
+                    
+                    entity_registry.async_update_entity(
+                        entity_id,
+                        new_unique_id=new_unique_id
+                    )
+                    migration_count += 1
+
+        # Migration für Climate-Entities
+        for registry_entry in registry_entries:
+            entity_id = registry_entry.entity_id
+            if (entity_id.startswith("climate.") and 
+                not any(suffix in entity_id 
+                       for suffix in ["_2", "_3", "_4", "_5"])):
+                
+                entity_parts = entity_id.replace("climate.", "").split("_")
+
+                # Prüfe, ob es ein neues Format ist
+                # (name_prefix_device_type_idx_climate_type)
+                if (len(entity_parts) >= 4 and 
+                    entity_parts[0] == name_prefix and
+                    entity_parts[1] in ["boil", "hc"] and
+                    entity_parts[3] in ["hot_water", "heating_circuit"]):
+                    
+                    # Neues Format - unique_id aktualisieren falls nötig
+                    if (registry_entry.unique_id and 
+                        registry_entry.unique_id.startswith(
+                            "lambda_heat_pumps_")):
+                        
+                        new_unique_id = "_".join(entity_parts)
+                        _LOGGER.info(
+                            "Migrating climate entity unique_id from '%s' to '%s' for entity: %s",
+                            registry_entry.unique_id,
+                            new_unique_id,
+                            entity_id
+                        )
+                        
+                        entity_registry.async_update_entity(
+                            entity_id,
+                            new_unique_id=new_unique_id
+                        )
+                        migration_count += 1
+
+                else:
+                    # Altes Format - Entity entfernen
+                    _LOGGER.info(
+                        "Removing old climate entity with incompatible format: %s (unique_id: %s)",
+                        entity_id,
+                        registry_entry.unique_id
+                    )
+                    entity_registry.async_remove(entity_id)
+                    removed_count += 1
+
+        # Migration für Cycling-Sensoren
+        for registry_entry in registry_entries:
+            entity_id = registry_entry.entity_id
+            if (entity_id.startswith("sensor.") and 
+                "cycling" in entity_id and 
+                not any(suffix in entity_id for suffix in ["_2", "_3", "_4", "_5"])):
+                
+                entity_parts = entity_id.replace("sensor.", "").split("_")
+                if (len(entity_parts) >= 4 and 
+                    entity_parts[0] == name_prefix and
+                    registry_entry.unique_id and
+                    registry_entry.unique_id != "_".join(entity_parts)):
+                    
+                    new_unique_id = "_".join(entity_parts)
+                    _LOGGER.info(
+                        "Migrating cycling sensor unique_id from '%s' to '%s' for entity: %s",
+                        registry_entry.unique_id,
+                        new_unique_id,
+                        entity_id
+                    )
+                    
+                    entity_registry.async_update_entity(
+                        entity_id,
+                        new_unique_id=new_unique_id
+                    )
+                    migration_count += 1
+
+        if removed_count > 0:
+            _LOGGER.info("Entity Registry migration completed: removed %d duplicate entities", removed_count)
+        
+        if migration_count > 0:
+            _LOGGER.info("Entity Registry migration completed: updated %d unique_ids", migration_count)
+        
+        return True
+
+    except Exception as e:
+        _LOGGER.error("Error during Entity Registry migration: %s", e)
+        return False
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

@@ -1,22 +1,26 @@
 """Test the config flow module."""
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.lambda_heat_pumps.config_flow import (CannotConnect,
-                                                             LambdaConfigFlow,
-                                                             LambdaOptionsFlow,
-                                                             validate_input)
+from custom_components.lambda_heat_pumps.config_flow import (
+    CannotConnect,
+    LambdaConfigFlow,
+    LambdaOptionsFlow,
+    validate_input,
+)
 from custom_components.lambda_heat_pumps.const import (
-    CONF_FIRMWARE_VERSION, CONF_HOST, CONF_NAME, CONF_PORT, CONF_SLAVE_ID,
-    DEFAULT_HEATING_CIRCUIT_MAX_TEMP, DEFAULT_HEATING_CIRCUIT_MIN_TEMP,
-    DEFAULT_HEATING_CIRCUIT_TEMP_STEP, DEFAULT_HOST, DEFAULT_NAME,
-    DEFAULT_NUM_BOIL, DEFAULT_NUM_BUFFER, DEFAULT_NUM_HC, DEFAULT_NUM_HPS,
-    DEFAULT_NUM_SOLAR, DEFAULT_PORT, DEFAULT_SLAVE_ID, DEFAULT_UPDATE_INTERVAL,
-    DEFAULT_WRITE_INTERVAL, DOMAIN)
+    CONF_FIRMWARE_VERSION,
+    CONF_HOST,
+    CONF_NAME,
+    CONF_PORT,
+    CONF_SLAVE_ID,
+    DOMAIN,
+)
 
 
 @pytest.fixture
@@ -29,7 +33,7 @@ def mock_hass():
     hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)
     hass.config_entries.async_entries = AsyncMock(return_value=[])
     hass.data = {}
-    hass.data['entity_registry'] = Mock()
+    hass.data["entity_registry"] = Mock()
     hass.states = Mock()
     hass.states.async_all = AsyncMock(return_value=[])
     hass.bus = Mock()
@@ -89,8 +93,8 @@ class TestLambdaConfigFlow:
     def test_init(self):
         """Test config flow initialization."""
         flow = LambdaConfigFlow()
-        
-        assert flow.VERSION == 1
+
+        assert flow.VERSION == 3
         assert flow._data == {}
 
     @pytest.mark.asyncio
@@ -100,10 +104,10 @@ class TestLambdaConfigFlow:
         flow.hass = Mock()
         flow.hass.config_entries = Mock()
         flow.hass.config_entries.async_entries = AsyncMock(return_value=[])
-        
-        with patch.object(flow, '_async_current_entries', return_value=[]):
+
+        with patch.object(flow, "_async_current_entries", return_value=[]):
             result = await flow.async_step_user()
-            
+
             assert result["type"] == FlowResultType.FORM
             assert result["step_id"] == "user"
 
@@ -112,7 +116,7 @@ class TestLambdaConfigFlow:
         """Test successful user step."""
         flow = LambdaConfigFlow()
         flow.hass = mock_hass
-        
+
         user_input = {
             CONF_NAME: "Test Lambda WP",
             CONF_HOST: "192.168.1.100",
@@ -125,11 +129,14 @@ class TestLambdaConfigFlow:
             "num_buffer": 0,
             "num_solar": 0,
         }
-        
-        with patch.object(flow, '_async_current_entries', return_value=[]):
-            with patch("custom_components.lambda_heat_pumps.config_flow.validate_input", return_value=True):
+
+        with patch.object(flow, "_async_current_entries", return_value=[]):
+            with patch(
+                "custom_components.lambda_heat_pumps.config_flow.validate_input",
+                return_value=True,
+            ):
                 result = await flow.async_step_user(user_input)
-                
+
                 assert result["type"] == FlowResultType.CREATE_ENTRY
                 assert result["data"] == user_input
 
@@ -138,7 +145,7 @@ class TestLambdaConfigFlow:
         """Test user step with validation error."""
         flow = LambdaConfigFlow()
         flow.hass = mock_hass
-        
+
         user_input = {
             CONF_NAME: "Test Lambda WP",
             CONF_HOST: "192.168.1.100",
@@ -149,11 +156,14 @@ class TestLambdaConfigFlow:
             "num_boil": 1,
             "num_hc": 1,
         }
-        
-        with patch.object(flow, '_async_current_entries', return_value=[]):
-            with patch("custom_components.lambda_heat_pumps.config_flow.validate_input", side_effect=CannotConnect("Connection failed")):
+
+        with patch.object(flow, "_async_current_entries", return_value=[]):
+            with patch(
+                "custom_components.lambda_heat_pumps.config_flow.validate_input",
+                side_effect=CannotConnect("Connection failed"),
+            ):
                 result = await flow.async_step_user(user_input)
-                
+
                 assert result["type"] == FlowResultType.FORM
                 assert "errors" in result
                 assert "base" in result["errors"]
@@ -163,15 +173,15 @@ class TestLambdaConfigFlow:
         """Test user step with existing entry."""
         flow = LambdaConfigFlow()
         flow.hass = mock_hass
-        
+
         # Simuliere existierende Einträge
         mock_entry = Mock()
         mock_entry.data = {CONF_HOST: "192.168.1.100", CONF_PORT: 502}
         mock_entry.options = {}
-        
-        with patch.object(flow, '_async_current_entries', return_value=[mock_entry]):
+
+        with patch.object(flow, "_async_current_entries", return_value=[mock_entry]):
             result = await flow.async_step_user()
-            
+
             assert result["type"] == FlowResultType.FORM
 
 
@@ -181,16 +191,16 @@ class TestLambdaOptionsFlow:
     def test_init(self, mock_entry):
         """Test options flow initialization."""
         flow = LambdaOptionsFlow(mock_entry)
-        
+
         assert flow._config_entry == mock_entry
 
     @pytest.mark.asyncio
     async def test_async_step_init_form(self, mock_entry):
         """Test init step shows form."""
         flow = LambdaOptionsFlow(mock_entry)
-        
+
         result = await flow.async_step_init()
-        
+
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "init"
 
@@ -199,7 +209,7 @@ class TestLambdaOptionsFlow:
         """Test successful init step."""
         flow = LambdaOptionsFlow(mock_entry)
         flow.hass = mock_hass
-        
+
         user_input = {
             "update_interval": 60,
             "write_interval": 60,
@@ -212,10 +222,10 @@ class TestLambdaOptionsFlow:
             "pv_power_sensor_entity": "sensor.pv_power",
             "use_legacy_naming": True,
         }
-        
-        with patch.object(flow, '_get_entities', return_value=[]):
+
+        with patch.object(flow, "_get_entities", return_value=[]):
             result = await flow.async_step_init(user_input)
-            
+
             # Should show form for sensor selection
             assert result["type"] == FlowResultType.FORM
 
@@ -224,12 +234,12 @@ class TestLambdaOptionsFlow:
         """Test init step with default values."""
         flow = LambdaOptionsFlow(mock_entry)
         flow.hass = mock_hass
-        
+
         user_input = {}
-        
-        with patch.object(flow, '_get_entities', return_value=[]):
+
+        with patch.object(flow, "_get_entities", return_value=[]):
             result = await flow.async_step_init(user_input)
-            
+
             assert result["type"] == FlowResultType.CREATE_ENTRY
             # Should use defaults from entry.data
             assert result["data"]["update_interval"] == 30
@@ -239,14 +249,14 @@ class TestLambdaOptionsFlow:
         """Test init step with validation error."""
         flow = LambdaOptionsFlow(mock_entry)
         flow.hass = mock_hass
-        
+
         user_input = {
             "update_interval": -1,  # Invalid value
         }
-        
-        with patch.object(flow, '_get_entities', return_value=[]):
+
+        with patch.object(flow, "_get_entities", return_value=[]):
             result = await flow.async_step_init(user_input)
-            
+
             assert result["type"] == FlowResultType.CREATE_ENTRY
 
     @pytest.mark.asyncio
@@ -254,10 +264,10 @@ class TestLambdaOptionsFlow:
         """Test init step with empty input."""
         flow = LambdaOptionsFlow(mock_entry)
         flow.hass = mock_hass
-        
-        with patch.object(flow, '_get_entities', return_value=[]):
+
+        with patch.object(flow, "_get_entities", return_value=[]):
             result = await flow.async_step_init({})
-            
+
             assert result["type"] == FlowResultType.CREATE_ENTRY
 
     @pytest.mark.asyncio
@@ -265,9 +275,9 @@ class TestLambdaOptionsFlow:
         """Test init step cancel."""
         flow = LambdaOptionsFlow(mock_entry)
         flow.hass = mock_hass
-        
+
         result = await flow.async_step_init(user_input=None)
-        
+
         assert result["type"] == FlowResultType.FORM
 
     @pytest.mark.asyncio
@@ -275,10 +285,10 @@ class TestLambdaOptionsFlow:
         """Test thermostat sensor step."""
         flow = LambdaOptionsFlow(mock_entry)
         flow.hass = mock_hass
-        
-        with patch.object(flow, '_get_entities', return_value=[]):
+
+        with patch.object(flow, "_get_entities", return_value=[]):
             result = await flow.async_step_thermostat_sensor()
-            
+
             assert result["type"] == FlowResultType.FORM
 
     @pytest.mark.asyncio
@@ -286,10 +296,10 @@ class TestLambdaOptionsFlow:
         """Test PV sensor step."""
         flow = LambdaOptionsFlow(mock_entry)
         flow.hass = mock_hass
-        
-        with patch.object(flow, '_get_entities', return_value=[]):
+
+        with patch.object(flow, "_get_entities", return_value=[]):
             result = await flow.async_step_pv_sensor()
-            
+
             assert result["type"] == FlowResultType.FORM
 
     @pytest.mark.asyncio
@@ -297,42 +307,49 @@ class TestLambdaOptionsFlow:
         """Test get_entities method."""
         flow = LambdaOptionsFlow(mock_entry)
         flow.hass = mock_hass
-        
+
         # Mock entity registry entries
         mock_entity1 = Mock()
         mock_entity1.entity_id = "sensor.temp1"
         mock_entity1.name = "Temperature 1"
         mock_entity1.config_entry_id = mock_entry.entry_id
-        
+
         mock_entity2 = Mock()
         mock_entity2.entity_id = "sensor.temp2"
         mock_entity2.name = "Temperature 2"
         mock_entity2.config_entry_id = "other_entry_id"  # Different entry ID
-        
+
         # Mock the entity registry
         mock_registry = Mock()
         mock_registry.entities = {
             "sensor.temp1": mock_entity1,
-            "sensor.temp2": mock_entity2
+            "sensor.temp2": mock_entity2,
         }
-        
+
         # Mock the states
         mock_state1 = Mock()
         mock_state1.entity_id = "sensor.temp1"
         mock_state1.attributes = {"device_class": "temperature"}
         mock_state1.name = "Temperature 1"
-        
+
         mock_state2 = Mock()
         mock_state2.entity_id = "sensor.temp2"
         mock_state2.attributes = {"device_class": "temperature"}
         mock_state2.name = "Temperature 2"
-        
+
         mock_hass.states.async_all = AsyncMock(return_value=[mock_state1, mock_state2])
-        mock_hass.states.get = Mock(side_effect=lambda eid: mock_state1 if eid == "sensor.temp1" else mock_state2)
-        
-        with patch('homeassistant.helpers.entity_registry.async_get', return_value=mock_registry):
+        mock_hass.states.get = Mock(
+            side_effect=lambda eid: (
+                mock_state1 if eid == "sensor.temp1" else mock_state2
+            )
+        )
+
+        with patch(
+            "homeassistant.helpers.entity_registry.async_get",
+            return_value=mock_registry,
+        ):
             entities = await flow._get_entities("temperature")
-            
+
             # Should only return sensor.temp2 since sensor.temp1 belongs to our entry
             assert len(entities) == 1
             assert "sensor.temp2" in entities
@@ -345,22 +362,24 @@ async def test_validate_input_success(mock_hass):
         CONF_HOST: "192.168.1.100",
         CONF_PORT: 502,
         CONF_SLAVE_ID: 1,
-        CONF_FIRMWARE_VERSION: "V0.0.3-3K"
+        CONF_FIRMWARE_VERSION: "V0.0.3-3K",
     }
-    
+
     # Mock the ModbusTcpClient
     mock_client = Mock()
     mock_client.connect.return_value = True
     mock_client.close.return_value = None
     mock_client.read_holding_registers.return_value = Mock(isError=lambda: False)
-    
-    with patch('pymodbus.client.ModbusTcpClient', return_value=mock_client):
-        with patch.object(mock_hass, 'async_add_executor_job', new_callable=AsyncMock) as mock_executor:
+
+    with patch("pymodbus.client.ModbusTcpClient", return_value=mock_client):
+        with patch.object(
+            mock_hass, "async_add_executor_job", new_callable=AsyncMock
+        ) as mock_executor:
             # Mock the two async_add_executor_job calls: connect and read_holding_registers
             mock_executor.side_effect = [True, Mock(isError=lambda: False)]
-            
+
             result = await validate_input(mock_hass, user_input)
-            
+
             assert result is None  # validate_input returns None on success
             assert mock_executor.call_count == 2  # connect and read_holding_registers
             mock_client.close.assert_called_once()
@@ -374,10 +393,10 @@ async def test_validate_input_connection_failed(mock_hass):
         CONF_PORT: 502,
         CONF_SLAVE_ID: 1,
     }
-    
+
     mock_client = AsyncMock()
     mock_client.connect.return_value = False
-    
+
     with patch("pymodbus.client.ModbusTcpClient", return_value=mock_client):
         with pytest.raises(CannotConnect):
             await validate_input(mock_hass, user_input)
@@ -391,11 +410,13 @@ async def test_validate_input_read_error(mock_hass):
         CONF_PORT: 502,
         CONF_SLAVE_ID: 1,
     }
-    
+
     mock_client = AsyncMock()
     mock_client.connect.return_value = True
-    mock_client.read_holding_registers = AsyncMock(return_value=Mock(isError=lambda: True))
-    
+    mock_client.read_holding_registers = AsyncMock(
+        return_value=Mock(isError=lambda: True)
+    )
+
     with patch("pymodbus.client.ModbusTcpClient", return_value=mock_client):
         with pytest.raises(CannotConnect):
             await validate_input(mock_hass, user_input)
@@ -408,10 +429,10 @@ async def test_validate_input_exception(mock_hass):
         CONF_HOST: "192.168.1.100",
         CONF_PORT: 502,
         CONF_SLAVE_ID: 1,
-        CONF_FIRMWARE_VERSION: "V0.0.3-3K"
+        CONF_FIRMWARE_VERSION: "V0.0.3-3K",
     }
-    
-    with patch('pymodbus.client.ModbusTcpClient', side_effect=Exception("Test error")):
+
+    with patch("pymodbus.client.ModbusTcpClient", side_effect=Exception("Test error")):
         with pytest.raises(CannotConnect, match="Failed to connect to device"):
             await validate_input(mock_hass, user_input)
 
@@ -419,6 +440,5 @@ async def test_validate_input_exception(mock_hass):
 def test_cannot_connect_error():
     """Test CannotConnect exception."""
     error = CannotConnect("Connection failed")
-    
-    assert str(error) == "Connection failed"
 
+    assert str(error) == "Connection failed"

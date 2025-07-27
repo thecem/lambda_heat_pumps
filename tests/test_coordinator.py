@@ -1,4 +1,5 @@
 """Test the coordinator module."""
+
 import os
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, Mock, mock_open, patch
@@ -9,12 +10,13 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
-from custom_components.lambda_heat_pumps.const import (DEFAULT_UPDATE_INTERVAL,
-                                                       DOMAIN,
-                                                       HP_SENSOR_TEMPLATES,
-                                                       SENSOR_TYPES)
-from custom_components.lambda_heat_pumps.coordinator import \
-    LambdaDataUpdateCoordinator
+from custom_components.lambda_heat_pumps.const import (
+    DEFAULT_UPDATE_INTERVAL,
+    DOMAIN,
+    HP_SENSOR_TEMPLATES,
+    SENSOR_TYPES,
+)
+from custom_components.lambda_heat_pumps.coordinator import LambdaDataUpdateCoordinator
 
 
 @pytest.fixture
@@ -24,6 +26,7 @@ def mock_hass():
     hass.config = MagicMock()
     hass.config.config_dir = "/tmp/test_config"
     return hass
+
 
 @pytest.fixture
 def mock_entry():
@@ -48,19 +51,16 @@ def mock_entry():
         "room_thermostat_control": False,
         "pv_surplus": False,
         "room_temperature_entity_1": "sensor.room_temp",
-        "pv_power_sensor_entity": "sensor.pv_power"
+        "pv_power_sensor_entity": "sensor.pv_power",
     }
-    entry.options = {
-        "update_interval": 30,
-        "write_interval": 30
-    }
+    entry.options = {"update_interval": 30, "write_interval": 30}
     return entry
 
 
 def test_coordinator_init(mock_hass, mock_entry):
     """Test coordinator initialization."""
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
-    
+
     assert coordinator.host == "192.168.1.100"
     assert coordinator.port == 502
     assert coordinator.slave_id == 1
@@ -77,9 +77,9 @@ def test_coordinator_init(mock_hass, mock_entry):
 def test_coordinator_init_with_debug_mode(mock_hass, mock_entry):
     """Test coordinator initialization with debug mode."""
     mock_entry.data["debug_mode"] = True
-    
+
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
-    
+
     assert coordinator.debug_mode is True
     assert coordinator.hass == mock_hass
     assert coordinator.entry == mock_entry
@@ -91,9 +91,9 @@ def test_coordinator_init_with_debug_mode(mock_hass, mock_entry):
 def test_coordinator_init_with_default_update_interval(mock_hass, mock_entry):
     """Test coordinator initialization with default update interval."""
     del mock_entry.data["update_interval"]
-    
+
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
-    
+
     assert coordinator.update_interval == timedelta(seconds=DEFAULT_UPDATE_INTERVAL)
     assert coordinator.hass == mock_hass
     assert coordinator.entry == mock_entry
@@ -105,13 +105,20 @@ def test_coordinator_init_with_default_update_interval(mock_hass, mock_entry):
 async def test_coordinator_async_init_success(mock_hass, mock_entry):
     """Test successful async initialization."""
     mock_hass.async_add_executor_job = AsyncMock()
-    
-    with patch('custom_components.lambda_heat_pumps.coordinator.os.makedirs') as mock_makedirs:
-        with patch('custom_components.lambda_heat_pumps.coordinator.load_disabled_registers', return_value=set()) as mock_load_disabled:
-            with patch.object(LambdaDataUpdateCoordinator, '_load_sensor_overrides', return_value={}) as mock_load_overrides:
+
+    with patch(
+        "custom_components.lambda_heat_pumps.coordinator.os.makedirs"
+    ) as mock_makedirs:
+        with patch(
+            "custom_components.lambda_heat_pumps.coordinator.load_disabled_registers",
+            return_value=set(),
+        ) as mock_load_disabled:
+            with patch.object(
+                LambdaDataUpdateCoordinator, "_load_sensor_overrides", return_value={}
+            ) as mock_load_overrides:
                 coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
                 await coordinator.async_init()
-                
+
                 # Verify that async_add_executor_job was called (which calls makedirs internally)
                 mock_hass.async_add_executor_job.assert_called()
                 mock_load_disabled.assert_called_once_with(mock_hass)
@@ -123,9 +130,14 @@ async def test_coordinator_async_init_success(mock_hass, mock_entry):
 @pytest.mark.asyncio
 async def test_coordinator_async_init_exception(mock_hass, mock_entry):
     """Test async initialization with exception."""
-    mock_hass.async_add_executor_job = AsyncMock(side_effect=OSError("Permission denied"))
-    
-    with patch('custom_components.lambda_heat_pumps.coordinator.os.makedirs', side_effect=OSError("Permission denied")):
+    mock_hass.async_add_executor_job = AsyncMock(
+        side_effect=OSError("Permission denied")
+    )
+
+    with patch(
+        "custom_components.lambda_heat_pumps.coordinator.os.makedirs",
+        side_effect=OSError("Permission denied"),
+    ):
         coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
         with pytest.raises(OSError):
             await coordinator.async_init()
@@ -135,11 +147,13 @@ async def test_coordinator_async_init_exception(mock_hass, mock_entry):
 async def test_ensure_config_dir_success(mock_hass, mock_entry):
     """Test successful config directory creation."""
     mock_hass.async_add_executor_job = AsyncMock()
-    
-    with patch('custom_components.lambda_heat_pumps.coordinator.os.makedirs') as mock_makedirs:
+
+    with patch(
+        "custom_components.lambda_heat_pumps.coordinator.os.makedirs"
+    ) as mock_makedirs:
         coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
         await coordinator._ensure_config_dir()
-        
+
         # Verify that async_add_executor_job was called (which calls makedirs internally)
         mock_hass.async_add_executor_job.assert_called()
 
@@ -147,9 +161,14 @@ async def test_ensure_config_dir_success(mock_hass, mock_entry):
 @pytest.mark.asyncio
 async def test_ensure_config_dir_exception(mock_hass, mock_entry):
     """Test config directory creation with exception."""
-    mock_hass.async_add_executor_job = AsyncMock(side_effect=OSError("Permission denied"))
-    
-    with patch('custom_components.lambda_heat_pumps.coordinator.os.makedirs', side_effect=OSError("Permission denied")):
+    mock_hass.async_add_executor_job = AsyncMock(
+        side_effect=OSError("Permission denied")
+    )
+
+    with patch(
+        "custom_components.lambda_heat_pumps.coordinator.os.makedirs",
+        side_effect=OSError("Permission denied"),
+    ):
         coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
         with pytest.raises(OSError):
             await coordinator._ensure_config_dir()
@@ -159,7 +178,7 @@ async def test_ensure_config_dir_exception(mock_hass, mock_entry):
 async def test_is_register_disabled_not_initialized(mock_hass, mock_entry):
     """Test register disabled check when not initialized."""
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
-    
+
     # Should return False when not initialized
     assert coordinator.is_register_disabled(1000) is False
 
@@ -169,7 +188,7 @@ async def test_is_register_disabled_true(mock_hass, mock_entry):
     """Test register disabled check when register is disabled."""
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
     coordinator.disabled_registers = {1000, 2000}
-    
+
     assert coordinator.is_register_disabled(1000) is True
     assert coordinator.is_register_disabled(2000) is True
     assert coordinator.is_register_disabled(3000) is False
@@ -180,7 +199,7 @@ async def test_is_register_disabled_false(mock_hass, mock_entry):
     """Test register disabled check when register is not disabled."""
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
     coordinator.disabled_registers = {1000, 2000}
-    
+
     assert coordinator.is_register_disabled(3000) is False
     assert coordinator.is_register_disabled(4000) is False
 
@@ -193,13 +212,13 @@ async def test_async_update_data_success(mock_hass, mock_entry):
     mock_result.isError.return_value = False
     mock_result.registers = [100]
     mock_client.read_holding_registers = AsyncMock(return_value=mock_result)
-    
+
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
     coordinator.client = mock_client
     coordinator.disabled_registers = set()
-    
+
     result = await coordinator._async_update_data()
-    
+
     assert result is not None
     mock_client.read_holding_registers.assert_called()
 
@@ -209,9 +228,9 @@ async def test_async_update_data_no_client(mock_hass, mock_entry):
     """Test data update when no client is available."""
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
     coordinator.client = None
-    
+
     result = await coordinator._async_update_data()
-    
+
     assert result is None
 
 
@@ -223,13 +242,13 @@ async def test_async_update_data_disabled_register(mock_hass, mock_entry):
     mock_result.isError.return_value = False
     mock_result.registers = [100]
     mock_client.read_holding_registers = AsyncMock(return_value=mock_result)
-    
+
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
     coordinator.client = mock_client
     coordinator.disabled_registers = {1000}  # Disable register 1000
-    
+
     result = await coordinator._async_update_data()
-    
+
     assert result is not None
     # Should still read other registers
 
@@ -241,13 +260,13 @@ async def test_async_update_data_read_error(mock_hass, mock_entry):
     mock_result = Mock()
     mock_result.isError.return_value = True
     mock_client.read_holding_registers = AsyncMock(return_value=mock_result)
-    
+
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
     coordinator.client = mock_client
     coordinator.disabled_registers = set()
-    
+
     result = await coordinator._async_update_data()
-    
+
     assert result is None
 
 
@@ -259,13 +278,13 @@ async def test_async_update_data_int32_sensor(mock_hass, mock_entry):
     mock_result.isError.return_value = False
     mock_result.registers = [100, 200]  # Two registers for int32
     mock_client.read_holding_registers = AsyncMock(return_value=mock_result)
-    
+
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
     coordinator.client = mock_client
     coordinator.disabled_registers = set()
-    
+
     result = await coordinator._async_update_data()
-    
+
     assert result is not None
     mock_client.read_holding_registers.assert_called()
 
@@ -278,13 +297,13 @@ async def test_async_update_data_int16_sensor(mock_hass, mock_entry):
     mock_result.isError.return_value = False
     mock_result.registers = [100]  # One register for int16
     mock_client.read_holding_registers = AsyncMock(return_value=mock_result)
-    
+
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
     coordinator.client = mock_client
     coordinator.disabled_registers = set()
-    
+
     result = await coordinator._async_update_data()
-    
+
     assert result is not None
     mock_client.read_holding_registers.assert_called()
 
@@ -293,11 +312,11 @@ async def test_async_update_data_int16_sensor(mock_hass, mock_entry):
 async def test_connect_success(mock_hass, mock_entry):
     """Test successful connection."""
     mock_client = AsyncMock()
-    
-    with patch('pymodbus.client.ModbusTcpClient', return_value=mock_client):
+
+    with patch("pymodbus.client.ModbusTcpClient", return_value=mock_client):
         coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
         await coordinator._connect()
-        
+
         assert coordinator.client == mock_client
         mock_client.connect.assert_called_once()
 
@@ -307,11 +326,11 @@ async def test_connect_failure(mock_hass, mock_entry):
     """Test connection failure."""
     mock_client = AsyncMock()
     mock_client.connect.return_value = False
-    
-    with patch('pymodbus.client.ModbusTcpClient', return_value=mock_client):
+
+    with patch("pymodbus.client.ModbusTcpClient", return_value=mock_client):
         coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
         result = await coordinator._connect()
-        
+
         assert result is False
         assert coordinator.client is None
 
@@ -320,37 +339,50 @@ async def test_connect_failure(mock_hass, mock_entry):
 async def test_load_sensor_overrides_success(mock_hass, mock_entry):
     """Test successful sensor overrides loading."""
     config_data = {
-        'sensors_names_override': [
-            {'id': 'test_sensor', 'override_name': 'new_name'}
-        ]
+        "sensors_names_override": [{"id": "test_sensor", "override_name": "new_name"}]
     }
-    
-    with patch('custom_components.lambda_heat_pumps.coordinator.os.path.exists', return_value=True):
-        with patch('custom_components.lambda_heat_pumps.coordinator.aiofiles.open', mock_open(read_data=yaml.dump(config_data))):
+
+    with patch(
+        "custom_components.lambda_heat_pumps.coordinator.os.path.exists",
+        return_value=True,
+    ):
+        with patch(
+            "custom_components.lambda_heat_pumps.coordinator.aiofiles.open",
+            mock_open(read_data=yaml.dump(config_data)),
+        ):
             coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
             result = await coordinator._load_sensor_overrides()
-            
-            assert result == {'test_sensor': 'new_name'}
+
+            assert result == {"test_sensor": "new_name"}
 
 
 @pytest.mark.asyncio
 async def test_load_sensor_overrides_file_not_exists(mock_hass, mock_entry):
     """Test sensor overrides loading when file doesn't exist."""
-    with patch('custom_components.lambda_heat_pumps.coordinator.os.path.exists', return_value=False):
+    with patch(
+        "custom_components.lambda_heat_pumps.coordinator.os.path.exists",
+        return_value=False,
+    ):
         coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
         result = await coordinator._load_sensor_overrides()
-        
+
         assert result == {}
 
 
 @pytest.mark.asyncio
 async def test_load_sensor_overrides_yaml_error(mock_hass, mock_entry):
     """Test sensor overrides loading with YAML error."""
-    with patch('custom_components.lambda_heat_pumps.coordinator.os.path.exists', return_value=True):
-        with patch('custom_components.lambda_heat_pumps.coordinator.aiofiles.open', mock_open(read_data="invalid yaml")):
+    with patch(
+        "custom_components.lambda_heat_pumps.coordinator.os.path.exists",
+        return_value=True,
+    ):
+        with patch(
+            "custom_components.lambda_heat_pumps.coordinator.aiofiles.open",
+            mock_open(read_data="invalid yaml"),
+        ):
             coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
             result = await coordinator._load_sensor_overrides()
-            
+
             assert result == {}
 
 
@@ -359,25 +391,25 @@ async def test_on_ha_started(mock_hass, mock_entry):
     """Test on_ha_started method."""
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
     mock_event = Mock()
-    
-    with patch.object(coordinator, '_connect', return_value=True) as mock_connect:
+
+    with patch.object(coordinator, "_connect", return_value=True) as mock_connect:
         await coordinator._on_ha_started(mock_event)
-        
+
         mock_connect.assert_called_once()
 
 
 def test_coordinator_update_interval_from_options(mock_hass, mock_entry):
     """Test coordinator uses update interval from options."""
     mock_entry.options = {"update_interval": 60}
-    
+
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
-    
+
     assert coordinator.update_interval == timedelta(seconds=60)
 
 
 def test_coordinator_config_paths(mock_hass, mock_entry):
     """Test coordinator config paths."""
     coordinator = LambdaDataUpdateCoordinator(mock_hass, mock_entry)
-    
+
     assert coordinator._config_dir == "/tmp/test_config"
     assert coordinator._config_path == "/tmp/test_config/lambda_wp_config.yaml"

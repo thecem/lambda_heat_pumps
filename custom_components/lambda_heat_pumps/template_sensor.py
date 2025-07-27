@@ -1,4 +1,5 @@
 """Template sensor platform for Lambda WP integration."""
+
 from __future__ import annotations
 
 import logging
@@ -80,23 +81,25 @@ async def async_setup_entry(
             device_prefix = f"{device_type}{idx}"
             # Nur Template-Sensoren mit "template"-Feld erzeugen (ausschließlich Daily-Sensoren)
             for sensor_id, sensor_info in CALCULATED_SENSOR_TEMPLATES.items():
-                if (sensor_info.get("device_type") == device_type
+                if (
+                    sensor_info.get("device_type") == device_type
                     and "template" in sensor_info
                     and not sensor_id.endswith("_cycling_total")
-                        and not sensor_id.endswith("_cycling_yesterday")):
+                    and not sensor_id.endswith("_cycling_yesterday")
+                ):
                     # Generate consistent names using centralized function
                     naming = generate_sensor_names(
                         device_prefix=device_prefix,
-                        sensor_name=sensor_info['name'],
+                        sensor_name=sensor_info["name"],
                         sensor_id=sensor_id,
                         name_prefix=name_prefix,
-                        use_legacy_modbus_names=use_legacy_modbus_names
+                        use_legacy_modbus_names=use_legacy_modbus_names,
                     )
                     # Generate entity prefix for template
                     full_entity_prefix = generate_template_entity_prefix(
                         device_prefix=device_prefix,
                         name_prefix=name_prefix,
-                        use_legacy_modbus_names=use_legacy_modbus_names
+                        use_legacy_modbus_names=use_legacy_modbus_names,
                     )
                     # Offset bestimmen
                     cycling_offset = 0
@@ -106,12 +109,12 @@ async def async_setup_entry(
                     # Template immer mit cycling_offset formatieren
                     template_str = sensor_info["template"].format(
                         full_entity_prefix=full_entity_prefix,
-                        cycling_offset=cycling_offset
+                        cycling_offset=cycling_offset,
                     )
                     _LOGGER.debug(
                         "Creating template sensor %s with template: %s",
                         naming["entity_id"],
-                        template_str
+                        template_str,
                     )
                     template_sensors.append(
                         LambdaTemplateSensor(
@@ -234,11 +237,15 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
                 "Template sensor %s rendered state: %s (template: %s)",
                 self._sensor_id,
                 self._state,
-                self._template_str
+                self._template_str,
             )
 
             # Handle unavailable or None states
-            if self._state is None or self._state == "unavailable" or self._state == "unknown":
+            if (
+                self._state is None
+                or self._state == "unavailable"
+                or self._state == "unknown"
+            ):
                 self._state = None
                 self.async_write_ha_state()
                 return
@@ -269,14 +276,18 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
 
         except TemplateError as err:
             _LOGGER.warning(
-                "Template error for sensor %s: %s (template: %s)", 
-                self._sensor_id, err, self._template_str
+                "Template error for sensor %s: %s (template: %s)",
+                self._sensor_id,
+                err,
+                self._template_str,
             )
             self._state = None
         except Exception as err:
             _LOGGER.error(
-                "Unexpected error in template sensor %s: %s (template: %s)", 
-                self._sensor_id, err, self._template_str
+                "Unexpected error in template sensor %s: %s (template: %s)",
+                self._sensor_id,
+                err,
+                self._template_str,
             )
             self._state = None
 
