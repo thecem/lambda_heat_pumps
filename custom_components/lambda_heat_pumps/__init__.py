@@ -63,9 +63,21 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
     """Migrate config entry to new version."""
     _LOGGER.debug("Migrating config entry from version %s", config_entry.version)
     
+    # Prüfe, ob Migration bereits läuft
+    migration_key = f"{DOMAIN}_migration_{config_entry.entry_id}"
+    if migration_key in hass.data:
+        _LOGGER.warning("Migration already in progress for entry %s", config_entry.entry_id)
+        return True
+    
     if config_entry.version < 3:
         # Migration von Version 1 auf 2: Entity Registry Migration
-        _LOGGER.info("Starting Entity Registry migration from version 1 to 2")
+        _LOGGER.info(
+            "Starting Entity Registry migration from version %s to 3",
+            config_entry.version
+        )
+        
+        # Setze Migration-Flag
+        hass.data[migration_key] = True
         
         # Führe Entity Registry Migration durch
         migration_success = await migrate_entity_registry(hass, config_entry)
@@ -79,9 +91,15 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
                 version=3
             )
             _LOGGER.info("Successfully migrated config entry to version 3")
+            # Entferne Migration-Flag
+            if migration_key in hass.data:
+                del hass.data[migration_key]
             return True
         else:
             _LOGGER.error("Entity Registry migration failed")
+            # Entferne Migration-Flag auch bei Fehler
+            if migration_key in hass.data:
+                del hass.data[migration_key]
             return False
     
     return True
@@ -89,6 +107,26 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
 
 async def migrate_entity_registry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate Entity Registry entries for unique_id consistency."""
+    try:
+        # Timeout-Schutz für Migration
+        import asyncio
+        migration_task = asyncio.create_task(_perform_migration(hass, entry))
+        
+        # Timeout nach 30 Sekunden
+        try:
+            await asyncio.wait_for(migration_task, timeout=30.0)
+            return True
+        except asyncio.TimeoutError:
+            _LOGGER.error("Entity Registry migration timed out after 30 seconds")
+            return False
+            
+    except Exception as e:
+        _LOGGER.error("Error during Entity Registry migration: %s", e)
+        return False
+
+
+async def _perform_migration(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Perform the actual migration with timeout protection."""
     entity_registry = async_get_entity_registry(hass)
     registry_entries = entity_registry.entities.get_entries_for_config_entry_id(entry.entry_id)
     
