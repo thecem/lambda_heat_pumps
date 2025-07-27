@@ -8,6 +8,7 @@
 - **Switch to asynchronous Modbus clients** - Complete migration from synchronous to asynchronous Modbus communication for better compatibility with other integrations
 - **Runtime API compatibility** - Automatic detection and adaptation to different pymodbus versions (1.x, 2.x, 3.x)
 - **Performance improvements** - Non-blocking Modbus operations for better system performance
+- **Entity Registry Migration** - Automatic migration of general and climate sensors to prevent duplicate entities with consistent unique_id format
 
 ### Added
 - Asynchronous Modbus wrapper functions in `modbus_utils.py`
@@ -24,6 +25,8 @@
 - RuntimeWarning: "coroutine was never awaited" in automation setup
 - Callback function implementation corrected
 - Code quality improvements and linting issues resolved
+- Duplicate sensor entities with "_2" suffix after updates
+- Inconsistent unique_id format for general and climate sensors
 
 ## [1.0.9] - 2024-12-19
 
@@ -62,6 +65,7 @@
 - **Umstellung auf asynchrone Modbus-Clients** - Vollständige Migration von synchroner zu asynchroner Modbus-Kommunikation für bessere Kompatibilität mit anderen Integrationen
 - **Runtime API-Kompatibilität** - Automatische Erkennung und Anpassung an verschiedene pymodbus Versionen (1.x, 2.x, 3.x)
 - **Performance-Verbesserungen** - Nicht-blockierende Modbus-Operationen für bessere Systemleistung
+- **Entity Registry Migration** - Automatische Migration von General- und Climate-Sensoren zur Vermeidung doppelter Entities mit konsistentem unique_id Format
 
 ### Added
 - Asynchrone Modbus-Wrapper-Funktionen in `modbus_utils.py`
@@ -78,6 +82,8 @@
 - RuntimeWarning: "coroutine was never awaited" in Automation-Setup
 - Callback-Funktionsimplementierung korrigiert
 - Code-Qualitätsverbesserungen und Linting-Probleme behoben
+- Doppelte Sensor-Entities mit "_2" Suffix nach Updates
+- Inkonsistentes unique_id Format für General- und Climate-Sensoren
 
 ## [1.0.9] - 2024-12-19
 
