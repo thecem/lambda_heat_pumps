@@ -29,7 +29,13 @@ from .const import (
     CALCULATED_SENSOR_TEMPLATES,
 )
 from .coordinator import LambdaDataUpdateCoordinator
-from .utils import build_device_info, generate_base_addresses, generate_sensor_names
+from .utils import (
+    build_device_info,
+    generate_base_addresses,
+    generate_sensor_names,
+    get_firmware_version_int,
+    get_compatible_sensors,
+)
 from .const_mapping import HP_ERROR_STATE  # noqa: F401
 from .const_mapping import HP_STATE  # noqa: F401
 from .const_mapping import HP_RELAIS_STATE_2ND_HEATING_STAGE  # noqa: F401
@@ -77,15 +83,22 @@ async def async_setup_entry(
     use_legacy_modbus_names = entry.data.get("use_legacy_modbus_names", False)
     name_prefix = entry.data.get("name", "").lower().replace(" ", "")
 
+    # Get firmware version and filter compatible sensors
+    fw_version = get_firmware_version_int(entry)
+    _LOGGER.debug(
+        "Filtering sensors for firmware version (numeric: %d)",
+        fw_version,
+    )
+
     # Create sensors for each device type using a generic loop
     sensors = []
 
     TEMPLATES = [
-        ("hp", num_hps, HP_SENSOR_TEMPLATES),
-        ("boil", num_boil, BOIL_SENSOR_TEMPLATES),
-        ("buff", num_buff, BUFF_SENSOR_TEMPLATES),
-        ("sol", num_sol, SOL_SENSOR_TEMPLATES),
-        ("hc", num_hc, HC_SENSOR_TEMPLATES),
+        ("hp", num_hps, get_compatible_sensors(HP_SENSOR_TEMPLATES, fw_version)),
+        ("boil", num_boil, get_compatible_sensors(BOIL_SENSOR_TEMPLATES, fw_version)),
+        ("buff", num_buff, get_compatible_sensors(BUFF_SENSOR_TEMPLATES, fw_version)),
+        ("sol", num_sol, get_compatible_sensors(SOL_SENSOR_TEMPLATES, fw_version)),
+        ("hc", num_hc, get_compatible_sensors(HC_SENSOR_TEMPLATES, fw_version)),
     ]
 
     for prefix, count, template in TEMPLATES:
@@ -975,7 +988,7 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self):
         """Return device info."""
-        return build_device_info(self._entry)
+        return build_device_info(self._entry, self._device_type, self._sensor_id)
 
     @callback
     def handle_coordinator_update(self) -> None:
@@ -1020,6 +1033,10 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
             )
             self._state = None
         self.async_write_ha_state()
+
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator (for testing)."""
+        self.handle_coordinator_update()
 
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""

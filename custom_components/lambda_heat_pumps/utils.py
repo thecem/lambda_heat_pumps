@@ -31,8 +31,55 @@ def get_compatible_sensors(sensor_templates: dict, fw_version: int) -> dict:
     return {
         k: v
         for k, v in sensor_templates.items()
-        if v.get("firmware_version", 1) <= fw_version
+        if (
+            isinstance(v.get("firmware_version"), (int, float)) 
+            and v.get("firmware_version", 1) <= fw_version
+        )
+        or not isinstance(v.get("firmware_version"), (int, float))  # Include sensors without firmware_version
     }
+
+
+def get_firmware_version(entry):
+    """
+    Get firmware version from entry with fallback logic.
+    First tries entry.options, then falls back to entry.data for backward compatibility.
+    Returns the firmware name as string (e.g., "V0.0.3-3K").
+    """
+    from .const import DEFAULT_FIRMWARE
+    
+    # First try to get from options (new way)
+    fw_version = entry.options.get("firmware_version")
+    if fw_version:
+        return fw_version
+    
+    # Fallback to data (old way, for backward compatibility)
+    fw_version = entry.data.get("firmware_version")
+    if fw_version:
+        return fw_version
+    
+    # Default fallback
+    return DEFAULT_FIRMWARE
+
+
+def get_firmware_version_int(entry):
+    """
+    Get firmware version as integer from entry with fallback logic.
+    Returns the integer version for compatibility checking (e.g., 1, 2, 3).
+    """
+    from .const import DEFAULT_FIRMWARE, FIRMWARE_VERSION
+    
+    # First try to get from options (new way)
+    fw_version = entry.options.get("firmware_version")
+    if fw_version:
+        return FIRMWARE_VERSION.get(fw_version, 1)
+    
+    # Fallback to data (old way, for backward compatibility)
+    fw_version = entry.data.get("firmware_version")
+    if fw_version:
+        return FIRMWARE_VERSION.get(fw_version, 1)
+    
+    # Default fallback
+    return FIRMWARE_VERSION.get(DEFAULT_FIRMWARE, 1)
 
 
 def build_device_info(entry):
@@ -41,7 +88,7 @@ def build_device_info(entry):
     """
     DOMAIN = entry.domain if hasattr(entry, "domain") else "lambda_heat_pumps"
     entry_id = entry.entry_id
-    fw_version = entry.data.get("firmware_version", "unknown")
+    fw_version = get_firmware_version(entry)
     host = entry.data.get("host")
     return {
         "identifiers": {(DOMAIN, entry_id)},

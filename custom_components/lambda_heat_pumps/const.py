@@ -48,11 +48,11 @@ LOG_LEVELS = {"error": "ERROR", "warning": "WARNING", "info": "INFO", "debug": "
 
 # Firmware Versions
 FIRMWARE_VERSION = {
-    "V0.0.3-3K": "1",
-    "V0.0.4-3K": "2",
-    "V0.0.5-3K": "3",
-    "V0.0.6-3K": "4",
-    "V0.0.7-3K": "5",
+    "V0.0.3-3K": 1,
+    "V0.0.4-3K": 2,
+    "V0.0.5-3K": 3,
+    "V0.0.6-3K": 4,
+    "V0.0.7-3K": 5,
 }
 
 # State Mappings

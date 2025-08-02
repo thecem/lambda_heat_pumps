@@ -26,6 +26,8 @@ from .utils import (
     generate_sensor_names,
     generate_template_entity_prefix,
     load_lambda_config,
+    get_firmware_version_int,
+    get_compatible_sensors,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,6 +65,16 @@ async def async_setup_entry(
     lambda_config = await load_lambda_config(hass)
     cycling_offsets = lambda_config.get("cycling_offsets", {})
 
+    # Get firmware version and filter compatible sensors
+    fw_version = get_firmware_version_int(entry)
+    _LOGGER.debug(
+        "Filtering template sensors for firmware version (numeric: %d)",
+        fw_version,
+    )
+
+    # Filter compatible template sensors
+    compatible_templates = get_compatible_sensors(CALCULATED_SENSOR_TEMPLATES, fw_version)
+
     # Create template sensors for each device type
     template_sensors = []
 
@@ -80,7 +92,7 @@ async def async_setup_entry(
         for idx in range(1, count + 1):
             device_prefix = f"{device_type}{idx}"
             # Nur Template-Sensoren mit "template"-Feld erzeugen (ausschließlich Daily-Sensoren)
-            for sensor_id, sensor_info in CALCULATED_SENSOR_TEMPLATES.items():
+            for sensor_id, sensor_info in compatible_templates.items():
                 if (
                     sensor_info.get("device_type") == device_type
                     and "template" in sensor_info

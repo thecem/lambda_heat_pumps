@@ -21,7 +21,13 @@ from .const import (
     DEFAULT_HEATING_CIRCUIT_MIN_TEMP,
     DEFAULT_HEATING_CIRCUIT_MAX_TEMP,
 )
-from .utils import generate_base_addresses, build_device_info, generate_sensor_names
+from .utils import (
+    generate_base_addresses,
+    build_device_info,
+    generate_sensor_names,
+    get_firmware_version_int,
+    get_compatible_sensors,
+)
 from .modbus_utils import async_write_registers
 
 _LOGGER = logging.getLogger(__name__)
@@ -157,24 +163,40 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     num_boil = entry.data.get("num_boil", 1)
     num_hc = entry.data.get("num_hc", 1)
+    
+    # Get firmware version and filter compatible climate templates
+    fw_version = get_firmware_version_int(entry)
+    _LOGGER.debug(
+        "Filtering climate entities for firmware version (numeric: %d)",
+        fw_version,
+    )
+    
+    # Filter compatible climate templates
+    compatible_climates = get_compatible_sensors(CLIMATE_TEMPLATES, fw_version)
+    
     entities = []
 
     # Boiler
     boil_addresses = generate_base_addresses("boil", num_boil)
     for idx in range(1, num_boil + 1):
-        entities.append(
-            LambdaClimateEntity(
-                coordinator,
-                entry,
-                "hot_water",  # climate_type aus CLIMATE_TEMPLATES
-                idx,
-                boil_addresses[idx],
+        # Check if hot_water climate is compatible
+        if "hot_water" in compatible_climates:
+            entities.append(
+                LambdaClimateEntity(
+                    coordinator,
+                    entry,
+                    "hot_water",  # climate_type aus CLIMATE_TEMPLATES
+                    idx,
+                    boil_addresses[idx],
+                )
             )
-        )
 
     # Heating Circuits
     hc_addresses = generate_base_addresses("hc", num_hc)
     for idx in range(1, num_hc + 1):
+        # Check if heating_circuit climate is compatible
+        if "heating_circuit" not in compatible_climates:
+            continue
         entity_key = f"room_temperature_entity_{idx}"
         if not entry.options.get(entity_key):
             _LOGGER.debug(

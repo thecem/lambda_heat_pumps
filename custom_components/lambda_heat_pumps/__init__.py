@@ -69,10 +69,10 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         _LOGGER.warning("Migration already in progress for entry %s", config_entry.entry_id)
         return True
     
-    if config_entry.version < 3:
+    if config_entry.version < 2:
         # Migration von Version 1 auf 2: Entity Registry Migration
         _LOGGER.info(
-            "Starting Entity Registry migration from version %s to 3",
+            "Starting Entity Registry migration from version %s to 2",
             config_entry.version
         )
         
@@ -88,9 +88,9 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
             hass.config_entries.async_update_entry(
                 config_entry,
                 data=new_data,
-                version=3
+                version=2
             )
-            _LOGGER.info("Successfully migrated config entry to version 3")
+            _LOGGER.info("Successfully migrated config entry to version 2")
             # Entferne Migration-Flag
             if migration_key in hass.data:
                 del hass.data[migration_key]
@@ -276,6 +276,11 @@ async def _perform_migration(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Lambda Heat Pumps from a config entry."""
+    # Check if already set up
+    if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+        _LOGGER.debug("Entry %s already loaded, skipping setup", entry.entry_id)
+        return True
+
     _LOGGER.debug("Setting up Lambda integration with config: %s", entry.data)
 
     # Prüfe, ob lambda_wp_config.yaml existiert, sonst anlegen
@@ -297,6 +302,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "HCs: %d",
         num_hps, num_boil, num_buff, num_sol, num_hc
     )
+    
+
+    
     # Log generated base addresses direkt ohne Variablen
     _LOGGER.debug(
         "Generated base addresses - HP: %s, Boil: %s, Buff: %s, Sol: %s, "
@@ -311,19 +319,48 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = LambdaDataUpdateCoordinator(hass, entry)
     try:
         await coordinator.async_init()
-        # Warte auf die erste Datenabfrage
-        await coordinator.async_refresh()
+        # Warte auf die erste Datenabfrage mit Retry-Logik
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                await coordinator.async_refresh()
+                if coordinator.data:
+                    break
+                else:
+                    _LOGGER.warning(
+                        "Attempt %d/%d: No data received from Lambda device",
+                        attempt + 1, max_retries
+                    )
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(1)
+            except Exception as ex:
+                _LOGGER.warning(
+                    "Attempt %d/%d: Error refreshing coordinator: %s",
+                    attempt + 1, max_retries, ex
+                )
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(1)
+        
         if not coordinator.data:
-            _LOGGER.error("Failed to fetch initial data from Lambda device")
+            _LOGGER.error("Failed to fetch initial data from Lambda device after %d attempts", max_retries)
             return False
 
-        # Store coordinator in hass.data
+        # Store coordinator in hass.data (always overwrite to ensure fresh coordinator)
         if DOMAIN not in hass.data:
             hass.data[DOMAIN] = {}
         hass.data[DOMAIN][entry.entry_id] = {"coordinator": coordinator}
 
-        # Set up platforms
-        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        # Set up platforms with error handling
+        try:
+            await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+        except Exception as platform_ex:
+            _LOGGER.error("Error setting up platforms: %s", platform_ex, exc_info=True)
+            # Clean up partially setup platforms
+            try:
+                await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+            except Exception as unload_ex:
+                _LOGGER.error("Error cleaning up platforms: %s", unload_ex, exc_info=True)
+            return False
 
         # Set up services only for the first entry
         if len(hass.data[DOMAIN]) == 1:
@@ -339,37 +376,85 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return True
 
     except Exception as ex:
-        _LOGGER.error("Failed to setup Lambda integration: %s", ex)
+        _LOGGER.error("Failed to setup Lambda integration: %s", ex, exc_info=True)
+        
+        # Clean up any partial setup
+        try:
+            if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+                if "coordinator" in hass.data[DOMAIN][entry.entry_id]:
+                    await hass.data[DOMAIN][entry.entry_id]["coordinator"].async_shutdown()
+                hass.data[DOMAIN].pop(entry.entry_id, None)
+        except Exception as cleanup_ex:
+            _LOGGER.error("Error during cleanup after failed setup: %s", cleanup_ex, exc_info=True)
+        
         return False
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     _LOGGER.debug("Unloading Lambda integration for entry: %s", entry.entry_id)
+    
+    unload_ok = True
+    
+    try:
+        # Clean up cycling automations first
+        cleanup_cycling_automations(hass, entry.entry_id)
+        
+        # Unload platforms - handle case where platforms might not be loaded
+        platforms_unloaded = True
+        try:
+            # Check if platforms are actually loaded before trying to unload
+            loaded_platforms = []
+            for p in PLATFORMS:
+                for e in hass.data.get("entity_registry", {}).entities.values():
+                    if (e.config_entry_id == entry.entry_id and 
+                        e.entity_id.startswith(f"{p}.")):
+                        loaded_platforms.append(p)
+                        break
+            
+            if loaded_platforms:
+                platforms_unloaded = await hass.config_entries.async_unload_platforms(entry, loaded_platforms)
+            else:
+                _LOGGER.debug("No platforms found to unload for entry %s", entry.entry_id)
+                platforms_unloaded = True
+                
+        except Exception as platform_ex:
+            _LOGGER.error("Error unloading platforms: %s", platform_ex, exc_info=True)
+            platforms_unloaded = False
+        
+        unload_ok = unload_ok and platforms_unloaded
 
-    # Clean up cycling automations
-    cleanup_cycling_automations(hass, entry.entry_id)
-
-    # Unload platforms
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-
-    if unload_ok:
-        # Remove coordinator from hass.data
+        # Remove coordinator
         if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
-            coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-            await coordinator.async_shutdown()
-            del hass.data[DOMAIN][entry.entry_id]
+            try:
+                coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+                await coordinator.async_shutdown()
+            except Exception as coord_ex:
+                _LOGGER.error("Error during coordinator shutdown: %s", coord_ex, exc_info=True)
+                unload_ok = False
+            finally:
+                hass.data[DOMAIN].pop(entry.entry_id, None)
 
         # If this was the last entry, unload services
         if DOMAIN in hass.data and not hass.data[DOMAIN]:
-            await async_unload_services(hass)
-            del hass.data[DOMAIN]
+            try:
+                await async_unload_services(hass)
+            except Exception as service_ex:
+                _LOGGER.error("Error unloading services: %s", service_ex, exc_info=True)
+                unload_ok = False
+            finally:
+                hass.data.pop(DOMAIN, None)
 
-        _LOGGER.info("Lambda Heat Pumps integration unloaded successfully")
-    else:
-        _LOGGER.error("Failed to unload Lambda Heat Pumps integration")
-
-    return unload_ok
+        if not unload_ok:
+            _LOGGER.error("Failed to fully unload Lambda Heat Pumps integration")
+        else:
+            _LOGGER.info("Lambda Heat Pumps integration unloaded successfully")
+            
+        return unload_ok
+        
+    except Exception as ex:
+        _LOGGER.error("Unexpected error during unload: %s", ex, exc_info=True)
+        return False
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -377,10 +462,38 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     _LOGGER.debug("Reloading Lambda integration for entry: %s", entry.entry_id)
 
     async with _reload_lock:
-        # Unload current entry
-        await async_unload_entry(hass, entry)
+        try:
+            # First check if entry is still valid
+            if entry.entry_id not in hass.config_entries.async_entry_ids():
+                _LOGGER.error("Entry not found in config entries, cannot reload")
+                return
 
-        # Reload entry
-        await hass.config_entries.async_reload(entry.entry_id)
+            # Unload current entry
+            if not await async_unload_entry(hass, entry):
+                _LOGGER.error("Failed to unload entry during reload")
+                # Try to continue anyway to avoid getting stuck
 
-        _LOGGER.info("Lambda Heat Pumps integration reloaded successfully")
+            # Ensure all platforms are properly unloaded
+            await asyncio.sleep(1)
+
+            # Double check entry still exists
+            if entry.entry_id not in hass.config_entries.async_entry_ids():
+                _LOGGER.error("Entry disappeared during reload")
+                return
+
+            # Reload entry using fresh setup
+            try:
+                await async_setup_entry(hass, entry)
+                _LOGGER.info("Lambda Heat Pumps integration reloaded successfully")
+            except Exception as setup_ex:
+                _LOGGER.error("Failed to setup after reload: %s", setup_ex, exc_info=True)
+                # Try standard reload as last resort
+                try:
+                    await hass.config_entries.async_reload(entry.entry_id)
+                except Exception as std_reload_ex:
+                    _LOGGER.error("Standard reload also failed: %s", std_reload_ex, exc_info=True)
+                    raise
+                
+        except Exception as ex:
+            _LOGGER.error("Critical error during reload: %s", ex, exc_info=True)
+            raise

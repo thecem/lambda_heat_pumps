@@ -29,6 +29,8 @@ from .utils import (
     to_signed_16bit,
     to_signed_32bit,
     increment_cycling_counter,
+    get_firmware_version_int,
+    get_compatible_sensors,
 )
 from .modbus_utils import async_read_holding_registers
 import time
@@ -207,6 +209,16 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             if not self.client:
                 await self._connect()
 
+            # Get firmware version for sensor filtering
+            fw_version = get_firmware_version_int(self.entry)
+            
+            # Filter compatible sensors based on firmware version
+            compatible_hp_sensors = get_compatible_sensors(HP_SENSOR_TEMPLATES, fw_version)
+            compatible_boil_sensors = get_compatible_sensors(BOIL_SENSOR_TEMPLATES, fw_version)
+            compatible_buff_sensors = get_compatible_sensors(BUFF_SENSOR_TEMPLATES, fw_version)
+            compatible_sol_sensors = get_compatible_sensors(SOL_SENSOR_TEMPLATES, fw_version)
+            compatible_hc_sensors = get_compatible_sensors(HC_SENSOR_TEMPLATES, fw_version)
+
             data = {}
             interval = DEFAULT_UPDATE_INTERVAL / 3600.0  # Intervall in Stunden
             num_hps = self.entry.data.get("num_hps", 1)
@@ -264,7 +276,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             num_hps = self.entry.data.get("num_hps", 1)
             for hp_idx in range(1, num_hps + 1):
                 base_address = generate_base_addresses("hp", num_hps)[hp_idx]
-                for sensor_id, sensor_info in HP_SENSOR_TEMPLATES.items():
+                for sensor_id, sensor_info in compatible_hp_sensors.items():
                     if self.is_register_disabled(
                         base_address + sensor_info["relative_address"]
                     ):
@@ -420,7 +432,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             num_boil = self.entry.data.get("num_boil", 1)
             for boil_idx in range(1, num_boil + 1):
                 base_address = generate_base_addresses("boil", num_boil)[boil_idx]
-                for sensor_id, sensor_info in BOIL_SENSOR_TEMPLATES.items():
+                for sensor_id, sensor_info in compatible_boil_sensors.items():
                     if self.is_register_disabled(
                         base_address + sensor_info["relative_address"]
                     ):
@@ -474,7 +486,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             num_buff = self.entry.data.get("num_buff", 0)
             for buff_idx in range(1, num_buff + 1):
                 base_address = generate_base_addresses("buff", num_buff)[buff_idx]
-                for sensor_id, sensor_info in BUFF_SENSOR_TEMPLATES.items():
+                for sensor_id, sensor_info in compatible_buff_sensors.items():
                     if self.is_register_disabled(
                         base_address + sensor_info["relative_address"]
                     ):
@@ -528,7 +540,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             num_sol = self.entry.data.get("num_sol", 0)
             for sol_idx in range(1, num_sol + 1):
                 base_address = generate_base_addresses("sol", num_sol)[sol_idx]
-                for sensor_id, sensor_info in SOL_SENSOR_TEMPLATES.items():
+                for sensor_id, sensor_info in compatible_sol_sensors.items():
                     if self.is_register_disabled(
                         base_address + sensor_info["relative_address"]
                     ):
@@ -582,7 +594,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             num_hc = self.entry.data.get("num_hc", 1)
             for hc_idx in range(1, num_hc + 1):
                 base_address = generate_base_addresses("hc", num_hc)[hc_idx]
-                for sensor_id, sensor_info in HC_SENSOR_TEMPLATES.items():
+                for sensor_id, sensor_info in compatible_hc_sensors.items():
                     if self.is_register_disabled(
                         base_address + sensor_info["relative_address"]
                     ):
@@ -665,9 +677,15 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
 
         except Exception as ex:
             _LOGGER.error("Error updating data: %s", ex)
-            if self.client:
-                await self.client.close()
-                self.client = None
+            if (self.client is not None and 
+                hasattr(self.client, 'close') and 
+                callable(getattr(self.client, 'close', None))):
+                try:
+                    await self.client.close()
+                except Exception as close_ex:
+                    _LOGGER.debug("Error closing client connection: %s", close_ex)
+                finally:
+                    self.client = None
             raise UpdateFailed(f"Error fetching Lambda data: {ex}")
 
     def _on_ha_started(self, event):
@@ -699,9 +717,15 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Shutting down Lambda coordinator")
         try:
             # Close Modbus connection
-            if self.client is not None:
-                await self.client.close()
-                self.client = None
+            if (self.client is not None and 
+                hasattr(self.client, 'close') and 
+                callable(getattr(self.client, 'close', None))):
+                try:
+                    await self.client.close()
+                except Exception as close_ex:
+                    _LOGGER.debug("Error closing client connection: %s", close_ex)
+                finally:
+                    self.client = None
             # Stop the coordinator properly
             if hasattr(self, "stop"):
                 self.stop()

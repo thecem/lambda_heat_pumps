@@ -287,6 +287,12 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "name_required"
             else:
                 # Erstelle den Eintrag mit Standard-Optionen
+                # Entferne firmware_version aus user_input für data
+                data_for_entry = {
+                    k: v for k, v in user_input.items() 
+                    if k != "firmware_version"
+                }
+                
                 default_options = {
                     # Immer false beim initialen Setup
                     "room_thermostat_control": False,
@@ -336,7 +342,7 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
                 return self.async_create_entry(
                     title=user_input[CONF_NAME],
-                    data=user_input,
+                    data=data_for_entry,
                     options=default_options,
                 )
         except CannotConnect:
