@@ -14,6 +14,12 @@ elif not device_class and sensor_info.get("unit") == "kWh":
     device_class = SensorDeviceClass.ENERGY
 ```
 
+**⚠️ AKTUELLER STATUS**: 
+- `LambdaSensor`-Klasse: ✅ `device_class`-Property implementiert (Zeilen 904-915)
+- `LambdaTemplateSensor`-Klasse: ✅ `device_class`-Property implementiert (Zeilen 982-992)
+- Automatische Zuweisung: ✅ Funktioniert für Standard-Sensoren
+- Explizite Definitionen: ❌ Noch nicht in `const.py` implementiert
+
 **Bessere Lösung**: Explizite `device_class`-Definition in `const.py`
 
 **Vorteile**:
@@ -70,6 +76,70 @@ if device_class:
 - `custom_components/lambda_heat_pumps/sensor.py` - Vereinfachte Logik
 - `custom_components/lambda_heat_pumps/template_sensor.py` - Anpassung falls nötig
 
+### **Device Class Properties Implementation** ✅ **COMPLETED**
+**Problem**: `LambdaSensor`-Klasse hatte keine `device_class`-Property implementiert.
+
+**Gelöste Probleme**:
+- ✅ `LambdaSensor`-Klasse: `device_class`-Property hinzugefügt (Zeilen 904-915)
+- ✅ `LambdaSensor`-Klasse: `native_unit_of_measurement`-Property hinzugefügt (Zeilen 895-898)
+- ✅ `LambdaSensor`-Klasse: `state_class`-Property hinzugefügt (Zeilen 900-908)
+- ✅ `LambdaTemplateSensor`-Klasse: Hatte bereits alle Properties implementiert
+
+**Ergebnis**: 
+- Sensoren mit `kWh`/`Wh` Einheit bekommen jetzt automatisch `device_class: "energy"`
+- Alle Standard-Sensoren haben jetzt korrekte `device_class`-Zuweisung
+- Template-Sensoren funktionieren bereits korrekt
+
+### **Alle Sensor-Klassen Device Class Überprüfung** ✅ **COMPLETED**
+**Überprüfung aller Sensor-Klassen in der Integration:**
+
+#### **1. LambdaSensor** ✅ **IMPLEMENTIERT**
+- **Datei**: `custom_components/lambda_heat_pumps/sensor.py` (Zeilen 745-936)
+- **device_class-Property**: ✅ Implementiert (Zeilen 920-930)
+- **native_unit_of_measurement-Property**: ✅ Implementiert (Zeilen 904-907)
+- **state_class-Property**: ✅ Implementiert (Zeilen 909-918)
+- **Status**: ✅ **VOLLSTÄNDIG**
+
+#### **2. LambdaTemplateSensor** ✅ **IMPLEMENTIERT**
+- **Datei**: `custom_components/lambda_heat_pumps/sensor.py` (Zeilen 937-1076)
+- **device_class-Property**: ✅ Implementiert (Zeilen 1008-1018)
+- **native_unit_of_measurement-Property**: ✅ Implementiert (Zeilen 992-995)
+- **state_class-Property**: ✅ Implementiert (Zeilen 997-1006)
+- **Status**: ✅ **VOLLSTÄNDIG**
+
+#### **3. LambdaTemplateSensor (template_sensor.py)** ✅ **IMPLEMENTIERT**
+- **Datei**: `custom_components/lambda_heat_pumps/template_sensor.py` (Zeilen 154-318)
+- **device_class-Property**: ✅ Implementiert (Zeilen 218-228)
+- **native_unit_of_measurement-Property**: ✅ Implementiert (Zeilen 202-205)
+- **state_class-Property**: ✅ Implementiert (Zeilen 207-216)
+- **Status**: ✅ **VOLLSTÄNDIG**
+
+#### **4. LambdaCyclingSensor** ✅ **IMPLEMENTIERT**
+- **Datei**: `custom_components/lambda_heat_pumps/sensor.py` (Zeilen 383-554)
+- **device_class-Property**: ✅ Implementiert (Zeilen 528-530)
+- **native_unit_of_measurement-Property**: ✅ Implementiert (Zeilen 520-523)
+- **state_class-Property**: ✅ Implementiert (Zeilen 524-527)
+- **Status**: ✅ **VOLLSTÄNDIG**
+
+#### **5. LambdaYesterdaySensor** ✅ **IMPLEMENTIERT**
+- **Datei**: `custom_components/lambda_heat_pumps/sensor.py` (Zeilen 555-744)
+- **device_class-Property**: ✅ Implementiert (Zeilen 718-720)
+- **native_unit_of_measurement-Property**: ✅ Implementiert (Zeilen 710-713)
+- **state_class-Property**: ✅ Implementiert (Zeilen 714-717)
+- **Status**: ✅ **VOLLSTÄNDIG**
+
+#### **6. LambdaClimateEntity** ❌ **FEHLT**
+- **Datei**: `custom_components/lambda_heat_pumps/climate.py` (Zeilen 35-156)
+- **device_class-Property**: ❌ **NICHT IMPLEMENTIERT**
+- **Begründung**: Climate-Entities erben von `ClimateEntity`, nicht von `SensorEntity`
+- **Empfehlung**: `device_class: "temperature"` hinzufügen für bessere Kategorisierung
+- **Status**: ❌ **MUSS IMPLEMENTIERT WERDEN**
+
+**Zusammenfassung**:
+- ✅ **5 von 6 Sensor-Klassen** haben vollständige `device_class`-Implementierung
+- ❌ **1 von 6 Sensor-Klassen** (`LambdaClimateEntity`) fehlt `device_class`-Property
+- **Gesamtstatus**: 83% **ABGESCHLOSSEN**
+
 ### **Climate Entities Device Class** ⭐ **MEDIUM PRIORITY**
 **Problem**: Climate-Entities haben keine `device_class`-Verarbeitung implementiert.
 
@@ -82,6 +152,12 @@ if device_class:
 - `hot_water` Climate-Entities
 - `heating_circuit` Climate-Entities
 
+**Spezifische Details**:
+- **Datei**: `custom_components/lambda_heat_pumps/climate.py` (Zeilen 35-156)
+- **Klasse**: `LambdaClimateEntity(CoordinatorEntity, ClimateEntity)`
+- **Fehlende Property**: `device_class`
+- **Empfohlener Wert**: `SensorDeviceClass.TEMPERATURE`
+
 **Implementierung**:
 ```python
 # In climate.py - device_class hinzufügen
@@ -91,6 +167,12 @@ def device_class(self) -> SensorDeviceClass | None:
     # Climate-Entities sind immer Temperatur-basiert
     return SensorDeviceClass.TEMPERATURE
 ```
+
+**Vorteile**:
+- ✅ Bessere Kategorisierung in Home Assistant
+- ✅ Korrekte Anzeige in Dashboards
+- ✅ Konsistenz mit anderen Sensor-Klassen
+- ✅ Verbesserte Suchfunktionalität
 
 ### **Template Sensor Definitions** ⭐ **MEDIUM PRIORITY**
 **Problem**: Alle Template-Sensor-Definitionen haben `"device_class": None`.

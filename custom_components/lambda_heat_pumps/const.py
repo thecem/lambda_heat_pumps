@@ -72,7 +72,6 @@ HP_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "Hp",
         "writeable": False,
-        "state_class": "total",
         "txt_mapping": True,
     },
     "error_number": {
@@ -97,7 +96,6 @@ HP_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "Hp",
         "writeable": False,
-        "state_class": "total",
         "txt_mapping": True,
     },
     "operating_state": {
@@ -110,7 +108,6 @@ HP_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "Hp",
         "writeable": False,
-        "state_class": "measurement",
         "txt_mapping": True,
     },
     "flow_line_temperature": {
@@ -291,7 +288,6 @@ HP_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "Hp",
         "writeable": False,
-        "state_class": "total",
         "txt_mapping": True,
     },
     "compressor_power_consumption_accumulated": {
@@ -344,7 +340,6 @@ BOIL_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "boil",
         "writeable": False,
-        "state_class": "measurement",
         "txt_mapping": True,
     },
     "actual_high_temperature": {
@@ -405,7 +400,6 @@ BOIL_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "boil",
         "writeable": False,
-        "state_class": "total",
         "txt_mapping": True,
     },
     "maximum_boiler_temperature": {
@@ -457,7 +451,6 @@ BUFF_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "buff",
         "writeable": False,
-        "state_class": "measurement",
         "txt_mapping": True,
     },
     "actual_high_temperature": {
@@ -503,6 +496,7 @@ BUFF_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "buff",
         "writeable": False,
+        "txt_mapping": True,
     },
     "request_flow_line_temp_setpoint": {
         "relative_address": 6,
@@ -584,7 +578,6 @@ SOL_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "sol",
         "writeable": False,
-        "state_class": "measurement",
         "txt_mapping": True,
     },
     "collector_temperature": {
@@ -657,7 +650,6 @@ HC_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "hc",
         "writeable": False,
-        "state_class": "measurement",
         "txt_mapping": True,
     },
     "flow_line_temperature": {
@@ -718,7 +710,6 @@ HC_SENSOR_TEMPLATES = {
         "firmware_version": 1,
         "device_type": "hc",
         "writeable": False,
-        "state_class": "total",
         "txt_mapping": True,
     },
     "set_flow_line_offset_temperature": {
@@ -796,7 +787,6 @@ SENSOR_TYPES = {
         "firmware_version": 1,
         "device_type": "main",
         "writeable": False,
-        "state_class": "total",
         "txt_mapping": True,
     },
     "ambient_temperature": {
@@ -857,7 +847,6 @@ SENSOR_TYPES = {
         "firmware_version": 1,
         "device_type": "main",
         "writeable": False,
-        "state_class": "total",
         "txt_mapping": True,
     },
     "emgr_actual_power": {
