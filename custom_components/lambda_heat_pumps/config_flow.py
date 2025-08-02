@@ -282,16 +282,53 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
             # Ergänze fehlende Pflichtfelder aus existing_data oder Default
             if CONF_NAME not in user_input or not user_input[CONF_NAME]:
                 user_input[CONF_NAME] = existing_data.get(CONF_NAME, DEFAULT_NAME)
-            await validate_input(self.hass, user_input)
-            if CONF_NAME not in user_input or not user_input[CONF_NAME]:
-                errors["base"] = "name_required"
-            else:
-                # Erstelle den Eintrag mit Standard-Optionen
-                # Entferne firmware_version aus user_input für data
-                data_for_entry = {
-                    k: v for k, v in user_input.items() 
-                    if k != "firmware_version"
-                }
+            
+            # Prüfe, ob bereits eine Config mit diesem Namen existiert
+            if CONF_NAME in user_input and user_input[CONF_NAME]:
+                existing_entries = self._async_current_entries()
+                for entry in existing_entries:
+                    if entry.data.get(CONF_NAME) == user_input[CONF_NAME]:
+                        errors["base"] = "name_already_exists"
+                        _LOGGER.warning(
+                            "Config mit Namen '%s' existiert bereits (Entry ID: %s)",
+                            user_input[CONF_NAME],
+                            entry.entry_id,
+                        )
+                        break
+            
+            # Prüfe, ob bereits eine Config mit der gleichen Host/Port/Slave-ID
+            # Kombination existiert
+            if not errors and all(
+                key in user_input for key in [CONF_HOST, CONF_PORT, CONF_SLAVE_ID]
+            ):
+                for entry in existing_entries:
+                    if (
+                        entry.data.get(CONF_HOST) == user_input[CONF_HOST]
+                        and entry.data.get(CONF_PORT) == user_input[CONF_PORT]
+                        and entry.data.get(CONF_SLAVE_ID) == user_input[CONF_SLAVE_ID]
+                    ):
+                        errors["base"] = "connection_already_exists"
+                        _LOGGER.warning(
+                            "Config mit Host '%s', Port %d, Slave ID %d existiert "
+                            "bereits (Entry ID: %s)",
+                            user_input[CONF_HOST],
+                            user_input[CONF_PORT],
+                            user_input[CONF_SLAVE_ID],
+                            entry.entry_id,
+                        )
+                        break
+            
+            if not errors:
+                await validate_input(self.hass, user_input)
+                if CONF_NAME not in user_input or not user_input[CONF_NAME]:
+                    errors["base"] = "name_required"
+                else:
+                    # Erstelle den Eintrag mit Standard-Optionen
+                    # Entferne firmware_version aus user_input für data
+                    data_for_entry = {
+                        k: v for k, v in user_input.items() 
+                        if k != "firmware_version"
+                    }
                 
                 default_options = {
                     # Immer false beim initialen Setup

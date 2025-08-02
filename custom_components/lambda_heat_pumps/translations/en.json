@@ -24,6 +24,8 @@
       "invalid_temperature": "Invalid temperature range",
       "min_temp_higher": "Min temp must be lower than max temp",
       "max_temp_lower": "Max temp must be higher than min temp",
+      "name_already_exists": "A configuration with this name already exists",
+      "connection_already_exists": "A configuration with this connection already exists",
       "unknown": "Unknown error"
     }
   },

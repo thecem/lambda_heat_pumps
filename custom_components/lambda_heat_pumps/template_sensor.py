@@ -91,13 +91,15 @@ async def async_setup_entry(
     for device_type, count in DEVICE_COUNTS.items():
         for idx in range(1, count + 1):
             device_prefix = f"{device_type}{idx}"
-            # Nur Template-Sensoren mit "template"-Feld erzeugen (ausschließlich Daily-Sensoren)
+            # Nur Template-Sensoren mit "template"-Feld erzeugen
+            # (ausschließlich Daily-Sensoren)
             for sensor_id, sensor_info in compatible_templates.items():
                 if (
                     sensor_info.get("device_type") == device_type
                     and "template" in sensor_info
                     and not sensor_id.endswith("_cycling_total")
                     and not sensor_id.endswith("_cycling_yesterday")
+                    and not sensor_id.endswith("_cycling_daily")
                 ):
                     # Generate consistent names using centralized function
                     naming = generate_sensor_names(

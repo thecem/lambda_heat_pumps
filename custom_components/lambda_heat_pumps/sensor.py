@@ -123,6 +123,8 @@ async def async_setup_entry(
                     device_class = SensorDeviceClass.POWER
                 elif not device_class and sensor_info.get("unit") == "Wh":
                     device_class = SensorDeviceClass.ENERGY
+                elif not device_class and sensor_info.get("unit") == "kWh":
+                    device_class = SensorDeviceClass.ENERGY
 
                 # Prüfe auf Override-Name
                 override_name = None
@@ -209,6 +211,8 @@ async def async_setup_entry(
         elif not device_class and sensor_info.get("unit") == "W":
             device_class = SensorDeviceClass.POWER
         elif not device_class and sensor_info.get("unit") == "Wh":
+            device_class = SensorDeviceClass.ENERGY
+        elif not device_class and sensor_info.get("unit") == "kWh":
             device_class = SensorDeviceClass.ENERGY
 
         # Name und Entity-ID für General Sensors
@@ -896,6 +900,33 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
             return float(value)
         except (ValueError, TypeError):
             return None
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit of measurement of the sensor."""
+        return self._unit
+
+    @property
+    def state_class(self) -> SensorStateClass | None:
+        """Return the state class of the sensor."""
+        if self._state_class == "measurement":
+            return SensorStateClass.MEASUREMENT
+        elif self._state_class == "total":
+            return SensorStateClass.TOTAL
+        elif self._state_class == "total_increasing":
+            return SensorStateClass.TOTAL_INCREASING
+        return None
+
+    @property
+    def device_class(self) -> SensorDeviceClass | None:
+        """Return the device class of the sensor."""
+        if self._device_class == "temperature":
+            return SensorDeviceClass.TEMPERATURE
+        elif self._device_class == "power":
+            return SensorDeviceClass.POWER
+        elif self._device_class == "energy":
+            return SensorDeviceClass.ENERGY
+        return None
 
     @property
     def device_info(self):
