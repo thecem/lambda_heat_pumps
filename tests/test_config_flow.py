@@ -94,7 +94,7 @@ class TestLambdaConfigFlow:
         """Test config flow initialization."""
         flow = LambdaConfigFlow()
 
-        assert flow.VERSION == 3
+        assert flow.VERSION == 2
         assert flow._data == {}
 
     @pytest.mark.asyncio
@@ -138,7 +138,9 @@ class TestLambdaConfigFlow:
                 result = await flow.async_step_user(user_input)
 
                 assert result["type"] == FlowResultType.CREATE_ENTRY
-                assert result["data"] == user_input
+                # firmware_version wird aus data entfernt und in options gespeichert
+                expected_data = {k: v for k, v in user_input.items() if k != "firmware_version"}
+                assert result["data"] == expected_data
 
     @pytest.mark.asyncio
     async def test_async_step_user_validation_error(self, mock_hass):
@@ -331,13 +333,18 @@ class TestLambdaOptionsFlow:
         mock_state1.entity_id = "sensor.temp1"
         mock_state1.attributes = {"device_class": "temperature"}
         mock_state1.name = "Temperature 1"
+        mock_state1.domain = "sensor"
 
         mock_state2 = Mock()
         mock_state2.entity_id = "sensor.temp2"
         mock_state2.attributes = {"device_class": "temperature"}
         mock_state2.name = "Temperature 2"
+        mock_state2.domain = "sensor"
 
-        mock_hass.states.async_all = AsyncMock(return_value=[mock_state1, mock_state2])
+        # Mock async_all als awaitable function
+        async def mock_async_all():
+            return [mock_state1, mock_state2]
+        mock_hass.states.async_all = mock_async_all
         mock_hass.states.get = Mock(
             side_effect=lambda eid: (
                 mock_state1 if eid == "sensor.temp1" else mock_state2
@@ -365,23 +372,21 @@ async def test_validate_input_success(mock_hass):
         CONF_FIRMWARE_VERSION: "V0.0.3-3K",
     }
 
-    # Mock the ModbusTcpClient
-    mock_client = Mock()
+    # Mock the AsyncModbusTcpClient
+    mock_client = AsyncMock()
     mock_client.connect.return_value = True
     mock_client.close.return_value = None
-    mock_client.read_holding_registers.return_value = Mock(isError=lambda: False)
+    
+    # Mock the read_holding_registers result
+    mock_result = Mock()
+    mock_result.isError.return_value = False
 
-    with patch("pymodbus.client.ModbusTcpClient", return_value=mock_client):
-        with patch.object(
-            mock_hass, "async_add_executor_job", new_callable=AsyncMock
-        ) as mock_executor:
-            # Mock the two async_add_executor_job calls: connect and read_holding_registers
-            mock_executor.side_effect = [True, Mock(isError=lambda: False)]
-
+    with patch("pymodbus.client.AsyncModbusTcpClient", return_value=mock_client):
+        with patch("custom_components.lambda_heat_pumps.config_flow.async_read_holding_registers", return_value=mock_result):
             result = await validate_input(mock_hass, user_input)
 
             assert result is None  # validate_input returns None on success
-            assert mock_executor.call_count == 2  # connect and read_holding_registers
+            mock_client.connect.assert_called_once()
             mock_client.close.assert_called_once()
 
 

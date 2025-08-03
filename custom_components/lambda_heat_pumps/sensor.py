@@ -80,7 +80,7 @@ async def async_setup_entry(
     num_hc = entry.data.get("num_hc", 1)
 
     # Hole den Legacy-Modbus-Namen-Switch aus der Config
-    use_legacy_modbus_names = entry.data.get("use_legacy_modbus_names", False)
+    use_legacy_modbus_names = entry.data.get("use_legacy_modbus_names", True)
     name_prefix = entry.data.get("name", "").lower().replace(" ", "")
 
     # Get firmware version and filter compatible sensors
@@ -680,7 +680,7 @@ class LambdaYesterdaySensor(RestoreEntity, SensorEntity):
                 CALCULATED_SENSOR_TEMPLATES[total_sensor_id]["name"],
                 total_sensor_id,
                 self._entry.data.get("name", "").lower().replace(" ", ""),
-                self._entry.data.get("use_legacy_modbus_names", False),
+                self._entry.data.get("use_legacy_modbus_names", True),
             )
             total_entity_id = names["entity_id"]
 
@@ -831,7 +831,7 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
     def name(self) -> str:
         """Return the name of the sensor."""
         use_legacy_modbus_names = self.coordinator.entry.data.get(
-            "use_legacy_modbus_names", False
+            "use_legacy_modbus_names", True
         )
         if use_legacy_modbus_names and hasattr(self.coordinator, "sensor_overrides"):
             override_name = self.coordinator.sensor_overrides.get(self._sensor_id)

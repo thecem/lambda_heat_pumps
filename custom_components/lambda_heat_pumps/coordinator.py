@@ -78,7 +78,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
         self._last_energy_update = {}
         self._cycling_offsets = {}
         self._energy_offsets = {}
-        self._use_legacy_names = entry.data.get("use_legacy_modbus_names", False)
+        self._use_legacy_names = entry.data.get("use_legacy_modbus_names", True)
         self._persist_file = os.path.join(
             self._config_path, "cycle_energy_persist.json"
         )

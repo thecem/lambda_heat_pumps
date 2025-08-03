@@ -58,7 +58,7 @@ async def async_setup_entry(
     num_hc = entry.data.get("num_hc", 1)
 
     # Hole den Legacy-Modbus-Namen-Switch aus der Config
-    use_legacy_modbus_names = entry.data.get("use_legacy_modbus_names", False)
+    use_legacy_modbus_names = entry.data.get("use_legacy_modbus_names", True)
     name_prefix = entry.data.get("name", "").lower().replace(" ", "")
 
     # Lade cycling_offsets aus der Konfiguration

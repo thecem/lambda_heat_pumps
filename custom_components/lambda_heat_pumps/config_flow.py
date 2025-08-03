@@ -87,7 +87,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> None:
 class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Lambda WP."""
 
-    VERSION = 3  # Erhöht von 1 auf 2 für Entity Registry Migration
+    VERSION = 2  # Erhöht von 1 auf 2 für Entity Registry Migration
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -256,10 +256,6 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                                 mode=selector.SelectSelectorMode.DROPDOWN,
                             )
                         ),
-                        vol.Optional(
-                            "use_legacy_modbus_names",
-                            default=0,
-                        ): selector.BooleanSelector(),
                     }
                 ),
                 errors=errors,
@@ -532,10 +528,6 @@ class LambdaConfigFlow(ConfigFlow, domain=DOMAIN):
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
-                    vol.Optional(
-                        "use_legacy_modbus_names",
-                        default=0,
-                    ): selector.BooleanSelector(),
                 }
             ),
             errors=errors,
@@ -802,7 +794,7 @@ class LambdaOptionsFlow(OptionsFlow):
         }
 
         entities = []
-        for entity in self.hass.states.async_all():
+        for entity in await self.hass.states.async_all():
             if entity.entity_id in own_entity_ids:
                 continue
 

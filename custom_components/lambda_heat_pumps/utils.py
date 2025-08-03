@@ -468,7 +468,7 @@ async def increment_cycling_counter(
     mode: str,
     hp_index: int,
     name_prefix: str,
-    use_legacy_modbus_names: bool = False,
+    use_legacy_modbus_names: bool = True,
     cycling_offsets: dict = None,
 ):
     """

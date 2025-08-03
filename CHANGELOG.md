@@ -63,6 +63,9 @@ Dieses Release enthält bedeutende Änderungen am Entity Registry und den Sensor
 - Inconsistent unique_id format for general and climate sensors
 - Sensor filtering based upon firmware settings
 
+### Removed
+- **`use_legacy_modbus_names` configuration option** - This option has been removed as it became obsolete after the automatic migration of all sensors to the legacy naming scheme (`use_legacy=true`). All existing installations will automatically use the legacy naming format.
+
 ## [1.0.9] - 2024-12-19
 
 ### Added
@@ -120,6 +123,9 @@ Dieses Release enthält bedeutende Änderungen am Entity Registry und den Sensor
 - Doppelte Sensor-Entities mit "_2" Suffix nach Updates
 - Inkonsistentes unique_id Format für General- und Climate-Sensoren
 - Sensor Filterung basierend auf der Firmware
+
+### Removed
+- **`use_legacy_modbus_names` Konfigurationsoption** - Diese Option wurde entfernt, da sie nach der automatischen Migration aller Sensoren auf das Legacy-Namensschema (`use_legacy=true`) obsolet geworden ist. Alle bestehenden Installationen verwenden automatisch das Legacy-Namensformat.
 
 ## [1.0.9] - 2024-12-19
 

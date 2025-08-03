@@ -2,6 +2,61 @@
 
 ## 🔧 **Code Quality & Architecture**
 
+### **use_legacy_names Ausbau** ⭐ **HIGH PRIORITY**
+**Problem**: Die `use_legacy_names` Funktionalität ist nach der Migration von Version 1-2 nicht mehr relevant, da alle Sensoren auf das `use_legacy=true` Namensschema migriert werden.
+
+**Aktuelle Situation**:
+- Alle Sensoren werden automatisch auf `use_legacy=true` migriert
+- `use_legacy_names` Option im Config Flow ist redundant
+- Legacy-Namenslogik ist noch im Code vorhanden, aber nicht mehr benötigt
+
+**Schrittweise Ausbau-Strategie**:
+
+#### **Schritt 1: Config Flow bereinigen** ✅ **COMPLETED**
+- [x] `use_legacy_modbus_names` aus Config Flow entfernen
+- [x] Default-Wert auf `True` setzen (implizit)
+- [x] Config Flow Tests anpassen
+- [x] Dokumentation aktualisieren
+
+#### **Schritt 2: Code-Bereinigung**
+- [ ] `use_legacy_names` Parameter aus allen Funktionen entfernen
+- [ ] Legacy-Namenslogik aus `sensor.py` entfernen
+- [ ] Legacy-Namenslogik aus `climate.py` entfernen
+- [ ] Legacy-Namenslogik aus `template_sensor.py` entfernen
+- [ ] Legacy-Namenslogik aus `coordinator.py` entfernen
+
+#### **Schritt 3: Tests anpassen**
+- [ ] Alle Tests auf `use_legacy=true` umstellen
+- [ ] Legacy-Namens-Tests entfernen oder anpassen
+- [ ] Test-Dokumentation aktualisieren
+
+#### **Schritt 4: Dokumentation**
+- [ ] README.md aktualisieren
+- [ ] CHANGELOG.md erweitern
+- [ ] Breaking Changes dokumentieren
+
+#### **Schritt 5: Migration-Code bereinigen**
+- [ ] Migration-Logik für `use_legacy_names` entfernen
+- [ ] Alte Config-Format-Unterstützung entfernen
+
+**Betroffene Dateien**:
+- `custom_components/lambda_heat_pumps/config_flow.py`
+- `custom_components/lambda_heat_pumps/sensor.py`
+- `custom_components/lambda_heat_pumps/climate.py`
+- `custom_components/lambda_heat_pumps/template_sensor.py`
+- `custom_components/lambda_heat_pumps/coordinator.py`
+- `custom_components/lambda_heat_pumps/__init__.py`
+- `tests/` - Alle Test-Dateien
+- `README.md`
+- `CHANGELOG.md`
+
+**Vorteile**:
+- ✅ Vereinfachter Code
+- ✅ Weniger Konfigurationsoptionen für Benutzer
+- ✅ Konsistente Namensgebung
+- ✅ Bessere Wartbarkeit
+- ✅ Reduzierte Komplexität
+
 ### **Device Class Refactoring** ⭐ **HIGH PRIORITY**
 **Problem**: Aktuelle automatische `device_class`-Zuweisung in `sensor.py` ist inkonsistent und wartungsintensiv.
 
