@@ -2,7 +2,41 @@
 
 **Deutsche Version siehe unten / German version see below**
 
-## [1.1.0] - 2025-07-24
+## ⚠️ IMPORTANT WARNING - WICHTIGE WARNUNG
+
+### English
+**BREAKING CHANGES IN THIS RELEASE - BACKUP REQUIRED**
+
+This release contains significant changes to the Entity Registry and sensor naming conventions. **Please create a complete backup of your Home Assistant configuration before updating.**
+
+**What will change:**
+- Automatic migration of existing sensor entities to prevent duplicates
+- Updated unique_id format for better consistency
+- Sensor filtering based on firmware compatibility
+
+**After migration, please verify:**
+- Sensor names and long-term data are preserved correctly
+- No duplicate entities exist in your system
+- All sensors are functioning as expected
+- **Automations may need to be updated** if they reference sensor entities that were migrated
+
+### Deutsch
+**TIEFGREIFENDE ÄNDERUNGEN IN DIESEM RELEASE - BACKUP ERFORDERLICH**
+
+Dieses Release enthält bedeutende Änderungen am Entity Registry und den Sensor-Namenskonventionen. **Bitte erstellen Sie vor dem Update ein vollständiges Backup Ihrer Home Assistant Konfiguration.**
+
+**Was sich ändert:**
+- Automatische Migration bestehender Sensor-Entities zur Vermeidung von Duplikaten
+- Aktualisiertes unique_id Format für bessere Konsistenz
+- Sensor-Filterung basierend auf Firmware-Kompatibilität
+
+**Nach der Migration bitte prüfen:**
+- Sensor-Namen und Langzeitdaten sind korrekt erhalten
+- Keine doppelten Entities in Ihrem System existieren
+- Alle Sensoren funktionieren wie erwartet
+- **Automatisierungen müssen möglicherweise angepasst werden**, falls sie auf migrierte Sensor-Entities verweisen
+
+## [1.1.0] - 2025-08-03
 
 ### Major Changes
 - **Switch to asynchronous Modbus clients** - Complete migration from synchronous to asynchronous Modbus communication for better compatibility with other integrations
@@ -27,6 +61,7 @@
 - Code quality improvements and linting issues resolved
 - Duplicate sensor entities with "_2" suffix after updates
 - Inconsistent unique_id format for general and climate sensors
+- Sensor filtering based upon firmware settings
 
 ## [1.0.9] - 2024-12-19
 
@@ -84,6 +119,7 @@
 - Code-Qualitätsverbesserungen und Linting-Probleme behoben
 - Doppelte Sensor-Entities mit "_2" Suffix nach Updates
 - Inkonsistentes unique_id Format für General- und Climate-Sensoren
+- Sensor Filterung basierend auf der Firmware
 
 ## [1.0.9] - 2024-12-19
 
