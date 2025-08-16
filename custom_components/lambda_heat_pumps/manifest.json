@@ -1,4 +1,6 @@
 {
+  "domain": "lambda_heat_pumps",
+  "name": "Lambda Heat Pumps",
   "codeowners": ["@GuidoJeuken-6512"],
   "config_flow": true,
   "documentation": "https://github.com/GuidoJeuken-6512/lambda_wp_hacs",
