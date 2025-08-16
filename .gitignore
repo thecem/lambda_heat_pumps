@@ -1,0 +1,93 @@
+# Ignore everything
+*
+
+# But not custom_components
+!custom_components/
+!custom_components/lambda_heat_pumps/
+!custom_components/lambda_heat_pumps/**/*.py
+!custom_components/lambda_heat_pumps/**/*.yaml
+!custom_components/lambda_heat_pumps/**/*.json
+!custom_components/lambda_heat_pumps/translations/
+!custom_components/lambda_heat_pumps/translations/**/*.json
+
+# Tests im Root nicht ignorieren
+!tests/
+!tests/**
+
+# And not these files
+!.gitignore
+!hacs.json
+!LICENSE
+!README.md
+!CHANGELOG.md
+!requirements.txt
+!requirements_test.txt
+!docs/
+!docs/*.md
+!docs/create_sensor_excel.py
+
+
+# GitHub Actions Workflows
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
+!.github/ISSUE_TEMPLATE/
+!.github/ISSUE_TEMPLATE/*.yml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+.coverage.*
+coverage.xml
+*.cover
+
+# Home Assistant specific
+.storage/
+.cloud/
+deps/
+blueprints/
+tts/
+automations.yaml
+scenes.yaml
+scripts.yaml
+secrets.yaml
+configuration.yaml

@@ -1,0 +1,68 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Lambda WP Setup",
+        "description": "Configure your Lambda WP device.",
+        "data": {
+          "name": "Name",
+          "host": "Host",
+          "port": "Port",
+          "slave_id": "Slave ID",
+          "firmware_version": "Firmware Version",
+          "num_hps": "Number of heat pumps",
+          "num_boil": "Number of boilers",
+          "num_hc": "Number of heating circuits",
+          "num_buff": "Number of buffers",
+          "num_sol": "Number of solar modules",
+          "use_legacy_modbus_names": "Use legacy Modbus names"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_temperature": "Invalid temperature range",
+      "min_temp_higher": "Min temp must be lower than max temp",
+      "max_temp_lower": "Max temp must be higher than min temp",
+      "name_already_exists": "A configuration with this name already exists",
+      "connection_already_exists": "A configuration with this connection already exists",
+      "unknown": "Unknown error"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "data": {
+          "hot_water_min_temp": "Hot water min temp",
+          "hot_water_max_temp": "Hot water max temp",
+          "heating_circuit_min_temp": "HC min temp",
+          "heating_circuit_max_temp": "HC max temp",
+          "heating_circuit_temp_step": "HC temp step",
+          "firmware_version": "Firmware version",
+          "room_thermostat_control": "Room thermostat control",
+          "pv_surplus": "PV Surplus",
+          "update_interval": "Update Interval"
+        }
+      },
+      "thermostat_sensor": {
+        "title": "Room Thermostat Sensors",
+        "description": "Select the temperature sensors for the heating circuits. This will be used for the room temperature control of the Lambda. Note: Only external sensors with the device class temperature that do not originate from this integration are displayed.",
+        "data": {
+          "room_temperature_entity_1": "Temperature Sensor HC1",
+          "room_temperature_entity_2": "Temperature Sensor HC2",
+          "room_temperature_entity_3": "Temperature Sensor HC3",
+          "room_temperature_entity_4": "Temperature Sensor HC4",
+          "room_temperature_entity_5": "Temperature Sensor HC5"
+        }
+      },
+      "pv_sensor": {
+        "title": "PV Surplus Sensor",
+        "description": "Select the PV power sensor.",
+        "data": {
+          "pv_power_sensor_entity": "PV Power Sensor"
+        }
+      }
+    }
+  }
+}
