@@ -1,35 +1,32 @@
-"""Modbus utilities for Lambda Heat Pumps integration."""
+"""Fixed Modbus utilities for Lambda Heat Pumps integration - HA Compatible."""
 
 import logging
-from pymodbus.client import ModbusTcpClient, AsyncModbusTcpClient
+import asyncio
+from typing import Any
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def _test_api_compatibility(client, method_name):
-    """Test which API version is available."""
-    method = getattr(client, method_name, None)
-    if not method:
-        return None
-
-    # Test if method accepts keyword arguments (pymodbus >= 3.0)
-    import inspect
-
+def _detect_pymodbus_api(client, method_name: str) -> str:
+    """Detect pymodbus API version compatibility."""
     try:
+        import inspect
+
+        method = getattr(client, method_name, None)
+        if not method:
+            return "none"
+
         sig = inspect.signature(method)
         params = list(sig.parameters.keys())
 
-        # Check if method accepts 'slave' parameter (pymodbus >= 3.0)
         if "slave" in params:
-            return "slave"
-        # Check if method accepts 'unit' parameter (pymodbus 2.x)
+            return "slave"  # pymodbus >= 3.0
         elif "unit" in params:
-            return "unit"
-        # Otherwise, no slave parameter (pymodbus < 2.0)
+            return "unit"  # pymodbus 2.x
         else:
-            return "none"
-    except (ValueError, TypeError):
-        # Fallback: try to determine by pymodbus version
+            return "none"  # pymodbus < 2.0
+    except Exception:
+        # Fallback based on version
         try:
             import pymodbus
 
@@ -40,230 +37,183 @@ def _test_api_compatibility(client, method_name):
                 return "unit"
             else:
                 return "none"
-        except (ImportError, AttributeError):
-            # Last resort: assume older version
-            return "none"
-
-
-def read_holding_registers(client: ModbusTcpClient, address, count, slave_id=1):
-    """Read holding registers with compatibility."""
-    try:
-        api_type = _test_api_compatibility(client, "read_holding_registers")
-        _LOGGER.debug("API type detected: %s for read_holding_registers", api_type)
-
-        if api_type == "slave":
-            # pymodbus >= 3.0
-            return client.read_holding_registers(address, count=count, slave=slave_id)
-        elif api_type == "unit":
-            # pymodbus 2.x
-            return client.read_holding_registers(address, count, unit=slave_id)
-        else:
-            # pymodbus < 2.0
-            return client.read_holding_registers(address, count)
-    except Exception as e:
-        _LOGGER.error("Modbus error in read_holding_registers: %s", str(e))
-        _LOGGER.error(
-            "API type was: %s, address: %s, count: %s, slave_id: %s",
-            _test_api_compatibility(client, "read_holding_registers"),
-            address,
-            count,
-            slave_id,
-        )
-        raise
-
-
-def write_register(client: ModbusTcpClient, address, value, slave_id=1):
-    """Write single register with compatibility."""
-    try:
-        api_type = _test_api_compatibility(client, "write_register")
-
-        if api_type == "slave":
-            # pymodbus >= 3.0
-            return client.write_register(address, value, slave=slave_id)
-        elif api_type == "unit":
-            # pymodbus 2.x
-            return client.write_register(address, value, unit=slave_id)
-        else:
-            # pymodbus < 2.0
-            return client.write_register(address, value)
-    except Exception as e:
-        _LOGGER.error("Modbus error in write_register: %s", str(e))
-        raise
-
-
-def write_registers(client: ModbusTcpClient, address, values, slave_id=1):
-    """Write multiple registers with compatibility."""
-    try:
-        api_type = _test_api_compatibility(client, "write_registers")
-
-        if api_type == "slave":
-            # pymodbus >= 3.0
-            return client.write_registers(address, values, slave=slave_id)
-        elif api_type == "unit":
-            # pymodbus 2.x
-            return client.write_registers(address, values, unit=slave_id)
-        else:
-            # pymodbus < 2.0
-            return client.write_registers(address, values)
-    except Exception as e:
-        _LOGGER.error("Modbus error in write_registers: %s", str(e))
-        raise
-
-
-def read_input_registers(client: ModbusTcpClient, address, count, slave_id=1):
-    """Read input registers with compatibility."""
-    try:
-        api_type = _test_api_compatibility(client, "read_input_registers")
-
-        if api_type == "slave":
-            # pymodbus >= 3.0
-            return client.read_input_registers(address, count=count, slave=slave_id)
-        elif api_type == "unit":
-            # pymodbus 2.x
-            return client.read_input_registers(address, count, unit=slave_id)
-        else:
-            # pymodbus < 2.0
-            return client.read_input_registers(address, count)
-    except Exception as e:
-        _LOGGER.error("Modbus error in read_input_registers: %s", str(e))
-        raise
-
-
-# ==================== ASYNCHRONOUS WRAPPERS ====================
-
-
-def _test_async_api_compatibility(client, method_name):
-    """Test which async API version is available."""
-    method = getattr(client, method_name, None)
-    if not method:
-        return None
-
-    # Test if method accepts keyword arguments (pymodbus >= 3.0)
-    import inspect
-
-    try:
-        sig = inspect.signature(method)
-        params = list(sig.parameters.keys())
-
-        # Check if method accepts 'slave' parameter (pymodbus >= 3.0)
-        if "slave" in params:
-            return "slave"
-        # Check if method accepts 'unit' parameter (pymodbus 2.x)
-        elif "unit" in params:
-            return "unit"
-        # Otherwise, no slave parameter (pymodbus < 2.0)
-        else:
-            return "none"
-    except (ValueError, TypeError):
-        # Fallback: try to determine by pymodbus version
-        try:
-            import pymodbus
-
-            version = pymodbus.__version__
-            if version.startswith("3"):
-                return "slave"
-            elif version.startswith("2"):
-                return "unit"
-            else:
-                return "none"
-        except (ImportError, AttributeError):
-            # Last resort: assume older version
+        except ImportError:
             return "none"
 
 
 async def async_read_holding_registers(
-    client: AsyncModbusTcpClient, address, count, slave_id=1
-):
-    """Read holding registers with async compatibility."""
+    client, address: int, count: int, slave_id: int = 1
+) -> Any:
+    """Read holding registers with full API compatibility."""
     try:
-        api_type = _test_async_api_compatibility(client, "read_holding_registers")
-        _LOGGER.debug(
-            "Async API type detected: %s for read_holding_registers", api_type
-        )
-
-        if api_type == "slave":
-            # pymodbus >= 3.0
+        # For pymodbus 3.11.1, use only address as positional, rest as kwargs
+        try:
+            # Try with slave parameter (most common in 3.x)
             return await client.read_holding_registers(
                 address, count=count, slave=slave_id
             )
-        elif api_type == "unit":
-            # pymodbus 2.x
-            return await client.read_holding_registers(address, count, unit=slave_id)
-        else:
-            # pymodbus < 2.0
-            return await client.read_holding_registers(address, count)
+        except (TypeError, AttributeError):
+            try:
+                # Try with unit parameter
+                return await client.read_holding_registers(
+                    address, count=count, unit=slave_id
+                )
+            except (TypeError, AttributeError):
+                try:
+                    # Try without slave/unit parameter
+                    return await client.read_holding_registers(address, count=count)
+                except TypeError:
+                    # Last resort: only address and count as positional
+                    return await client.read_holding_registers(address, count)
+
     except Exception as e:
-        _LOGGER.error("Modbus error in async_read_holding_registers: %s", str(e))
-        _LOGGER.error(
-            "Async API type was: %s, address: %s, count: %s, slave_id: %s",
-            _test_async_api_compatibility(client, "read_holding_registers"),
-            address,
-            count,
-            slave_id,
-        )
-        raise
-
-
-async def async_write_register(
-    client: AsyncModbusTcpClient, address, value, slave_id=1
-):
-    """Write single register with async compatibility."""
-    try:
-        api_type = _test_async_api_compatibility(client, "write_register")
-
-        if api_type == "slave":
-            # pymodbus >= 3.0
-            return await client.write_register(address, value, slave=slave_id)
-        elif api_type == "unit":
-            # pymodbus 2.x
-            return await client.write_register(address, value, unit=slave_id)
-        else:
-            # pymodbus < 2.0
-            return await client.write_register(address, value)
-    except Exception as e:
-        _LOGGER.error("Modbus error in async_write_register: %s", str(e))
-        raise
-
-
-async def async_write_registers(
-    client: AsyncModbusTcpClient, address, values, slave_id=1
-):
-    """Write multiple registers with async compatibility."""
-    try:
-        api_type = _test_async_api_compatibility(client, "write_registers")
-
-        if api_type == "slave":
-            # pymodbus >= 3.0
-            return await client.write_registers(address, values, slave=slave_id)
-        elif api_type == "unit":
-            # pymodbus 2.x
-            return await client.write_registers(address, values, unit=slave_id)
-        else:
-            # pymodbus < 2.0
-            return await client.write_registers(address, values)
-    except Exception as e:
-        _LOGGER.error("Modbus error in async_write_registers: %s", str(e))
+        _LOGGER.exception("Modbus read error at address %d: %s", address, e)
         raise
 
 
 async def async_read_input_registers(
-    client: AsyncModbusTcpClient, address, count, slave_id=1
-):
-    """Read input registers with async compatibility."""
+    client, address: int, count: int, slave_id: int = 1
+) -> Any:
+    """Read input registers with full API compatibility."""
     try:
-        api_type = _test_async_api_compatibility(client, "read_input_registers")
-
-        if api_type == "slave":
-            # pymodbus >= 3.0
+        # For pymodbus 3.11.1, use only address as positional, rest as kwargs
+        try:
+            # Try with slave parameter (most common in 3.x)
             return await client.read_input_registers(
                 address, count=count, slave=slave_id
             )
-        elif api_type == "unit":
-            # pymodbus 2.x
-            return await client.read_input_registers(address, count, unit=slave_id)
-        else:
-            # pymodbus < 2.0
-            return await client.read_input_registers(address, count)
+        except (TypeError, AttributeError):
+            try:
+                # Try with unit parameter
+                return await client.read_input_registers(
+                    address, count=count, unit=slave_id
+                )
+            except (TypeError, AttributeError):
+                try:
+                    # Try without slave/unit parameter
+                    return await client.read_input_registers(address, count=count)
+                except TypeError:
+                    # Last resort: only address and count as positional
+                    return await client.read_input_registers(address, count)
+
     except Exception as e:
-        _LOGGER.error("Modbus error in async_read_input_registers: %s", str(e))
+        _LOGGER.exception("Modbus read error at address %d", address)
+        raise
+
+
+async def async_write_register(
+    client, address: int, value: int, slave_id: int = 1
+) -> Any:
+    """Write single register with full API compatibility."""
+    try:
+        # For pymodbus 3.11.1, use address as positional, rest as kwargs
+        try:
+            # Try with slave parameter (most common in 3.x)
+            return await client.write_register(address, value, slave=slave_id)
+        except (TypeError, AttributeError):
+            try:
+                # Try with unit parameter
+                return await client.write_register(address, value, unit=slave_id)
+            except (TypeError, AttributeError):
+                # Try without slave/unit parameter
+                return await client.write_register(address, value)
+
+    except Exception as e:
+        _LOGGER.exception("Modbus write error at address %d", address)
+        raise
+
+
+async def async_write_registers(
+    client, address: int, values: list, slave_id: int = 1
+) -> Any:
+    """Write multiple registers with full API compatibility."""
+    try:
+        api_type = _detect_pymodbus_api(client, "write_registers")
+
+        if api_type == "slave":
+            return await client.write_registers(address, values, slave=slave_id)
+        elif api_type == "unit":
+            return await client.write_registers(address, values, unit=slave_id)
+        else:
+            return await client.write_registers(address, values)
+
+    except Exception as e:
+        _LOGGER.error("Modbus write error at address %d: %s", address, e)
+        raise
+
+
+# Synchronous versions for backward compatibility
+def read_holding_registers(client, address: int, count: int, slave_id: int = 1) -> Any:
+    """Synchronous read holding registers with compatibility."""
+    try:
+        api_type = _detect_pymodbus_api(client, "read_holding_registers")
+
+        if api_type == "slave":
+            try:
+                return client.read_holding_registers(
+                    address, count=count, slave=slave_id
+                )
+            except TypeError:
+                return client.read_holding_registers(address, count, slave=slave_id)
+        elif api_type == "unit":
+            return client.read_holding_registers(address, count, unit=slave_id)
+        else:
+            return client.read_holding_registers(address, count)
+
+    except Exception as e:
+        _LOGGER.error("Modbus read error at address %d: %s", address, e)
+        raise
+
+
+def write_register(client, address: int, value: int, slave_id: int = 1) -> Any:
+    """Synchronous write register with compatibility."""
+    try:
+        api_type = _detect_pymodbus_api(client, "write_register")
+
+        if api_type == "slave":
+            return client.write_register(address, value, slave=slave_id)
+        elif api_type == "unit":
+            return client.write_register(address, value, unit=slave_id)
+        else:
+            return client.write_register(address, value)
+
+    except Exception as e:
+        _LOGGER.error("Modbus write error at address %d: %s", address, e)
+        raise
+
+
+def write_registers(client, address: int, values: list, slave_id: int = 1) -> Any:
+    """Synchronous write registers with compatibility."""
+    try:
+        api_type = _detect_pymodbus_api(client, "write_registers")
+
+        if api_type == "slave":
+            return client.write_registers(address, values, slave=slave_id)
+        elif api_type == "unit":
+            return client.write_registers(address, values, unit=slave_id)
+        else:
+            return client.write_registers(address, values)
+
+    except Exception as e:
+        _LOGGER.error("Modbus write error at address %d: %s", address, e)
+        raise
+
+
+def read_input_registers(client, address: int, count: int, slave_id: int = 1) -> Any:
+    """Synchronous read input registers with compatibility."""
+    try:
+        api_type = _detect_pymodbus_api(client, "read_input_registers")
+
+        if api_type == "slave":
+            try:
+                return client.read_input_registers(address, count=count, slave=slave_id)
+            except TypeError:
+                return client.read_input_registers(address, count, slave=slave_id)
+        elif api_type == "unit":
+            return client.read_input_registers(address, count, unit=slave_id)
+        else:
+            return client.read_input_registers(address, count)
+
+    except Exception as e:
+        _LOGGER.error("Modbus read error at address %d: %s", address, e)
         raise

@@ -17,6 +17,17 @@
           "num_sol": "Number of solar modules",
           "use_legacy_modbus_names": "Use legacy Modbus names"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Lambda WP",
+        "description": "Update the connection settings for your Lambda WP device.",
+        "data": {
+          "name": "Name",
+          "host": "Host",
+          "port": "Port",
+          "slave_id": "Slave ID",
+          "firmware_version": "Firmware Version"
+        }
       }
     },
     "error": {
@@ -32,33 +43,46 @@
   "options": {
     "step": {
       "init": {
-        "title": "Options",
+        "title": "Lambda WP Options",
+        "description": "Configure advanced options for your Lambda WP device.",
         "data": {
-          "hot_water_min_temp": "Hot water min temp",
-          "hot_water_max_temp": "Hot water max temp",
-          "heating_circuit_min_temp": "HC min temp",
-          "heating_circuit_max_temp": "HC max temp",
-          "heating_circuit_temp_step": "HC temp step",
-          "firmware_version": "Firmware version",
-          "room_thermostat_control": "Room thermostat control",
-          "pv_surplus": "PV Surplus",
-          "update_interval": "Update Interval"
+          "hot_water_min_temp": "Hot Water Min Temperature",
+          "hot_water_max_temp": "Hot Water Max Temperature",
+          "heating_circuit_min_temp": "Heating Circuit Min Temperature",
+          "heating_circuit_max_temp": "Heating Circuit Max Temperature",
+          "heating_circuit_temp_step": "Temperature Step",
+          "firmware_version": "Firmware Version",
+          "room_thermostat_control": "Room Thermostat Control",
+          "pv_surplus": "PV Surplus Control",
+          "update_interval": "Update Interval (seconds)"
+        },
+        "data_description": {
+          "firmware_version": "Select the firmware version of your Lambda heat pump",
+          "room_thermostat_control": "Enable integration with external room thermostats",
+          "pv_surplus": "Enable PV surplus control for optimized energy consumption"
         }
       },
       "thermostat_sensor": {
-        "title": "Room Thermostat Sensors",
-        "description": "Select the temperature sensors for the heating circuits. This will be used for the room temperature control of the Lambda. Note: Only external sensors with the device class temperature that do not originate from this integration are displayed.",
+        "title": "Room Temperature Sensors",
+        "description": "Select room temperature sensors for each heating circuit.",
         "data": {
-          "room_temperature_entity_1": "Temperature Sensor HC1",
-          "room_temperature_entity_2": "Temperature Sensor HC2",
-          "room_temperature_entity_3": "Temperature Sensor HC3",
-          "room_temperature_entity_4": "Temperature Sensor HC4",
-          "room_temperature_entity_5": "Temperature Sensor HC5"
+          "room_temperature_entity_1": "Room Temperature Sensor (HC 1)",
+          "room_temperature_entity_2": "Room Temperature Sensor (HC 2)",
+          "room_temperature_entity_3": "Room Temperature Sensor (HC 3)",
+          "room_temperature_entity_4": "Room Temperature Sensor (HC 4)",
+          "room_temperature_entity_5": "Room Temperature Sensor (HC 5)",
+          "room_temperature_entity_6": "Room Temperature Sensor (HC 6)",
+          "room_temperature_entity_7": "Room Temperature Sensor (HC 7)",
+          "room_temperature_entity_8": "Room Temperature Sensor (HC 8)",
+          "room_temperature_entity_9": "Room Temperature Sensor (HC 9)",
+          "room_temperature_entity_10": "Room Temperature Sensor (HC 10)",
+          "room_temperature_entity_11": "Room Temperature Sensor (HC 11)",
+          "room_temperature_entity_12": "Room Temperature Sensor (HC 12)"
         }
       },
       "pv_sensor": {
         "title": "PV Surplus Sensor",
-        "description": "Select the PV power sensor.",
+        "description": "Select the PV power sensor for surplus control.",
         "data": {
           "pv_power_sensor_entity": "PV Power Sensor"
         }

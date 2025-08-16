@@ -14,7 +14,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.helpers.template import Template, TemplateError
+from homeassistant.helpers.template import Template
+from homeassistant.exceptions import TemplateError
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 
@@ -38,6 +39,7 @@ from .utils import (
 )
 from .const_mapping import HP_ERROR_STATE  # noqa: F401
 from .const_mapping import HP_STATE  # noqa: F401
+
 from .const_mapping import HP_RELAIS_STATE_2ND_HEATING_STAGE  # noqa: F401
 from .const_mapping import HP_OPERATING_STATE  # noqa: F401
 from .const_mapping import HP_REQUEST_TYPE  # noqa: F401
@@ -110,12 +112,12 @@ async def async_setup_entry(
                 address = base_address + sensor_info["relative_address"]
                 if coordinator.is_register_disabled(address):
                     _LOGGER.debug(
-                        "Skipping sensor %s (address %d) because register is "
-                        "disabled",
+                        "Skipping sensor %s (address %d) because register is disabled",
                         f"{prefix}{idx}_{sensor_id}",
                         address,
                     )
                     continue
+
                 device_class = sensor_info.get("device_class")
                 if not device_class and sensor_info.get("unit") == "°C":
                     device_class = SensorDeviceClass.TEMPERATURE
@@ -185,12 +187,14 @@ async def async_setup_entry(
                         state_class=sensor_info.get("state_class", ""),
                         device_class=device_class,
                         relative_address=sensor_info.get("relative_address", 0),
-                        data_type=sensor_info.get("data_type", None),
+                        data_type=sensor_info.get("data_type", ""),
                         device_type=device_type,
                         txt_mapping=sensor_info.get("txt_mapping", False),
                         precision=sensor_info.get("precision", None),
                         entity_id=entity_id,
                         unique_id=unique_id,
+                        options=sensor_info.get("options", None),
+                        sensor_info=sensor_info,
                     )
                 )
 
@@ -199,8 +203,7 @@ async def async_setup_entry(
         address = sensor_info["address"]
         if coordinator.is_register_disabled(address):
             _LOGGER.debug(
-                "Skipping general sensor %s (address %d) because register is "
-                "disabled",
+                "Skipping general sensor %s (address %d) because register is disabled",
                 sensor_id,
                 address,
             )
@@ -252,15 +255,18 @@ async def async_setup_entry(
                 state_class=sensor_info.get("state_class", ""),
                 device_class=device_class,
                 relative_address=sensor_info.get("address", 0),
-                data_type=sensor_info.get("data_type", None),
-                device_type=sensor_info.get("device_type", None),
+                data_type=sensor_info.get("data_type", ""),
+                device_type=sensor_info.get("device_type", "main"),
                 txt_mapping=sensor_info.get("txt_mapping", False),
                 precision=sensor_info.get("precision", None),
                 entity_id=entity_id,
                 unique_id=unique_id,
+                options=sensor_info.get("options", None),
+                sensor_info=sensor_info,
             )
         )
 
+    # Extended/undocumented sensors sind jetzt direkt in HP_SENSOR_TEMPLATES integriert
     # --- Cycling Total Sensors (echte Entities, keine Templates) ---
     cycling_modes = [
         ("heating", "heating_cycling_total"),
@@ -351,9 +357,9 @@ async def async_setup_entry(
         hass.data["lambda_heat_pumps"] = {}
     if entry.entry_id not in hass.data["lambda_heat_pumps"]:
         hass.data["lambda_heat_pumps"][entry.entry_id] = {}
-    hass.data["lambda_heat_pumps"][entry.entry_id][
-        "cycling_entities"
-    ] = cycling_entities
+    hass.data["lambda_heat_pumps"][entry.entry_id]["cycling_entities"] = (
+        cycling_entities
+    )
     _LOGGER.info(
         "Cycling-Sensoren erzeugt: %d, Entity-IDs: %s",
         cycling_sensor_count,
@@ -742,7 +748,7 @@ class LambdaYesterdaySensor(RestoreEntity, SensorEntity):
         }
 
 
-class LambdaSensor(CoordinatorEntity, SensorEntity):
+class LambdaSensor(CoordinatorEntity[LambdaDataUpdateCoordinator], SensorEntity):
     """Representation of a Lambda sensor."""
 
     _attr_has_entity_name = True
@@ -763,9 +769,11 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
         data_type: str,
         device_type: str,
         txt_mapping: bool = False,
-        precision: int | float | None = None,
+        precision: int | None = None,
         entity_id: str | None = None,
         unique_id: str | None = None,
+        options: list[str] | None = None,
+        sensor_info: dict | None = None,
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
@@ -783,6 +791,24 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
         self._device_type = device_type
         self._txt_mapping = txt_mapping
         self._precision = precision
+        self._options = options
+        self._sensor_info = sensor_info or {}
+        self._entity_enabled = False  # Track if entity is enabled
+
+        # Debug log sensor creation with register option
+        if sensor_info and sensor_info.get("options", {}).get("register", False):
+            _LOGGER.info(
+                "Created sensor %s with register option, address=%s", sensor_id, address
+            )
+
+        if txt_mapping:
+            _LOGGER.info("Created state sensor %s (txt_mapping=True)", sensor_id)
+
+        # Store the address in coordinator for polling control
+        if hasattr(coordinator, "_entity_addresses"):
+            coordinator._entity_addresses[entity_id] = address
+        else:
+            coordinator._entity_addresses = {entity_id: address}
 
         _LOGGER.debug(
             "Sensor initialized with ID: %s and config: %s",
@@ -811,7 +837,7 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
             self._attr_suggested_display_precision = None
         else:
             self._attr_native_unit_of_measurement = unit
-            if precision is not None:
+            if precision is not None and isinstance(precision, int):
                 self._attr_suggested_display_precision = precision
             if unit == "°C":
                 self._attr_device_class = SensorDeviceClass.TEMPERATURE
@@ -826,6 +852,44 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
                     self._attr_state_class = SensorStateClass.TOTAL_INCREASING
                 elif state_class == "measurement":
                     self._attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def should_poll(self) -> bool:
+        """Only poll if the entity is enabled and added to HA."""
+        return self._entity_enabled
+
+    async def async_added_to_hass(self):
+        """Setup polling when entity is enabled and added to HA."""
+        await super().async_added_to_hass()
+        self._entity_enabled = True
+
+        # Add this address to enabled addresses in coordinator
+        if hasattr(self.coordinator, "_enabled_addresses"):
+            if self.coordinator._enabled_addresses:
+                self.coordinator._enabled_addresses.add(self._address)
+            else:
+                self.coordinator._enabled_addresses = {self._address}
+
+        _LOGGER.debug(
+            "Entity %s (address %d) added to HA - polling enabled",
+            self.entity_id,
+            self._address,
+        )
+
+    async def async_will_remove_from_hass(self):
+        """Called when entity is removed/disabled - stop polling."""
+        self._entity_enabled = False
+
+        # Remove this address from enabled addresses in coordinator
+        if hasattr(self.coordinator, "_enabled_addresses"):
+            self.coordinator._enabled_addresses.discard(self._address)
+
+        _LOGGER.debug(
+            "Entity %s (address %d) removed from HA - polling disabled",
+            self.entity_id,
+            self._address,
+        )
+        await super().async_will_remove_from_hass()
 
     @property
     def name(self) -> str:
@@ -844,13 +908,30 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
                 )
                 self._sensor_id = override_name
                 return override_name
-        return self._attr_name
+        return self._attr_name or ""
 
     @property
     def native_value(self) -> float | str | None:
         if not self.coordinator.data:
             return None
         value = self.coordinator.data.get(self._sensor_id)
+
+        # Debug logging für undokumentierte Register
+        if self._sensor_id and (
+            "extended" in self._sensor_id
+            or "config" in self._sensor_id
+            or "additional" in self._sensor_id
+            or "ambient" in self._sensor_id
+            or "compressor_outlet" in self._sensor_id
+            or "maximum_value" in self._sensor_id
+        ):
+            _LOGGER.debug(
+                "Debug sensor %s: value=%s, coordinator.data has %d entries",
+                self._sensor_id,
+                value,
+                len(self.coordinator.data) if self.coordinator.data else 0,
+            )
+
         if value is None:
             return None
         if self._is_state_sensor:
@@ -861,15 +942,20 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
 
             # Extract base name without index
             # (e.g. "HP1 Operating State" -> "Operating State")
-            base_name = self._attr_name
-            if self._device_type and self._device_type.upper() in base_name:
+            base_name = self._attr_name or ""
+            if (
+                self._device_type
+                and base_name
+                and self._device_type.upper() in base_name
+            ):
                 # Remove prefix and index (e.g. "HP1 " or "BOIL2 ")
                 base_name = " ".join(base_name.split()[1:])
             # Ersetze auch Bindestriche durch Unterstriche
-            mapping_name = (
-                f"{self._device_type.upper()}_"
-                f"{base_name.upper().replace(' ', '_').replace('-', '_')}"
-            )
+            if base_name:
+                mapping_name = (
+                    f"{self._device_type.upper()}_"
+                    f"{base_name.upper().replace(' ', '_').replace('-', '_')}"
+                )
             try:
                 state_mapping = globals().get(mapping_name)
                 if state_mapping is not None:
@@ -926,7 +1012,69 @@ class LambdaSensor(CoordinatorEntity, SensorEntity):
             return SensorDeviceClass.POWER
         elif self._device_class == "energy":
             return SensorDeviceClass.ENERGY
+        elif self._device_class == "enum":
+            return SensorDeviceClass.ENUM
         return None
+
+    @property
+    def options(self) -> list[str] | None:
+        """Return the available options for enum sensors."""
+        if self._device_class == "enum" and self._options:
+            return self._options
+        return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | int | list] | None:
+        """Return extra state attributes."""
+        _LOGGER.debug("extra_state_attributes called for sensor %s", self._sensor_id)
+        attrs = {}
+
+        # Add register address for ALL sensors (not just those with register option)
+        _LOGGER.debug(
+            "Adding register %s for sensor %s", self._address, self._sensor_id
+        )
+        attrs["register"] = self._address
+
+        # For txt_mapping sensors (state sensors), add enum options
+        if self._txt_mapping and self._is_state_sensor:
+            _LOGGER.debug(
+                "Processing state sensor %s for enum options", self._sensor_id
+            )
+            # Get the mapping dictionary name
+            base_name = self._attr_name or ""
+            if (
+                self._device_type
+                and base_name
+                and self._device_type.upper() in base_name
+            ):
+                base_name = " ".join(base_name.split()[1:])
+
+            if base_name:
+                mapping_name = (
+                    f"{self._device_type.upper()}_"
+                    f"{base_name.upper().replace(' ', '_').replace('-', '_')}"
+                )
+                _LOGGER.debug("Looking for state mapping: %s", mapping_name)
+
+                try:
+                    state_mapping = globals().get(mapping_name)
+                    if state_mapping is not None:
+                        # Convert mapping to options list
+                        options = list(state_mapping.values())
+                        _LOGGER.debug(
+                            "Found enum options for %s: %s", self._sensor_id, options
+                        )
+                        attrs["options"] = options
+                    else:
+                        _LOGGER.debug("No state mapping found for %s", mapping_name)
+
+                except Exception as e:
+                    _LOGGER.debug(
+                        "Error getting state mapping for %s: %s", mapping_name, e
+                    )
+
+        _LOGGER.debug("Final attributes for %s: %s", self._sensor_id, attrs)
+        return attrs
 
     @property
     def device_info(self):
@@ -982,7 +1130,7 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
     @property
     def unique_id(self) -> str:
         """Return the unique ID of the sensor."""
-        return self._unique_id
+        return self._unique_id or ""
 
     @property
     def native_value(self) -> float | str | None:
@@ -1019,7 +1167,7 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self):
         """Return device info."""
-        return build_device_info(self._entry, self._device_type, self._sensor_id)
+        return build_device_info(self._entry)
 
     @callback
     def handle_coordinator_update(self) -> None:
@@ -1041,7 +1189,7 @@ class LambdaTemplateSensor(CoordinatorEntity, SensorEntity):
                 return
             try:
                 float_value = float(rendered_value)
-                if self._precision is not None:
+                if self._precision is not None and isinstance(self._precision, int):
                     self._state = round(float_value, self._precision)
                 else:
                     self._state = float_value
