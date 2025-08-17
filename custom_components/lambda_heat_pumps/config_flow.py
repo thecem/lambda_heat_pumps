@@ -48,6 +48,8 @@ from .const import (
     MAX_NUM_HC,
     MAX_NUM_BUFFER,
     MAX_NUM_SOLAR,
+    PV_SURPLUS_MODE_OPTIONS,
+    DEFAULT_PV_SURPLUS_MODE,
 )
 from .modbus_utils import async_read_holding_registers
 
@@ -646,6 +648,7 @@ class LambdaOptionsFlow(OptionsFlow):
         self._options = {
             "room_thermostat_control": DEFAULT_ROOM_THERMOSTAT_CONTROL,
             "pv_surplus": DEFAULT_PV_SURPLUS,
+            "pv_surplus_mode": DEFAULT_PV_SURPLUS_MODE,
             "hot_water_min_temp": DEFAULT_HOT_WATER_MIN_TEMP,
             "hot_water_max_temp": DEFAULT_HOT_WATER_MAX_TEMP,
             "heating_circuit_min_temp": DEFAULT_HEATING_CIRCUIT_MIN_TEMP,
@@ -802,6 +805,18 @@ class LambdaOptionsFlow(OptionsFlow):
                 "pv_surplus",
                 default=self._options.get("pv_surplus", DEFAULT_PV_SURPLUS),
             ): selector.BooleanSelector(),
+            vol.Optional(
+                "pv_surplus_mode",
+                default=self._options.get("pv_surplus_mode", DEFAULT_PV_SURPLUS_MODE),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": k, "label": v}
+                        for k, v in PV_SURPLUS_MODE_OPTIONS.items()
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
             vol.Optional(
                 "update_interval",
                 default=self._options.get("update_interval", DEFAULT_UPDATE_INTERVAL),

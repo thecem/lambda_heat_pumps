@@ -19,11 +19,15 @@ from .const import (
     DEBUG_PREFIX,
     LAMBDA_WP_CONFIG_TEMPLATE,  # Import template from const
 )
+
 from .coordinator import LambdaDataUpdateCoordinator
 from .services import async_setup_services, async_unload_services
 from .utils import generate_base_addresses
 from .automations import setup_cycling_automations, cleanup_cycling_automations
 from .migration import async_migrate_entry as migrate_entry
+
+from .module_auto_detect import auto_detect_modules, update_entry_with_detected_modules
+from .const import AUTO_DETECT_RETRIES, AUTO_DETECT_RETRY_DELAY
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=30)
@@ -81,12 +85,55 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         _LOGGER.info("Created lambda_wp_config.yaml with default template")
 
-    # Generate base addresses based on configured device counts
-    num_hps = entry.data.get("num_hps", 1)
-    num_boil = entry.data.get("num_boil", 1)
-    num_buff = entry.data.get("num_buff", 0)
-    num_sol = entry.data.get("num_sol", 0)
-    num_hc = entry.data.get("num_hc", 1)
+    # --- Module auto-detection mit Retry ---
+    detected_counts = None
+    for attempt in range(AUTO_DETECT_RETRIES):
+        try:
+            coordinator = LambdaDataUpdateCoordinator(hass, entry)
+            await coordinator.async_init()
+            client = getattr(coordinator, "client", None)
+            slave_id = getattr(coordinator, "slave_id", 1)
+            if client is not None:
+                detected_counts = await auto_detect_modules(client, slave_id)
+                updated = await update_entry_with_detected_modules(
+                    hass, entry, detected_counts
+                )
+                if updated:
+                    _LOGGER.info(
+                        "Config entry updated with detected module counts: %s",
+                        detected_counts,
+                    )
+                break
+            else:
+                _LOGGER.warning(
+                    "[Auto-detect attempt %d/%d] Could not get Modbus client for auto-detection; using config values.",
+                    attempt + 1,
+                    AUTO_DETECT_RETRIES,
+                )
+        except Exception as ex:
+            _LOGGER.warning(
+                "[Auto-detect attempt %d/%d] Module auto-detection failed: %s",
+                attempt + 1,
+                AUTO_DETECT_RETRIES,
+                ex,
+            )
+        if detected_counts is None and attempt < AUTO_DETECT_RETRIES - 1:
+            await asyncio.sleep(AUTO_DETECT_RETRY_DELAY)
+
+    # Use detected counts if available, else fallback to config
+    if detected_counts:
+        num_hps = detected_counts.get("hp", 1)
+        num_boil = detected_counts.get("boil", 1)
+        num_buff = detected_counts.get("buff", 0)
+        num_sol = detected_counts.get("sol", 0)
+        num_hc = detected_counts.get("hc", 1)
+    else:
+        num_hps = entry.data.get("num_hps", 1)
+        num_boil = entry.data.get("num_boil", 1)
+        num_buff = entry.data.get("num_buff", 0)
+        num_sol = entry.data.get("num_sol", 0)
+        num_hc = entry.data.get("num_hc", 1)
+
     _LOGGER.debug(
         "Device counts - HPs: %d, Boilers: %d, Buffers: %d, Solar: %d, HCs: %d",
         num_hps,
@@ -96,7 +143,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         num_hc,
     )
 
-    # Log generated base addresses direkt ohne Variablen
     _LOGGER.debug(
         "Generated base addresses - HP: %s, Boil: %s, Buff: %s, Sol: %s, HC: %s",
         generate_base_addresses("hp", num_hps),
@@ -105,6 +151,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         generate_base_addresses("sol", num_sol),
         generate_base_addresses("hc", num_hc),
     )
+    # Create coordinator (again, for main use)
+    coordinator = LambdaDataUpdateCoordinator(hass, entry)
     # Create coordinator
     coordinator = LambdaDataUpdateCoordinator(hass, entry)
     try:

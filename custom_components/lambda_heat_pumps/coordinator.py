@@ -144,7 +144,7 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             return f"sensor.eu08l_hp{idx + 1}_{sensor_type}"
 
     async def async_init(self):
-        """Async initialization."""
+        """Async initialization (inkl. Modbus-Connect für Auto-Detection)."""
         _LOGGER.debug("Initializing Lambda coordinator")
         _LOGGER.debug("Config directory: %s", self._config_dir)
         _LOGGER.debug("Config path: %s", self._config_path)
@@ -175,6 +175,9 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                 )
             await self._load_offsets_and_persisted()
 
+            # Modbus-Connect für Auto-Detection (wird im Produktivbetrieb ohnehin benötigt)
+            await self._connect()
+
             # Initialize Entity Registry monitoring
             # Entity-based polling control now handled by entity lifecycle methods
 
@@ -203,38 +206,65 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
             raise
 
     async def _read_registers_batch(self, address_list, sensor_mapping):
-        """Read multiple registers in optimized batches."""
+        """Read multiple registers in robust, type-safe batches."""
         data = {}
 
         # Sort addresses for potential batch optimization
         sorted_addresses = sorted(address_list.keys())
 
-        # Group consecutive addresses for batch reading
+        # Group addresses for batch reading, avoiding INT32 boundaries and mixed types
         batches = []
         current_batch = []
+        current_type = None
+        last_addr = None
+
+        def get_type(addr):
+            return address_list[addr].get("data_type")
 
         for addr in sorted_addresses:
-            if not current_batch:
+            dtype = get_type(addr)
+            # If INT32, always treat as a pair (addr, addr+1)
+            if dtype == "int32":
+                # If current batch is not empty, flush it first
+                if current_batch:
+                    batches.append(current_batch)
+                    current_batch = []
+                    current_type = None
+                # Add both registers as a single batch
+                batches.append([addr, addr + 1])
+                last_addr = addr + 1
+                continue
+            # For INT16/UINT16, group only if consecutive and same type
+            if (
+                not current_batch
+                or addr != last_addr + 1
+                or current_type != dtype
+                or len(current_batch) >= 120  # Modbus safety margin
+            ):
+                if current_batch:
+                    batches.append(current_batch)
                 current_batch = [addr]
-            elif (
-                addr == current_batch[-1] + 1 and len(current_batch) < 125
-            ):  # Modbus limit
-                current_batch.append(addr)
+                current_type = dtype
             else:
-                batches.append(current_batch)
-                current_batch = [addr]
-
+                current_batch.append(addr)
+            last_addr = addr
         if current_batch:
             batches.append(current_batch)
 
         # Read batches
         for batch in batches:
             try:
+                # If batch is a single INT32 (2 addresses), handle as such
+                if len(batch) == 2 and get_type(batch[0]) == "int32":
+                    await self._read_single_register(
+                        batch[0], address_list[batch[0]], sensor_mapping, data
+                    )
+                    continue
                 start_addr = batch[0]
                 count = len(batch)
 
                 # For small batches or single registers, use individual reads
-                if count == 1 or count > 100:  # Avoid large batch issues
+                if count == 1 or count > 100:
                     for addr in batch:
                         await self._read_single_register(
                             addr, address_list[addr], sensor_mapping, data
@@ -263,9 +293,9 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                 for i, addr in enumerate(batch):
                     sensor_info = address_list[addr]
                     sensor_id = sensor_mapping[addr]
-
                     try:
                         if sensor_info.get("data_type") == "int32":
+                            # Should not happen in batch, but safety check
                             if i + 1 < len(result.registers):
                                 value = (result.registers[i] << 16) | result.registers[
                                     i + 1
@@ -277,26 +307,21 @@ class LambdaDataUpdateCoordinator(DataUpdateCoordinator):
                             value = result.registers[i]
                             if sensor_info.get("data_type") == "int16":
                                 value = to_signed_16bit(value)
-
                         if "scale" in sensor_info:
                             value = value * sensor_info["scale"]
-
                         data[sensor_id] = value
-
                     except Exception as ex:
                         _LOGGER.debug(
                             f"Error processing register {addr} in batch: {ex}"
                         )
-
             except Exception as ex:
                 _LOGGER.warning(
-                    f"Error reading batch {start_addr}-{start_addr + len(batch) - 1}: {ex}, falling back to individual reads"
+                    f"Error reading batch {batch[0]}-{batch[-1]}: {ex}, falling back to individual reads"
                 )
                 for addr in batch:
                     await self._read_single_register(
                         addr, address_list[addr], sensor_mapping, data
                     )
-
         return data
 
     async def _read_single_register(self, address, sensor_info, sensor_mapping, data):

@@ -54,6 +54,7 @@
           "firmware_version": "Firmware Version",
           "room_thermostat_control": "Raumthermostat-Steuerung",
           "pv_surplus": "PV-Überschuss-Steuerung",
+          "pv_surplus_mode": "E-Meter Messpunkt",
           "update_interval": "Update-Intervall (Sekunden)"
         },
         "data_description": {

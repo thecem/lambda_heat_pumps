@@ -4,11 +4,10 @@
   "codeowners": ["@GuidoJeuken-6512"],
   "config_flow": true,
   "documentation": "https://github.com/GuidoJeuken-6512/lambda_wp_hacs",
-  "domain": "lambda_heat_pumps",
-  "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/GuidoJeuken-6512/lambda_wp_hacs/issues",
-  "name": "Lambda Heat Pumps",
   "requirements": ["pymodbus>=3.6.0"],
-  "version": "1.2.1"
+  "version": "1.2.1",
+  "integration_type": "device",
+  "description": "Integration for Lambda (Alpha Innotec, Novelan, Siemens) heat pumps via Modbus TCP.\n\nFeatures:\n- Auto-detection of available modules (heat pumps, boilers, heating circuits, buffer, solar)\n- All sensors (documented and undocumented) are always available\n- Room thermostat and PV surplus support\n- Extensive configuration options via Home Assistant UI\n- Reconfiguration and options flow\n- Robust connection validation and error handling\n- Compatible with Home Assistant entity registry and device model\n\nThis integration allows you to monitor and control Lambda-based heat pumps using Modbus TCP. It supports multiple firmware versions and provides a wide range of sensors and controls for advanced automation and monitoring."
 }

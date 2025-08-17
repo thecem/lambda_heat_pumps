@@ -1,6 +1,17 @@
-"""Constants for Lambda WP integration."""
-
 from __future__ import annotations
+
+# Retry-Parameter für automatische Modulerkennung
+AUTO_DETECT_RETRIES = 3
+AUTO_DETECT_RETRY_DELAY = 5  # Sekunden
+
+# PV Surplus mode options
+PV_SURPLUS_MODE_OPTIONS = {
+    "entry": "E-Eintrag (nur positiv, UINT16)",
+    "pos": "Pos. E-Überschuss (nur positiv, UINT16)",
+    "neg": "Neg. E-Überschuss (positiv/negativ, INT16)",
+}
+DEFAULT_PV_SURPLUS_MODE = "pos"
+"""Constants for Lambda WP integration."""
 
 # Integration Constants
 DOMAIN = "lambda_heat_pumps"
@@ -243,7 +254,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "int16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "total",
     },
     "requested_flow_line_temperature": {
@@ -255,7 +266,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "int16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
     },
     "requested_return_line_temperature": {
@@ -267,7 +278,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "int16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
     },
     "requested_flow_to_return_line_temperature_difference": {
@@ -279,7 +290,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "int16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
     },
     "relais_state_2nd_heating_stage": {
@@ -453,7 +464,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "uint16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
         "device_class": "power",
     },
@@ -466,7 +477,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "uint16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
         "device_class": "power",
     },
@@ -479,7 +490,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "uint16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
         "device_class": "power",
     },
@@ -492,7 +503,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "uint16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
         "device_class": "power",
     },
@@ -505,7 +516,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "uint16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
         "device_class": "power",
     },
@@ -518,7 +529,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "uint16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
         "device_class": "power",
     },
@@ -531,7 +542,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "uint16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
         "device_class": "power",
     },
@@ -544,7 +555,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "uint16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
         "device_class": "power",
     },
@@ -557,7 +568,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "uint16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
         "device_class": "power",
     },
