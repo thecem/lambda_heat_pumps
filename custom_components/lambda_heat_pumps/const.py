@@ -1,3 +1,10 @@
+# PV Surplus mode options
+PV_SURPLUS_MODE_OPTIONS = {
+    "entry": "E-Eintrag (nur positiv, UINT16)",
+    "pos": "Pos. E-Überschuss (nur positiv, UINT16)",
+    "neg": "Neg. E-Überschuss (positiv/negativ, INT16)",
+}
+DEFAULT_PV_SURPLUS_MODE = "pos"
 """Constants for Lambda WP integration."""
 
 from __future__ import annotations
