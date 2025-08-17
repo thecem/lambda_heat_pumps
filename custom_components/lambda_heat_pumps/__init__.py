@@ -24,7 +24,7 @@ from .coordinator import LambdaDataUpdateCoordinator
 from .services import async_setup_services, async_unload_services
 from .utils import generate_base_addresses
 from .automations import setup_cycling_automations, cleanup_cycling_automations
-from .migration import async_migrate_entry as migrate_entry
+# from .migration import async_migrate_entry as migrate_entry
 
 from .module_auto_detect import auto_detect_modules, update_entry_with_detected_modules
 from .const import AUTO_DETECT_RETRIES, AUTO_DETECT_RETRY_DELAY
@@ -64,7 +64,34 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Migrate config entry to new version."""
-    return await migrate_entry(hass, config_entry)
+    _LOGGER.info(
+        "Starting migration for config entry %s (version %s)",
+        config_entry.entry_id, config_entry.version
+    )
+    
+    # Check if migration is needed
+    if config_entry.version >= 2:
+        _LOGGER.info(
+            "Config entry already at version 2 or higher, skipping migration"
+        )
+        return True
+    
+    # Perform the migration
+    from .migration import perform_option_c_migration
+    migration_result = await perform_option_c_migration(hass)
+    result = migration_result["success"]
+    
+    if result:
+        _LOGGER.info(
+            "Migration completed successfully for config entry %s",
+            config_entry.entry_id
+        )
+    else:
+        _LOGGER.error(
+            "Migration failed for config entry %s", config_entry.entry_id
+        )
+    
+    return result
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
