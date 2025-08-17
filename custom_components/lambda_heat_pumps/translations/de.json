@@ -17,6 +17,17 @@
           "num_sol": "Anzahl Solarmodule",
           "use_legacy_modbus_names": "Legacy Modbus-Namen"
         }
+      },
+      "reconfigure": {
+        "title": "Lambda WP neu konfigurieren",
+        "description": "Verbindungseinstellungen für Ihr Lambda WP-Gerät aktualisieren.",
+        "data": {
+          "name": "Name",
+          "host": "Host",
+          "port": "Port",
+          "slave_id": "Slave ID",
+          "firmware_version": "Firmware Version"
+        }
       }
     },
     "error": {
@@ -32,17 +43,24 @@
   "options": {
     "step": {
       "init": {
-        "title": "Optionen",
+        "title": "Lambda WP Optionen",
+        "description": "Erweiterte Optionen für Ihre Lambda Wärmepumpe konfigurieren.",
         "data": {
-          "hot_water_min_temp": "WW Min-Temp",
-          "hot_water_max_temp": "WW Max-Temp",
-          "heating_circuit_min_temp": "HK Min-Temp",
-          "heating_circuit_max_temp": "HK Max-Temp",
-          "heating_circuit_temp_step": "HK Temp-Schritt",
+          "hot_water_min_temp": "Warmwasser Min-Temperatur",
+          "hot_water_max_temp": "Warmwasser Max-Temperatur",
+          "heating_circuit_min_temp": "Heizkreis Min-Temperatur",
+          "heating_circuit_max_temp": "Heizkreis Max-Temperatur",
+          "heating_circuit_temp_step": "Temperatur-Schritt",
           "firmware_version": "Firmware Version",
           "room_thermostat_control": "Raumthermostat-Steuerung",
-          "pv_surplus": "PV-Überschuss",
-          "update_interval": "Update-Intervall"
+          "pv_surplus": "PV-Überschuss-Steuerung",
+          "pv_surplus_mode": "E-Meter Messpunkt",
+          "update_interval": "Update-Intervall (Sekunden)"
+        },
+        "data_description": {
+          "firmware_version": "Wählen Sie die Firmware-Version Ihrer Lambda Wärmepumpe",
+          "room_thermostat_control": "Ermöglicht Integration mit externen Raumthermostaten",
+          "pv_surplus": "Aktiviert PV-Überschuss-Steuerung für optimierten Energieverbrauch"
         }
       },
       "thermostat_sensor": {

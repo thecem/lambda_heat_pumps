@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import os
 import yaml
-import aiofiles
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
@@ -32,10 +31,12 @@ def get_compatible_sensors(sensor_templates: dict, fw_version: int) -> dict:
         k: v
         for k, v in sensor_templates.items()
         if (
-            isinstance(v.get("firmware_version"), (int, float)) 
+            isinstance(v.get("firmware_version"), (int, float))
             and v.get("firmware_version", 1) <= fw_version
         )
-        or not isinstance(v.get("firmware_version"), (int, float))  # Include sensors without firmware_version
+        or not isinstance(
+            v.get("firmware_version"), (int, float)
+        )  # Include sensors without firmware_version
     }
 
 
@@ -46,17 +47,17 @@ def get_firmware_version(entry):
     Returns the firmware name as string (e.g., "V0.0.3-3K").
     """
     from .const import DEFAULT_FIRMWARE
-    
+
     # First try to get from options (new way)
     fw_version = entry.options.get("firmware_version")
     if fw_version:
         return fw_version
-    
+
     # Fallback to data (old way, for backward compatibility)
     fw_version = entry.data.get("firmware_version")
     if fw_version:
         return fw_version
-    
+
     # Default fallback
     return DEFAULT_FIRMWARE
 
@@ -67,17 +68,17 @@ def get_firmware_version_int(entry):
     Returns the integer version for compatibility checking (e.g., 1, 2, 3).
     """
     from .const import DEFAULT_FIRMWARE, FIRMWARE_VERSION
-    
+
     # First try to get from options (new way)
     fw_version = entry.options.get("firmware_version")
     if fw_version:
         return FIRMWARE_VERSION.get(fw_version, 1)
-    
+
     # Fallback to data (old way, for backward compatibility)
     fw_version = entry.data.get("firmware_version")
     if fw_version:
         return FIRMWARE_VERSION.get(fw_version, 1)
-    
+
     # Default fallback
     return FIRMWARE_VERSION.get(DEFAULT_FIRMWARE, 1)
 
@@ -120,9 +121,10 @@ async def migrate_lambda_config(hass: HomeAssistant) -> bool:
 
     try:
         # Read current config
-        async with aiofiles.open(lambda_config_path, "r") as file:
-            content = await file.read()
-            current_config = yaml.safe_load(content)
+        content = await hass.async_add_executor_job(
+            lambda: open(lambda_config_path, "r").read()
+        )
+        current_config = yaml.safe_load(content)
 
         if not current_config:
             _LOGGER.debug("Empty config file, no migration needed")
@@ -140,8 +142,7 @@ async def migrate_lambda_config(hass: HomeAssistant) -> bool:
 
         # Create backup
         backup_path = lambda_config_path + ".backup"
-        async with aiofiles.open(backup_path, "w") as backup_file:
-            await backup_file.write(content)
+        await hass.async_add_executor_job(lambda: open(backup_path, "w").write(content))
         _LOGGER.info("Created backup at %s", backup_path)
 
         # Add cycling_offsets section
@@ -184,8 +185,9 @@ async def migrate_lambda_config(hass: HomeAssistant) -> bool:
             content = "\n".join(lines)
 
         # Write updated config
-        async with aiofiles.open(lambda_config_path, "w") as file:
-            await file.write(content)
+        await hass.async_add_executor_job(
+            lambda: open(lambda_config_path, "w").write(content)
+        )
 
         _LOGGER.info(
             "Successfully migrated lambda_wp_config.yaml to version 1.1.0 - "
@@ -219,78 +221,77 @@ async def load_lambda_config(hass: HomeAssistant) -> dict:
         return default_config
 
     try:
-        async with aiofiles.open(lambda_config_path, "r") as file:
-            content = await file.read()
-            config = yaml.safe_load(content)
+        content = await hass.async_add_executor_job(
+            lambda: open(lambda_config_path, "r").read()
+        )
+        config = yaml.safe_load(content)
 
-            if not config:
-                _LOGGER.warning(
-                    "lambda_wp_config.yaml is empty, using default configuration"
-                )
-                return default_config
-
-            # Load disabled registers
-            disabled_registers = set()
-            if "disabled_registers" in config:
-                try:
-                    disabled_registers = set(
-                        int(x) for x in config["disabled_registers"]
-                    )
-                except (ValueError, TypeError) as e:
-                    _LOGGER.error("Invalid disabled_registers format: %s", e)
-                    disabled_registers = set()
-
-            # Load sensor overrides
-            sensors_names_override = {}
-            if "sensors_names_override" in config:
-                try:
-                    for override in config["sensors_names_override"]:
-                        if "id" in override and "override_name" in override:
-                            sensors_names_override[override["id"]] = override[
-                                "override_name"
-                            ]
-                except (TypeError, KeyError) as e:
-                    _LOGGER.error("Invalid sensors_names_override format: %s", e)
-                    sensors_names_override = {}
-
-            # Load cycling offsets
-            cycling_offsets = {}
-            if "cycling_offsets" in config:
-                try:
-                    cycling_offsets = config["cycling_offsets"]
-                    # Validate cycling offsets structure
-                    for device, offsets in cycling_offsets.items():
-                        if not isinstance(offsets, dict):
-                            _LOGGER.warning(
-                                "Invalid cycling_offsets format for device %s", device
-                            )
-                            continue
-                        for offset_type, value in offsets.items():
-                            if not isinstance(value, (int, float)):
-                                _LOGGER.warning(
-                                    "Invalid cycling offset value for %s.%s: %s",
-                                    device,
-                                    offset_type,
-                                    value,
-                                )
-                                cycling_offsets[device][offset_type] = 0
-                except (TypeError, KeyError) as e:
-                    _LOGGER.error("Invalid cycling_offsets format: %s", e)
-                    cycling_offsets = {}
-
-            _LOGGER.debug(
-                "Loaded Lambda config: %d disabled registers, %d sensor "
-                "overrides, %d device offsets",
-                len(disabled_registers),
-                len(sensors_names_override),
-                len(cycling_offsets),
+        if not config:
+            _LOGGER.warning(
+                "lambda_wp_config.yaml is empty, using default configuration"
             )
+            return default_config
 
-            return {
-                "disabled_registers": disabled_registers,
-                "sensors_names_override": sensors_names_override,
-                "cycling_offsets": cycling_offsets,
-            }
+        # Load disabled registers
+        disabled_registers = set()
+        if "disabled_registers" in config:
+            try:
+                disabled_registers = set(int(x) for x in config["disabled_registers"])
+            except (ValueError, TypeError) as e:
+                _LOGGER.error("Invalid disabled_registers format: %s", e)
+                disabled_registers = set()
+
+        # Load sensor overrides
+        sensors_names_override = {}
+        if "sensors_names_override" in config:
+            try:
+                for override in config["sensors_names_override"]:
+                    if "id" in override and "override_name" in override:
+                        sensors_names_override[override["id"]] = override[
+                            "override_name"
+                        ]
+            except (TypeError, KeyError) as e:
+                _LOGGER.error("Invalid sensors_names_override format: %s", e)
+                sensors_names_override = {}
+
+        # Load cycling offsets
+        cycling_offsets = {}
+        if "cycling_offsets" in config:
+            try:
+                cycling_offsets = config["cycling_offsets"]
+                # Validate cycling offsets structure
+                for device, offsets in cycling_offsets.items():
+                    if not isinstance(offsets, dict):
+                        _LOGGER.warning(
+                            "Invalid cycling_offsets format for device %s", device
+                        )
+                        continue
+                    for offset_type, value in offsets.items():
+                        if not isinstance(value, (int, float)):
+                            _LOGGER.warning(
+                                "Invalid cycling offset value for %s.%s: %s",
+                                device,
+                                offset_type,
+                                value,
+                            )
+                            cycling_offsets[device][offset_type] = 0
+            except (TypeError, KeyError) as e:
+                _LOGGER.error("Invalid cycling_offsets format: %s", e)
+                cycling_offsets = {}
+
+        _LOGGER.debug(
+            "Loaded Lambda config: %d disabled registers, %d sensor "
+            "overrides, %d device offsets",
+            len(disabled_registers),
+            len(sensors_names_override),
+            len(cycling_offsets),
+        )
+
+        return {
+            "disabled_registers": disabled_registers,
+            "sensors_names_override": sensors_names_override,
+            "cycling_offsets": cycling_offsets,
+        }
 
     except Exception as e:
         _LOGGER.error(

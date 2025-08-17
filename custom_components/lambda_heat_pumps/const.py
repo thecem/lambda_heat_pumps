@@ -1,6 +1,17 @@
-"""Constants for Lambda WP integration."""
-
 from __future__ import annotations
+
+# Retry-Parameter für automatische Modulerkennung
+AUTO_DETECT_RETRIES = 3
+AUTO_DETECT_RETRY_DELAY = 5  # Sekunden
+
+# PV Surplus mode options
+PV_SURPLUS_MODE_OPTIONS = {
+    "entry": "E-Eintrag (nur positiv, UINT16)",
+    "pos": "Pos. E-Überschuss (nur positiv, UINT16)",
+    "neg": "Neg. E-Überschuss (positiv/negativ, INT16)",
+}
+DEFAULT_PV_SURPLUS_MODE = "pos"
+"""Constants for Lambda WP integration."""
 
 # Integration Constants
 DOMAIN = "lambda_heat_pumps"
@@ -8,7 +19,7 @@ DEFAULT_NAME = "EU08L"
 DEFAULT_HOST = "192.168.178.194"
 DEFAULT_PORT = 502
 DEFAULT_SLAVE_ID = 1
-DEFAULT_FIRMWARE = "V0.0.3-3K"
+DEFAULT_FIRMWARE = "V0.0.8-3K"  # Updated to match current hardware
 DEFAULT_ROOM_THERMOSTAT_CONTROL = False
 DEFAULT_PV_SURPLUS = False
 
@@ -48,11 +59,12 @@ LOG_LEVELS = {"error": "ERROR", "warning": "WARNING", "info": "INFO", "debug": "
 
 # Firmware Versions
 FIRMWARE_VERSION = {
-    "V0.0.3-3K": 1,
-    "V0.0.4-3K": 2,
-    "V0.0.5-3K": 3,
-    "V0.0.6-3K": 4,
+    "V0.0.8-3K": 6,  # Current firmware - most common
     "V0.0.7-3K": 5,
+    "V0.0.6-3K": 4,
+    "V0.0.5-3K": 3,
+    "V0.0.4-3K": 2,
+    "V0.0.3-3K": 1,
 }
 
 # State Mappings
@@ -73,6 +85,7 @@ HP_SENSOR_TEMPLATES = {
         "device_type": "Hp",
         "writeable": False,
         "txt_mapping": True,
+        "options": {"register": True},
     },
     "error_number": {
         "relative_address": 1,
@@ -97,6 +110,7 @@ HP_SENSOR_TEMPLATES = {
         "device_type": "Hp",
         "writeable": False,
         "txt_mapping": True,
+        "options": {"register": True},
     },
     "operating_state": {
         "relative_address": 3,
@@ -109,6 +123,7 @@ HP_SENSOR_TEMPLATES = {
         "device_type": "Hp",
         "writeable": False,
         "txt_mapping": True,
+        "options": {"register": True},
     },
     "flow_line_temperature": {
         "relative_address": 4,
@@ -239,7 +254,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "int16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "total",
     },
     "requested_flow_line_temperature": {
@@ -251,7 +266,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "int16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
     },
     "requested_return_line_temperature": {
@@ -263,7 +278,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "int16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
     },
     "requested_flow_to_return_line_temperature_difference": {
@@ -275,7 +290,7 @@ HP_SENSOR_TEMPLATES = {
         "data_type": "int16",
         "firmware_version": 1,
         "device_type": "Hp",
-        "writeable": False,
+        "writeable": True,
         "state_class": "measurement",
     },
     "relais_state_2nd_heating_stage": {
@@ -314,6 +329,261 @@ HP_SENSOR_TEMPLATES = {
         "writeable": False,
         "state_class": "total_increasing",
     },
+    # Undocumented registers discovered on hardware - Always enabled
+    "config_parameter_24": {
+        "relative_address": 24,
+        "name": "Unknown Parameter (R1024)",
+        "unit": None,
+        "scale": 1,
+        "precision": 0,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": False,
+        "state_class": "measurement",
+    },
+    "vda_rating": {
+        "relative_address": 25,
+        "name": "VdA Rating",
+        "unit": "%",
+        "scale": 0.01,
+        "precision": 2,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": False,
+        "state_class": "measurement",
+    },
+    "hot_gas_temperature": {
+        "relative_address": 26,
+        "name": "Hot Gas Temperature",
+        "unit": "°C",
+        "scale": 0.01,
+        "precision": 2,
+        "data_type": "int16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": False,
+        "state_class": "measurement",
+        "device_class": "temperature",
+    },
+    "subcooling_temperature": {
+        "relative_address": 27,
+        "name": "Subcooling Temperature",
+        "unit": "°C",
+        "scale": 0.01,
+        "precision": 2,
+        "data_type": "int16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": False,
+        "state_class": "measurement",
+        "device_class": "temperature",
+    },
+    "suction_gas_temperature": {
+        "relative_address": 28,
+        "name": "Suction Gas Temperature",
+        "unit": "°C",
+        "scale": 0.01,
+        "precision": 2,
+        "data_type": "int16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": False,
+        "state_class": "measurement",
+        "device_class": "temperature",
+    },
+    "condensation_temperature": {
+        "relative_address": 29,
+        "name": "Condensation Temperature",
+        "unit": "°C",
+        "scale": 0.01,
+        "precision": 2,
+        "data_type": "int16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": False,
+        "state_class": "measurement",
+        "device_class": "temperature",
+    },
+    "evaporation_temperature": {
+        "relative_address": 30,
+        "name": "Evaporation Temperature",
+        "unit": "°C",
+        "scale": 0.01,
+        "precision": 2,
+        "data_type": "int16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": False,
+        "state_class": "measurement",
+        "device_class": "temperature",
+    },
+    "eqm_rating": {
+        "relative_address": 31,
+        "name": "EqM Rating",
+        "unit": "%",
+        "scale": 0.01,
+        "precision": 2,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": False,
+        "state_class": "measurement",
+    },
+    "expansion_valve_opening_angle": {
+        "relative_address": 32,
+        "name": "Expansion Valve Opening Angle",
+        "unit": "%",
+        "scale": 0.01,
+        "precision": 2,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": False,
+        "state_class": "measurement",
+    },
+    "config_parameter_50": {
+        "relative_address": 50,
+        "name": "Unknown Parameter (R1050)",
+        "unit": None,
+        "scale": 1,
+        "precision": 0,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": False,
+        "state_class": "measurement",
+    },
+    "dhw_output_power_15c": {
+        "relative_address": 51,
+        "name": "DHW Output Power at 15°C",
+        "unit": "kW",
+        "scale": 0.1,
+        "precision": 1,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": True,
+        "state_class": "measurement",
+        "device_class": "power",
+    },
+    "heating_min_output_power_15c": {
+        "relative_address": 52,
+        "name": "Heating Min Output Power at 15°C",
+        "unit": "kW",
+        "scale": 0.1,
+        "precision": 1,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": True,
+        "state_class": "measurement",
+        "device_class": "power",
+    },
+    "heating_max_output_power_15c": {
+        "relative_address": 53,
+        "name": "Heating Max Output Power at 15°C",
+        "unit": "kW",
+        "scale": 0.1,
+        "precision": 1,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": True,
+        "state_class": "measurement",
+        "device_class": "power",
+    },
+    "heating_min_output_power_0c": {
+        "relative_address": 54,
+        "name": "Heating Min Output Power at 0°C",
+        "unit": "kW",
+        "scale": 0.1,
+        "precision": 1,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": True,
+        "state_class": "measurement",
+        "device_class": "power",
+    },
+    "heating_max_output_power_0c": {
+        "relative_address": 55,
+        "name": "Heating Max Output Power at 0°C",
+        "unit": "kW",
+        "scale": 0.1,
+        "precision": 1,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": True,
+        "state_class": "measurement",
+        "device_class": "power",
+    },
+    "heating_min_output_power_minus15c": {
+        "relative_address": 56,
+        "name": "Heating Min Output Power at -15°C",
+        "unit": "kW",
+        "scale": 0.1,
+        "precision": 1,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": True,
+        "state_class": "measurement",
+        "device_class": "power",
+    },
+    "heating_max_output_power_minus15c": {
+        "relative_address": 57,
+        "name": "Heating Max Output Power at -15°C",
+        "unit": "kW",
+        "scale": 0.1,
+        "precision": 1,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": True,
+        "state_class": "measurement",
+        "device_class": "power",
+    },
+    "cooling_min_output_power": {
+        "relative_address": 58,
+        "name": "Cooling Min Output Power",
+        "unit": "kW",
+        "scale": 0.1,
+        "precision": 1,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": True,
+        "state_class": "measurement",
+        "device_class": "power",
+    },
+    "cooling_max_output_power": {
+        "relative_address": 59,
+        "name": "Cooling Max Output Power",
+        "unit": "kW",
+        "scale": 0.1,
+        "precision": 1,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": True,
+        "state_class": "measurement",
+        "device_class": "power",
+    },
+    "config_parameter_60": {
+        "relative_address": 60,
+        "name": "Unknown Parameter (R1060)",
+        "unit": None,
+        "scale": 1,
+        "precision": 0,
+        "data_type": "uint16",
+        "firmware_version": 1,
+        "device_type": "Hp",
+        "writeable": False,
+        "state_class": "measurement",
+    },
 }
 
 # Boiler Sensors
@@ -341,6 +611,7 @@ BOIL_SENSOR_TEMPLATES = {
         "device_type": "boil",
         "writeable": False,
         "txt_mapping": True,
+        "options": {"register": True},
     },
     "actual_high_temperature": {
         "relative_address": 2,
@@ -776,6 +1047,7 @@ SENSOR_TYPES = {
         "device_type": "main",
         "writeable": False,
         "state_class": "total",
+        "options": {"register": True},
     },
     "ambient_operating_state": {
         "address": 1,
@@ -788,6 +1060,7 @@ SENSOR_TYPES = {
         "device_type": "main",
         "writeable": False,
         "txt_mapping": True,
+        "options": {"register": True},
     },
     "ambient_temperature": {
         "address": 2,
@@ -932,7 +1205,7 @@ CLIMATE_TEMPLATES = {
 }
 
 # Default update interval for Modbus communication (in seconds)
-DEFAULT_UPDATE_INTERVAL = 30
+DEFAULT_UPDATE_INTERVAL = 10
 
 # Default interval for writing room temperature and PV surplus (in seconds)
 DEFAULT_WRITE_INTERVAL = 30
@@ -1170,6 +1443,12 @@ OPERATING_STATE_MAP = {
     17: "MINTEMP-BLOCK",
     18: "FIRMWARE-DOWNLOAD",
 }
+
+# Default update interval for Modbus communication (in seconds)
+DEFAULT_UPDATE_INTERVAL = 10
+
+# Default interval for writing room temperature and PV surplus (in seconds)
+DEFAULT_WRITE_INTERVAL = 30
 
 # Lambda WP Configuration Template
 LAMBDA_WP_CONFIG_TEMPLATE = """# Lambda WP configuration

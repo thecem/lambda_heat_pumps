@@ -133,7 +133,7 @@ async def _process_room_temperature_entry(
     coordinator = entry_data.get("coordinator")
     if not coordinator or not coordinator.client:
         _LOGGER.error(
-            "Coordinator or Modbus client not available for " "entry_id %s",
+            "Coordinator or Modbus client not available for entry_id %s",
             entry_id,
         )
         return
@@ -157,7 +157,7 @@ async def _update_heating_circuit_temperature(
     entity_key = CONF_ROOM_TEMPERATURE_ENTITY.format(hc_idx)
     room_temp_entity_id = config_entry.options.get(entity_key)
     _LOGGER.debug(
-        "[Service] Prüfe Heizkreis %s: entity_key=%s, " "room_temp_entity_id=%s",
+        "[Service] Prüfe Heizkreis %s: entity_key=%s, room_temp_entity_id=%s",
         hc_idx,
         entity_key,
         room_temp_entity_id,
@@ -165,8 +165,7 @@ async def _update_heating_circuit_temperature(
 
     if not room_temp_entity_id:
         _LOGGER.error(
-            "No room temperature entity selected for "
-            "heating circuit %s in entry_id %s",
+            "No room temperature entity selected for heating circuit %s in entry_id %s",
             hc_idx,
             entry_id,
         )
@@ -225,14 +224,14 @@ async def _update_heating_circuit_temperature(
 
     except (ValueError, TypeError) as ex:
         _LOGGER.error(
-            "Unable to convert temperature from %s for " "heating circuit %s: %s",
+            "Unable to convert temperature from %s for heating circuit %s: %s",
             room_temp_entity_id,
             hc_idx,
             ex,
         )
     except Exception as ex:
         _LOGGER.error(
-            "Error updating room temperature for " "heating circuit %s: %s",
+            "Error updating room temperature for heating circuit %s: %s",
             hc_idx,
             ex,
         )
@@ -253,7 +252,7 @@ async def _handle_read_modbus_register(hass: HomeAssistant, call: ServiceCall) -
         coordinator = entry_data.get("coordinator")
         if not coordinator or not coordinator.client:
             _LOGGER.error(
-                "Coordinator or Modbus client not available for " "entry_id %s",
+                "Coordinator or Modbus client not available for entry_id %s",
                 entry_id,
             )
             continue
@@ -307,7 +306,7 @@ async def _handle_write_modbus_register(hass: HomeAssistant, call: ServiceCall) 
         coordinator = entry_data.get("coordinator")
         if not coordinator or not coordinator.client:
             _LOGGER.error(
-                "Coordinator or Modbus client not available for " "entry_id %s",
+                "Coordinator or Modbus client not available for entry_id %s",
                 entry_id,
             )
             continue
@@ -344,9 +343,7 @@ async def _handle_write_room_and_pv(hass: HomeAssistant) -> None:
     """
     lambda_entries = hass.data.get(DOMAIN, {})
     if not lambda_entries:
-        _LOGGER.debug(
-            "No Lambda WP integrations found yet, " "skipping write operation"
-        )
+        _LOGGER.debug("No Lambda WP integrations found yet, skipping write operation")
         return
 
     for entry_id, entry_data in lambda_entries.items():
@@ -364,14 +361,13 @@ async def _write_room_and_pv_for_entry(
     coordinator = entry_data.get("coordinator")
     if not coordinator or not coordinator.client:
         _LOGGER.error(
-            "Coordinator or Modbus client not available for " "entry_id %s",
+            "Coordinator or Modbus client not available for entry_id %s",
             entry_id,
         )
         return
 
     # Raumthermostat schreiben
     if config_entry.options.get("room_thermostat_control", False):
-
         await _write_room_temperatures(
             hass, config_entry, coordinator, entry_id, entry_data
         )
@@ -416,7 +412,7 @@ async def _write_room_temperatures(
             )
         except Exception as ex:
             _LOGGER.error(
-                "Error writing room temperature for " "HC %d: %s",
+                "Error writing room temperature for HC %d: %s",
                 hc_idx,
                 ex,
             )
@@ -439,14 +435,31 @@ async def _write_pv_surplus(
         unit = state.attributes.get("unit_of_measurement", "")
         if unit == "kW":
             power_value *= 1000  # in W
-        raw_value = int(power_value)
+
+        # Determine surplus mode
+        surplus_mode = config_entry.options.get("pv_surplus_mode", "pos")
+        if surplus_mode in ("entry", "pos"):
+            # UINT16: only positive values allowed
+            raw_value = max(0, int(power_value))
+            write_type = "UINT16"
+        elif surplus_mode == "neg":
+            # INT16: allow negative values, encode as 2's complement
+            from .utils import clamp_to_int16
+
+            raw_value = clamp_to_int16(power_value, context="PV surplus") & 0xFFFF
+            write_type = "INT16"
+        else:
+            # fallback: treat as UINT16
+            raw_value = max(0, int(power_value))
+            write_type = "UINT16 (fallback)"
 
         _LOGGER.info(
-            "[Scheduled] Writing PV surplus to register %s: " "%s W (Source: %s %s)",
+            "[Scheduled] Writing PV surplus to register %s: %s W (Source: %s %s, Mode: %s)",
             102,
             raw_value,
             state.state,
             unit,
+            write_type,
         )
 
         await async_write_registers(
@@ -551,9 +564,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         unsub_update_callbacks.clear()
 
     # Speichere Unsubscribe-Funktion in hass.data
-    hass.data.setdefault(f"{DOMAIN}_services", {})[
-        "unsub_callbacks"
-    ] = async_unload_services_callback
+    hass.data.setdefault(f"{DOMAIN}_services", {})["unsub_callbacks"] = (
+        async_unload_services_callback
+    )
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
